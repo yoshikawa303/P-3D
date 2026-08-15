@@ -73,16 +73,25 @@ def main() -> int:
         ("enableRelief", "ポップ3D合成"),
         ("enableVibration", "振動3D合成"),
         ("enableDepthLayers", "Depth多層3D合成"),
+        ("hologramStrength", "ホログラム個別強度"),
+        ("reliefStrength", "ポップ3D個別強度"),
+        ("vibrationStrength", "前景微振動個別強度"),
+        ("depthLayerStrength", "Depth多層個別強度"),
         ("edgeCleanup", "共通輪郭ぼかし"),
         ("hologramNearSuppression", "近景ホログラム抑制"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}のUIがありません")
     require("function effectFlags()" in html, "単独モードと複合処理を統合する処理がありません")
+    require("function effectStrengths()" in html, "複合処理ごとの独立強度を統合する処理がありません")
     for uniform in [
         "uniform float u_enableHologram;",
         "uniform float u_enableRelief;",
         "uniform float u_enableVibration;",
         "uniform float u_enableDepthLayers;",
+        "uniform float u_hologramStrength;",
+        "uniform float u_reliefStrength;",
+        "uniform float u_vibrationStrength;",
+        "uniform float u_depthLayerStrength;",
         "uniform float u_edgeCleanup;",
         "uniform float u_hologramNearSuppression;",
     ]:
@@ -93,6 +102,13 @@ def main() -> int:
     require("applyCommonCleanup" in html[html.index("void main()") :], "最終描画へ共通輪郭抑制を適用していません")
     require("float hologramDepthAttenuation=" in html, "Depthに応じたホログラム強度制御がありません")
     require("u_hologramNearSuppression" in html, "近景ホログラム抑制値をshaderで利用していません")
+    for use in [
+        "float hologramStrength=clamp(u_hologramStrength",
+        "float reliefStrength=clamp(u_reliefStrength",
+        "float vibrationStrength=clamp(u_vibrationStrength",
+        "float depthLayerStrength=clamp(u_depthLayerStrength",
+    ]:
+        require(use in html, f"個別強度をshaderで利用していません: {use}")
     for element_id, label in [
         ("depthFile", "Depth Map入力"),
         ("subjectMaskFile", "人物／物体マスク入力"),
@@ -164,20 +180,42 @@ def main() -> int:
     require('id="guide"' in html, "編集対象を示すガイドcanvasがありません")
     require("function drawGuides()" in html, "中心・範囲・光源・認識領域の動的ガイドがありません")
     require("function updateRecognitionGuide(source)" in html, "認識マスクから編集ガイドを作成していません")
+    require("function guideDragTargetAt(event)" in html, "画像上の編集ハンドル判定がありません")
+    require("function updateGuideDrag(event)" in html, "画像上のガイドドラッグ編集がありません")
+    require('stage.addEventListener("pointerdown",beginGuideDrag,true)' in html, "ガイドの直接ドラッグ開始処理がありません")
     for element_id, label in [
-        ("cropLeft", "左トリミング"),
-        ("cropRight", "右トリミング"),
-        ("cropTop", "上トリミング"),
-        ("cropBottom", "下トリミング"),
+        ("contourCrop", "人物／物体輪郭トリミング"),
         ("cropFeather", "トリミング輪郭ぼかし"),
         ("undoEdit", "アンドゥ"),
         ("redoEdit", "リドゥ"),
         ("resetDefaults", "初期値へ戻す"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}のUIがありません")
-    require("uniform vec4 u_cropRect;" in html, "非破壊トリミングのshader uniformがありません")
+    for removed in ['id="cropLeft"', 'id="cropRight"', 'id="cropTop"', 'id="cropBottom"', "uniform vec4 u_cropRect;"]:
+        require(removed not in html, f"矩形トリミングが残っています: {removed}")
+    require("uniform float u_contourCrop;" in html, "輪郭トリミングのshader uniformがありません")
     require("uniform float u_cropFeather;" in html, "トリミング輪郭ぼかしのshader uniformがありません")
-    require("float cropMaskAt(vec2 uv)" in html, "トリミングと輪郭ぼかしのshader処理がありません")
+    require("float contourCropMaskAt(vec2 uv)" in html, "人物／物体輪郭トリミングのshader処理がありません")
+    require("texture2D(u_subjectMaskTex" in html[html.index("float contourCropMaskAt") :], "入力マスク輪郭をトリミングへ利用していません")
+    require("c.rgb*=contourCropMaskAt(foregroundUV);" in html, "最終描画を人物／物体輪郭で切り抜いていません")
+    require("function syncContourCropAvailability()" in html, "マスク有無に応じた輪郭トリミング制御がありません")
+    require(
+        "function filterSubjectComponents(categories,width,height)" in html,
+        "人物自動分離の微小な孤立誤検知を除去する処理がありません",
+    )
+    require(
+        "function isPersonCategory(category)" in html,
+        "人物自動分離で非人物カテゴリを除外する判定がありません",
+    )
+    require(
+        "const filteredSubject=filterSubjectComponents(categories,width,height);" in html,
+        "連結領域フィルタが人物マスク生成に適用されていません",
+    )
+    require("const core=new Uint8Array(total);" in html, "細い誤接続を分離するマスク収縮がありません")
+    require(
+        "labels[nextY*width+nextX]===largestLabel" in html,
+        "主被写体以外の孤立領域が人物マスクへ残ります",
+    )
     require("function captureEditState()" in html, "編集状態の取得処理がありません")
     require("function applyEditState(state)" in html, "編集状態の復元処理がありません")
     require("function pushEditHistory()" in html, "アンドゥ／リドゥ履歴処理がありません")
@@ -245,7 +283,7 @@ def main() -> int:
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: five effect modes including Depth Map layered 3D")
     print("PASS: stackable effects, common contour cleanup, and near-depth hologram control")
-    print("PASS: visual editing guides, non-destructive crop, undo/redo, and reset defaults")
+    print("PASS: draggable guides, mask-contour crop, undo/redo, and reset defaults")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")

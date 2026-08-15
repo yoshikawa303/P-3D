@@ -26,9 +26,11 @@ input[type=file]{display:none}
 input[type=range]{width:100%}
 select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
 .sectionTitle{margin-top:3px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;font-weight:800;color:#c7f5ff;letter-spacing:.04em}
-.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px}
+.checks{display:grid;gap:6px;font-size:12px}
 .check{display:flex;min-height:30px;align-items:center;gap:7px;padding:2px 4px}
 .check input{width:18px;height:18px}
+.effectControl{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:8px}
+.effectControl .check{min-width:0}
 .hint{font-size:10px;color:#b8b8c2;line-height:1.45}
 #help{position:absolute;left:50%;top:42%;z-index:2;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
@@ -82,10 +84,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="sectionTitle">複合エフェクト</div>
     <label class="check"><input id="combineEffects" type="checkbox">複数処理を組み合わせる</label>
     <div class="checks" id="effectChecks">
-      <label class="check"><input id="enableHologram" type="checkbox">ホログラム</label>
-      <label class="check"><input id="enableRelief" type="checkbox">ポップ3D</label>
-      <label class="check"><input id="enableVibration" type="checkbox">前景微振動</label>
-      <label class="check"><input id="enableDepthLayers" type="checkbox">Depth多層</label>
+      <div class="effectControl"><label class="check"><input id="enableHologram" type="checkbox">ホログラム</label><input id="hologramStrength" aria-label="ホログラム強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+      <div class="effectControl"><label class="check"><input id="enableRelief" type="checkbox">ポップ3D</label><input id="reliefStrength" aria-label="ポップ3D強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+      <div class="effectControl"><label class="check"><input id="enableVibration" type="checkbox">前景微振動</label><input id="vibrationStrength" aria-label="前景微振動強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+      <div class="effectControl"><label class="check"><input id="enableDepthLayers" type="checkbox">Depth多層</label><input id="depthLayerStrength" aria-label="Depth多層強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
     </div>
     <div class="hint">OFF時は「立体表現」の単独モード、ON時はチェックした処理を同時に適用します。</div>
     <div class="row"><label for="edgeCleanup">不要輪郭ぼかし</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
@@ -98,12 +100,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="row"><label for="cx">キャラ中心X</label><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
     <div class="row"><label for="cy">キャラ中心Y</label><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
     <div class="row"><label for="radius">キャラ範囲</label><input id="radius" type="range" min="0.10" max="0.70" step="0.01" value="0.33"></div>
-    <div class="sectionTitle">非破壊トリミング</div>
-    <div class="row"><label for="cropLeft">左をカット</label><input id="cropLeft" type="range" min="0" max="0.45" step="0.01" value="0"></div>
-    <div class="row"><label for="cropRight">右をカット</label><input id="cropRight" type="range" min="0" max="0.45" step="0.01" value="0"></div>
-    <div class="row"><label for="cropTop">上をカット</label><input id="cropTop" type="range" min="0" max="0.45" step="0.01" value="0"></div>
-    <div class="row"><label for="cropBottom">下をカット</label><input id="cropBottom" type="range" min="0" max="0.45" step="0.01" value="0"></div>
-    <div class="row"><label for="cropFeather">輪郭ぼかし</label><input id="cropFeather" type="range" min="0" max="0.12" step="0.002" value="0.018"></div>
+    <div class="sectionTitle">人物／物体の輪郭トリミング</div>
+    <label class="check"><input id="contourCrop" type="checkbox" disabled>認識マスクの輪郭で切り抜く</label>
+    <div class="row"><label for="cropFeather">輪郭ぼかし</label><input id="cropFeather" type="range" min="0" max="0.08" step="0.002" value="0.012" disabled></div>
+    <div class="hint">人物自動分離または人物／物体マスク読込後に利用できます。元画像とマスクは変更しません。</div>
     <div class="buttons">
       <button id="undoEdit" class="secondary" type="button" disabled>アンドゥ</button>
       <button id="redoEdit" class="secondary" type="button" disabled>リドゥ</button>
@@ -116,7 +116,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle");
+const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:true,preserveDrawingBuffer:false});
 
 if(!gl){
@@ -167,21 +167,23 @@ uniform float u_enableHologram;
 uniform float u_enableRelief;
 uniform float u_enableVibration;
 uniform float u_enableDepthLayers;
+uniform float u_hologramStrength;
+uniform float u_reliefStrength;
+uniform float u_vibrationStrength;
+uniform float u_depthLayerStrength;
 uniform float u_edgeCleanup;
 uniform float u_hologramNearSuppression;
-uniform vec4 u_cropRect;
+uniform float u_contourCrop;
 uniform float u_cropFeather;
 varying vec2 v_uv;
 
 vec2 fitUV(vec2 uv){
   vec2 p=uv-0.5;
-  vec2 cropSize=max(u_cropRect.zw-u_cropRect.xy,vec2(0.10));
-  float croppedAspect=u_imgAspect*cropSize.x/cropSize.y;
-  float ratio=u_screenAspect/croppedAspect;
-  // CSSのobject-fit: containと同じ考え方で、トリミング後も縦横比を保つ。
+  float ratio=u_screenAspect/u_imgAspect;
+  // CSSのobject-fit: containと同じ考え方で、画像全体の縦横比を保つ。
   if(ratio>1.0) p.x*=ratio;
   else p.y/=ratio;
-  return u_cropRect.xy+(p+0.5)*cropSize;
+  return p+0.5;
 }
 
 float proceduralDepthAt(vec2 uv){
@@ -267,26 +269,34 @@ vec3 applyCommonCleanup(vec3 color,vec2 baseUV,vec2 sampledUV){
   return mix(color,softBlurAt(sampledUV),blurAmount);
 }
 
-float cropMaskAt(vec2 uv){
-  float cropAmount=u_cropRect.x+u_cropRect.y+(1.0-u_cropRect.z)+(1.0-u_cropRect.w);
-  if(cropAmount<0.0001)return 1.0;
-  float feather=max(u_cropFeather,0.0001);
-  float horizontal=smoothstep(u_cropRect.x,u_cropRect.x+feather,uv.x);
-  horizontal*=1.0-smoothstep(u_cropRect.z-feather,u_cropRect.z,uv.x);
-  float vertical=smoothstep(u_cropRect.y,u_cropRect.y+feather,uv.y);
-  vertical*=1.0-smoothstep(u_cropRect.w-feather,u_cropRect.w,uv.y);
-  return horizontal*vertical;
+float contourCropMaskAt(vec2 uv){
+  if(u_contourCrop<0.5||u_hasSubjectMask<0.5)return 1.0;
+  vec2 stepSize=max(u_texelSize*1.5,vec2(u_cropFeather));
+  float mask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r*0.28;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).r*0.12;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).r*0.12;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).r*0.12;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).r*0.12;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv+stepSize,vec2(0.0),vec2(1.0))).r*0.06;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv-stepSize,vec2(0.0),vec2(1.0))).r*0.06;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(stepSize.x,-stepSize.y),vec2(0.0),vec2(1.0))).r*0.06;
+  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(-stepSize.x,stepSize.y),vec2(0.0),vec2(1.0))).r*0.06;
+  float softness=mix(0.01,0.24,clamp(u_cropFeather*12.0,0.0,1.0));
+  return smoothstep(0.5-softness,0.5+softness,mask);
 }
 
 void main(){
   vec2 base=fitUV(v_uv);
-  if(base.x<u_cropRect.x||base.x>u_cropRect.z||base.y<u_cropRect.y||base.y>u_cropRect.w){
+  if(base.x<0.0||base.x>1.0||base.y<0.0||base.y>1.0){
     gl_FragColor=vec4(0.0,0.0,0.0,1.0);
     return;
   }
 
   float d=depthAt(base);
-  float strength=clamp(u_effectStrength,0.0,1.0);
+  float hologramStrength=clamp(u_hologramStrength,0.0,1.0);
+  float reliefStrength=clamp(u_reliefStrength,0.0,1.0);
+  float vibrationStrength=clamp(u_vibrationStrength,0.0,1.0);
+  float depthLayerStrength=clamp(u_depthLayerStrength,0.0,1.0);
   float parallaxDepth=d;
   float depthScale=1.0;
   float foregroundMask=subjectMaskAt(base);
@@ -294,8 +304,8 @@ void main(){
   if(u_enableRelief>0.5){
     // 中心領域をなだらかな面から厚みのあるカード状へ寄せる。
     float cardDepth=smoothstep(0.30,0.82,d);
-    parallaxDepth=mix(d,cardDepth,strength);
-    depthScale=1.0+0.85*strength;
+    parallaxDepth=mix(d,cardDepth,reliefStrength);
+    depthScale=1.0+0.85*reliefStrength;
   }
 
   vec2 backgroundUV=base;
@@ -303,8 +313,8 @@ void main(){
   if(u_enableDepthLayers>0.5){
     vec2 layeredView=mix(u_viewFar,u_viewMid,smoothstep(0.22,0.58,d));
     layeredView=mix(layeredView,u_viewNear,smoothstep(0.58,0.86,d));
-    vec2 backgroundOffset=u_viewFar*u_depth*d*0.34*strength;
-    vec2 foregroundOffset=layeredView*u_depth*d*(1.0+0.95*strength);
+    vec2 backgroundOffset=u_viewFar*u_depth*d*0.34*depthLayerStrength;
+    vec2 foregroundOffset=layeredView*u_depth*d*(1.0+0.95*depthLayerStrength)*depthLayerStrength;
     backgroundUV=base-backgroundOffset;
     foregroundUV=base-foregroundOffset;
   }
@@ -313,13 +323,14 @@ void main(){
     // 背景は元UVで固定し、人物／物体マスク内だけをフレーム同期で微小移動する。
     float vibrationPhase=u_time*50.0;
     vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
-    vibration*=vec2(0.0035,0.0016)*strength*u_motionScale;
+    vibration*=vec2(0.0035,0.0016)*vibrationStrength*u_motionScale;
+    if(u_enableDepthLayers<0.5)foregroundUV=base-(base-foregroundUV)*vibrationStrength;
     foregroundUV-=vibration*foregroundMask;
     if(u_enableDepthLayers<0.5)backgroundUV=base;
   }
 
-  backgroundUV=clamp(backgroundUV,u_cropRect.xy,u_cropRect.zw);
-  foregroundUV=clamp(foregroundUV,u_cropRect.xy,u_cropRect.zw);
+  backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
+  foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
   vec4 backgroundColor=texture2D(u_tex,backgroundUV);
   vec4 foregroundColor=texture2D(u_tex,foregroundUV);
   vec4 c;
@@ -334,17 +345,17 @@ void main(){
     vec3 layerLight=normalize(vec3(u_lightDirection,0.92)+vec3(u_view*0.20,0.0));
     float layerRelief=dot(layerNormal,layerLight)*0.5+0.5;
     float depthEdge=clamp(length(layerNormal.xy)*1.8,0.0,1.0);
-    float lighting=clamp(u_lightingStrength,0.0,1.0);
+    float lighting=clamp(u_lightingStrength,0.0,1.0)*depthLayerStrength;
     float lightFacing=dot(layerNormal,layerLight);
     float whiteHighlight=pow(max(lightFacing,0.0),9.0)*foregroundMask*lighting;
     float surfaceShadow=pow(max(-lightFacing,0.0),1.35)*foregroundMask*lighting;
     float boundaryGlow=depthEdge*foregroundMask*(0.30+0.45*whiteHighlight)*lighting;
-    float separation=foregroundMask*(0.05+0.12*layerRelief+0.10*depthEdge)*strength;
+    float separation=foregroundMask*(0.05+0.12*layerRelief+0.10*depthEdge)*depthLayerStrength;
     c.rgb*=1.0+separation;
-    c.rgb*=1.0-surfaceShadow*(0.18+0.24*strength);
+    c.rgb*=1.0-surfaceShadow*(0.18+0.24*depthLayerStrength);
     c.rgb=mix(c.rgb,vec3(1.0),clamp(whiteHighlight*0.42+boundaryGlow*0.20,0.0,0.58));
     float aerialDepth=(1.0-d)*(1.0-foregroundMask);
-    c.rgb=mix(c.rgb,c.rgb*vec3(0.72,0.82,0.96),aerialDepth*0.24*strength);
+    c.rgb=mix(c.rgb,c.rgb*vec3(0.72,0.82,0.96),aerialDepth*0.24*depthLayerStrength);
     c.rgb-=vec3(0.035,0.045,0.065)*(1.0-foregroundMask)*depthEdge*lighting;
   }
 
@@ -359,22 +370,22 @@ void main(){
     vec3 foilLight=normalize(vec3(u_lightDirection,0.94));
     vec3 halfVector=normalize(viewDirection+foilLight);
     float specular=pow(max(dot(foilNormal,halfVector),0.0),28.0);
-    vec2 chromaShift=(foilNormal.xy+u_view*0.30)*u_texelSize*(2.0+4.0*strength);
+    vec2 chromaShift=(foilNormal.xy+u_view*0.30)*u_texelSize*(2.0+4.0*hologramStrength);
     vec2 materialUV=mix(backgroundUV,foregroundUV,foregroundMask);
     vec3 chromaticSample=vec3(
-      texture2D(u_tex,clamp(materialUV+chromaShift,u_cropRect.xy,u_cropRect.zw)).r,
+      texture2D(u_tex,clamp(materialUV+chromaShift,vec2(0.0),vec2(1.0))).r,
       texture2D(u_tex,materialUV).g,
-      texture2D(u_tex,clamp(materialUV-chromaShift,u_cropRect.xy,u_cropRect.zw)).b
+      texture2D(u_tex,clamp(materialUV-chromaShift,vec2(0.0),vec2(1.0))).b
     );
     float phase=base.x*0.82+base.y*0.58+foilNormal.x*0.18-foilNormal.y*0.14+u_view.x*0.32-u_view.y*0.24;
     float bands=0.5+0.5*sin(phase*38.0);
     vec3 rainbow=hologramColor(phase*2.4+bands*0.08);
     float sweep=pow(0.5+0.5*cos((phase+u_view.x*0.12-u_view.y*0.08)*14.0),8.0);
     float hologramDepthAttenuation=1.0-smoothstep(0.55,0.92,d)*clamp(u_hologramNearSuppression,0.0,1.0);
-    float mixAmount=clamp((0.10+0.16*bands+0.24*sweep+0.30*fresnel+0.34*specular)*strength*hologramDepthAttenuation,0.0,0.68)*mix(0.55,1.0,foregroundMask);
+    float mixAmount=clamp((0.10+0.16*bands+0.24*sweep+0.30*fresnel+0.34*specular)*hologramStrength*hologramDepthAttenuation,0.0,0.68)*mix(0.55,1.0,foregroundMask);
     vec3 foil=chromaticSample*(0.84+0.30*rainbow)+rainbow*(0.10+0.18*sweep+0.22*fresnel);
     c.rgb=mix(c.rgb,foil,mixAmount);
-    c.rgb+=rainbow*(sweep*0.08+specular*0.18*u_lightingStrength)*strength*hologramDepthAttenuation;
+    c.rgb+=rainbow*(sweep*0.08+specular*0.18*u_lightingStrength)*hologramStrength*hologramDepthAttenuation;
     c.rgb=mix(c.rgb,vec3(1.0),clamp(specular*foregroundMask*u_lightingStrength*0.24*hologramDepthAttenuation,0.0,0.32));
   }
 
@@ -386,13 +397,13 @@ void main(){
     vec2 reliefNormal=normalize(reliefPoint+vec2(0.0001));
     vec2 lightDirection=normalize(vec2(-0.62,0.78)+u_view*0.18);
     float bevel=dot(reliefNormal,lightDirection);
-    c.rgb*=1.0+bevel*rim*0.22*strength;
-    c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*strength;
+    c.rgb*=1.0+bevel*rim*0.22*reliefStrength;
+    c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*reliefStrength;
   }
 
   vec2 cleanupUV=mix(backgroundUV,foregroundUV,foregroundMask);
   c.rgb=applyCommonCleanup(c.rgb,base,cleanupUV);
-  c.rgb*=cropMaskAt(base);
+  c.rgb*=contourCropMaskAt(foregroundUV);
   gl_FragColor=vec4(c.rgb,1.0);
 }`;
 
@@ -437,7 +448,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_edgeCleanup","u_hologramNearSuppression","u_cropRect","u_cropFeather"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -445,6 +456,7 @@ gl.uniform1i(U.u_subjectMaskTex,2);
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let recognitionBounds=null,recognitionGuideCanvas=null;
+let guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1},guideDragTarget=null;
 let targetX=0,targetY=0,viewX=0,viewY=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
 const VISION_WASM_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
@@ -556,6 +568,7 @@ function clearMaps({announce=true}={}){
   depthSource="中心近似";
   maskSource="中心近似";
   updateMapStatus(announce ? "解除しました" : "");
+  syncContourCropAvailability();
 }
 
 function uploadMapImage(texture,unit,img){
@@ -575,20 +588,27 @@ function updateRecognitionGuide(source){
   context.drawImage(source,0,0,size,size);
   const pixels=context.getImageData(0,0,size,size);
   const overlay=context.createImageData(size,size);
+  const maskLuma=(x,y)=>{
+    if(x<0||x>=size||y<0||y>=size)return 0;
+    const offset=(y*size+x)*4;
+    return (pixels.data[offset]+pixels.data[offset+1]+pixels.data[offset+2])/3;
+  };
   let minX=size,minY=size,maxX=-1,maxY=-1;
   for(let index=0;index<size*size;index++){
     const offset=index*4;
     const luminance=(pixels.data[offset]+pixels.data[offset+1]+pixels.data[offset+2])/3;
+    const x=index%size;
+    const y=Math.floor(index/size);
+    let boundary=false;
     if(luminance>28){
-      const x=index%size;
-      const y=Math.floor(index/size);
       minX=Math.min(minX,x);maxX=Math.max(maxX,x);
       minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+      boundary=maskLuma(x-1,y)<=28||maskLuma(x+1,y)<=28||maskLuma(x,y-1)<=28||maskLuma(x,y+1)<=28;
     }
     overlay.data[offset]=94;
     overlay.data[offset+1]=226;
     overlay.data[offset+2]=255;
-    overlay.data[offset+3]=Math.round(Math.min(42,luminance*0.17));
+    overlay.data[offset+3]=boundary ? 220 : Math.round(Math.min(34,luminance*0.13));
   }
   context.putImageData(overlay,0,0);
   recognitionGuideCanvas=sample;
@@ -611,6 +631,7 @@ function loadMapFile(file,kind){
       updateRecognitionGuide(img);
     }
     updateMapStatus("端末内読込");
+    syncContourCropAvailability();
     errEl.textContent="";
     URL.revokeObjectURL(url);
   };
@@ -665,11 +686,91 @@ function depthForPersonPart(category){
   return [0.0,0.86,0.80,1.0,0.72,0.62][category] ?? 0.64;
 }
 
+function isPersonCategory(category){
+  // 「その他」は背景の小物や文字も含むため、自動人物マスクには混ぜない。
+  return category>=1&&category<=4;
+}
+
+function filterSubjectComponents(categories,width,height){
+  const total=width*height;
+  const candidate=new Uint8Array(total);
+  for(let index=0;index<total;index++)candidate[index]=isPersonCategory(categories[index]) ? 1 : 0;
+  const core=new Uint8Array(total);
+  for(let y=1;y<height-1;y++){
+    for(let x=1;x<width-1;x++){
+      const index=y*width+x;
+      let solid=candidate[index]===1;
+      for(let dy=-1;dy<=1&&solid;dy++){
+        for(let dx=-1;dx<=1;dx++){
+          if(candidate[(y+dy)*width+x+dx]===0){solid=false;break}
+        }
+      }
+      if(solid)core[index]=1;
+    }
+  }
+  const labels=new Int32Array(total);
+  labels.fill(-1);
+  const queue=new Int32Array(total);
+  const sizes=[];
+  let largest=0;
+  let largestLabel=-1;
+  for(let start=0;start<total;start++){
+    if(core[start]===0||labels[start]!==-1)continue;
+    const component=sizes.length;
+    let head=0;
+    let tail=0;
+    let size=0;
+    queue[tail++]=start;
+    labels[start]=component;
+    while(head<tail){
+      const current=queue[head++];
+      size++;
+      const x=current%width;
+      const y=Math.floor(current/width);
+      for(let dy=-1;dy<=1;dy++){
+        const nextY=y+dy;
+        if(nextY<0||nextY>=height)continue;
+        for(let dx=-1;dx<=1;dx++){
+          if(dx===0&&dy===0)continue;
+          const nextX=x+dx;
+          if(nextX<0||nextX>=width)continue;
+          const next=nextY*width+nextX;
+          if(core[next]===0||labels[next]!==-1)continue;
+          labels[next]=component;
+          queue[tail++]=next;
+        }
+      }
+    }
+    sizes.push(size);
+    if(size>largest){largest=size;largestLabel=component}
+  }
+  const retained=new Uint8Array(total);
+  if(largestLabel<0)return candidate;
+  // 1px収縮で細い誤接続を分離し、最大の主被写体領域だけを1px復元する。
+  for(let y=0;y<height;y++){
+    for(let x=0;x<width;x++){
+      const index=y*width+x;
+      if(candidate[index]===0)continue;
+      for(let dy=-1;dy<=1&&!retained[index];dy++){
+        const nextY=y+dy;
+        if(nextY<0||nextY>=height)continue;
+        for(let dx=-1;dx<=1;dx++){
+          const nextX=x+dx;
+          if(nextX<0||nextX>=width)continue;
+          if(labels[nextY*width+nextX]===largestLabel){retained[index]=1;break}
+        }
+      }
+    }
+  }
+  return retained;
+}
+
 function personMapsFromResult(result){
   const categoryMask=result.categoryMask;
   const categories=result.categoryMask.getAsUint8Array();
   const width=categoryMask.width;
   const height=categoryMask.height;
+  const filteredSubject=filterSubjectComponents(categories,width,height);
   const maskCanvas=document.createElement("canvas");
   const depthCanvas=document.createElement("canvas");
   maskCanvas.width=depthCanvas.width=width;
@@ -679,7 +780,7 @@ function personMapsFromResult(result){
   const maskPixels=maskContext.createImageData(width,height);
   const depthPixels=depthContext.createImageData(width,height);
   for(let index=0;index<categories.length;index++){
-    const category=categories[index];
+    const category=filteredSubject[index]===1 ? categories[index] : 0;
     const subject=category===0 ? 0 : 255;
     const depthValue=Math.round(depthForPersonPart(category)*255);
     const offset=index*4;
@@ -699,6 +800,7 @@ function personMapsFromResult(result){
   maskSource="人物自動分離";
   depthSource="人物部位Depth";
   updateMapStatus("端末内AI");
+  syncContourCropAvailability();
 }
 
 async function autoSegmentPerson(){
@@ -721,6 +823,7 @@ async function autoSegmentPerson(){
     statusEl.textContent="人物分離済み・Depth多層3D対応";
     if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
     else $("#effectMode").value="4";
+    syncEffectControls();
     pushEditHistory();
   }catch(error){
     errEl.textContent="人物分離に失敗しました。手動の人物／物体マスクは引き続き使用できます。詳細: "+cameraErrorMessage(error);
@@ -746,17 +849,51 @@ function effectFlags(){
   return {hologram:mode===1,relief:mode===2,vibration:mode===3,depthLayers:mode===4};
 }
 
+function effectStrengths(){
+  const preset=parseFloat($("#effectStrength").value);
+  if(!$("#combineEffects").checked){
+    return {hologram:preset,relief:preset,vibration:preset,depthLayers:preset};
+  }
+  return {
+    hologram:parseFloat($("#hologramStrength").value),
+    relief:parseFloat($("#reliefStrength").value),
+    vibration:parseFloat($("#vibrationStrength").value),
+    depthLayers:parseFloat($("#depthLayerStrength").value)
+  };
+}
+
 function syncEffectControls(){
   const combined=$("#combineEffects").checked;
   $("#effectMode").disabled=combined;
-  for(const input of document.querySelectorAll("#effectChecks input"))input.disabled=!combined;
+  const controls=[
+    ["enableHologram","hologramStrength"],
+    ["enableRelief","reliefStrength"],
+    ["enableVibration","vibrationStrength"],
+    ["enableDepthLayers","depthLayerStrength"]
+  ];
+  for(const [toggleId,strengthId] of controls){
+    const toggle=$("#"+toggleId);
+    toggle.disabled=!combined;
+    $("#"+strengthId).disabled=!combined||!toggle.checked;
+  }
 }
 $("#combineEffects").addEventListener("input",syncEffectControls);
+for(const id of ["enableHologram","enableRelief","enableVibration","enableDepthLayers"]){
+  $("#"+id).addEventListener("input",syncEffectControls);
+}
+
+function syncContourCropAvailability(){
+  const available=hasSubjectMask;
+  $("#contourCrop").disabled=!available;
+  $("#cropFeather").disabled=!available||!$("#contourCrop").checked;
+}
+$("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
 const EDIT_CONTROL_IDS=[
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers",
+  "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
-  "cropLeft","cropRight","cropTop","cropBottom","cropFeather"
+  "contourCrop","cropFeather"
 ];
 
 function captureEditState(){
@@ -775,6 +912,7 @@ function applyEditState(state){
     else control.value=state[id];
   }
   syncEffectControls();
+  syncContourCropAvailability();
 }
 
 const DEFAULT_EDIT_STATE=captureEditState();
@@ -815,26 +953,18 @@ $("#resetDefaults").addEventListener("click",()=>{
   errEl.textContent="設定値を初期化しました。";
 });
 syncEffectControls();
+syncContourCropAvailability();
 updateHistoryButtons();
 
-function cropValues(){
-  const left=parseFloat($("#cropLeft").value);
-  const right=1-parseFloat($("#cropRight").value);
-  const top=parseFloat($("#cropTop").value);
-  const bottom=1-parseFloat($("#cropBottom").value);
-  return {left,right,top,bottom,width:right-left,height:bottom-top};
-}
-
-function guideImageRect(crop){
-  const effectiveAspect=imgAspect*crop.width/crop.height;
+function guideImageRect(){
   const screenAspect=guideCanvas.width/guideCanvas.height;
-  if(screenAspect>effectiveAspect){
+  if(screenAspect>imgAspect){
     const height=guideCanvas.height;
-    const width=height*effectiveAspect;
+    const width=height*imgAspect;
     return {x:(guideCanvas.width-width)/2,y:0,width,height};
   }
   const width=guideCanvas.width;
-  const height=width/effectiveAspect;
+  const height=width/imgAspect;
   return {x:0,y:(guideCanvas.height-height)/2,width,height};
 }
 
@@ -850,13 +980,15 @@ function drawArrowHead(context,fromX,fromY,toX,toY,size){
 
 function drawGuides(){
   guideContext.clearRect(0,0,guideCanvas.width,guideCanvas.height);
-  if(!panelVisible||!hasImage)return;
-  const crop=cropValues();
-  const rect=guideImageRect(crop);
+  if(!panelVisible||!hasImage){
+    guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1};
+    return;
+  }
+  const rect=guideImageRect();
   const dpr=guideCanvas.width/Math.max(innerWidth,1);
   const mapPoint=(x,y)=>({
-    x:rect.x+(x-crop.left)/crop.width*rect.width,
-    y:rect.y+(y-crop.top)/crop.height*rect.height
+    x:rect.x+x*rect.width,
+    y:rect.y+y*rect.height
   });
   const center=mapPoint(parseFloat($("#cx").value),parseFloat($("#cy").value));
 
@@ -865,24 +997,13 @@ function drawGuides(){
   guideContext.rect(rect.x,rect.y,rect.width,rect.height);
   guideContext.clip();
   if(recognitionGuideCanvas){
-    guideContext.drawImage(
-      recognitionGuideCanvas,
-      crop.left*recognitionGuideCanvas.width,crop.top*recognitionGuideCanvas.height,
-      crop.width*recognitionGuideCanvas.width,crop.height*recognitionGuideCanvas.height,
-      rect.x,rect.y,rect.width,rect.height
-    );
+    guideContext.drawImage(recognitionGuideCanvas,rect.x,rect.y,rect.width,rect.height);
   }
   guideContext.restore();
 
   guideContext.save();
   guideContext.lineWidth=Math.max(1,1.25*dpr);
   guideContext.font=`${Math.max(10,10*dpr)}px -apple-system,sans-serif`;
-  guideContext.strokeStyle="rgba(218,250,255,.72)";
-  guideContext.fillStyle="rgba(218,250,255,.90)";
-  guideContext.setLineDash([5*dpr,5*dpr]);
-  guideContext.strokeRect(rect.x,rect.y,rect.width,rect.height);
-  guideContext.fillText("Crop",rect.x+7*dpr,rect.y+14*dpr);
-
   if(recognitionBounds){
     const start=mapPoint(recognitionBounds.minX,recognitionBounds.minY);
     const end=mapPoint(recognitionBounds.maxX,recognitionBounds.maxY);
@@ -896,8 +1017,8 @@ function drawGuides(){
   guideContext.strokeStyle="rgba(255,225,116,.90)";
   guideContext.fillStyle="rgba(255,225,116,.96)";
   const radius=parseFloat($("#radius").value);
-  const radiusX=radius/imgAspect/crop.width*rect.width;
-  const radiusY=radius/crop.height*rect.height;
+  const radiusX=radius/imgAspect*rect.width;
+  const radiusY=radius*rect.height;
   guideContext.beginPath();
   guideContext.ellipse(center.x,center.y,radiusX,radiusY,0,0,Math.PI*2);
   guideContext.stroke();
@@ -905,6 +1026,7 @@ function drawGuides(){
   guideContext.moveTo(center.x-8*dpr,center.y);guideContext.lineTo(center.x+8*dpr,center.y);
   guideContext.moveTo(center.x,center.y-8*dpr);guideContext.lineTo(center.x,center.y+8*dpr);
   guideContext.stroke();
+  guideContext.beginPath();guideContext.arc(center.x,center.y,7*dpr,0,Math.PI*2);guideContext.fill();
   guideContext.fillText("キャラ中心／範囲",center.x+9*dpr,center.y-9*dpr);
 
   const lightX=parseFloat($("#lightX").value);
@@ -919,10 +1041,79 @@ function drawGuides(){
   guideContext.moveTo(sourceX,sourceY);guideContext.lineTo(center.x,center.y);
   guideContext.stroke();
   drawArrowHead(guideContext,sourceX,sourceY,center.x,center.y,8*dpr);
-  guideContext.beginPath();guideContext.arc(sourceX,sourceY,4*dpr,0,Math.PI*2);guideContext.fill();
+  guideContext.beginPath();guideContext.arc(sourceX,sourceY,7*dpr,0,Math.PI*2);guideContext.fill();
   guideContext.fillText("Light / Ray",sourceX+6*dpr,sourceY-6*dpr);
+  guideHandles={imageRect:rect,center,light:{x:sourceX,y:sourceY},rayLength,dpr};
   guideContext.restore();
 }
+
+function guideEventPoint(event){
+  const bounds=guideCanvas.getBoundingClientRect();
+  return {
+    x:(event.clientX-bounds.left)*guideCanvas.width/bounds.width,
+    y:(event.clientY-bounds.top)*guideCanvas.height/bounds.height
+  };
+}
+
+function guideDragTargetAt(event){
+  if(event.target!==canvas||!panelVisible||!hasImage||!guideHandles.center||!guideHandles.light)return null;
+  const point=guideEventPoint(event);
+  const hitRadius=24*guideHandles.dpr;
+  if(Math.hypot(point.x-guideHandles.light.x,point.y-guideHandles.light.y)<=hitRadius)return "light";
+  if(Math.hypot(point.x-guideHandles.center.x,point.y-guideHandles.center.y)<=hitRadius)return "center";
+  return null;
+}
+
+function updateGuideDrag(event){
+  if(!guideDragTarget||!guideHandles.imageRect)return;
+  const point=guideEventPoint(event);
+  if(guideDragTarget==="center"){
+    const rect=guideHandles.imageRect;
+    const imageX=Math.max(0,Math.min(1,(point.x-rect.x)/rect.width));
+    const imageY=Math.max(0,Math.min(1,(point.y-rect.y)/rect.height));
+    $("#cx").value=imageX.toFixed(2);
+    $("#cy").value=imageY.toFixed(2);
+  }else{
+    const center=guideHandles.center;
+    const dx=point.x-center.x;
+    const dy=point.y-center.y;
+    const magnitude=Math.max(0.001,Math.hypot(dx,dy));
+    $("#lightX").value=Math.max(-1,Math.min(1,dx/magnitude)).toFixed(2);
+    $("#lightY").value=Math.max(-1,Math.min(1,-dy/magnitude)).toFixed(2);
+  }
+}
+
+function beginGuideDrag(event){
+  const target=guideDragTargetAt(event);
+  if(!target)return;
+  guideDragTarget=target;
+  event.preventDefault();
+  event.stopPropagation();
+  stage.setPointerCapture(event.pointerId);
+  updateGuideDrag(event);
+}
+
+function moveGuideDrag(event){
+  if(!guideDragTarget)return;
+  event.preventDefault();
+  event.stopPropagation();
+  updateGuideDrag(event);
+}
+
+function finishGuideDrag(event){
+  if(!guideDragTarget)return;
+  event.preventDefault();
+  event.stopPropagation();
+  updateGuideDrag(event);
+  guideDragTarget=null;
+  if(stage.hasPointerCapture(event.pointerId))stage.releasePointerCapture(event.pointerId);
+  pushEditHistory();
+}
+
+stage.addEventListener("pointerdown",beginGuideDrag,true);
+stage.addEventListener("pointermove",moveGuideDrag,true);
+stage.addEventListener("pointerup",finishGuideDrag,true);
+stage.addEventListener("pointercancel",finishGuideDrag,true);
 
 function cameraErrorMessage(error){
   const name=error && error.name ? error.name : "Error";
@@ -1095,10 +1286,14 @@ function render(now){
   gl.uniform1f(U.u_enableRelief,effects.relief ? 1 : 0);
   gl.uniform1f(U.u_enableVibration,effects.vibration ? 1 : 0);
   gl.uniform1f(U.u_enableDepthLayers,effects.depthLayers ? 1 : 0);
+  const strengths=effectStrengths();
+  gl.uniform1f(U.u_hologramStrength,strengths.hologram);
+  gl.uniform1f(U.u_reliefStrength,strengths.relief);
+  gl.uniform1f(U.u_vibrationStrength,strengths.vibration);
+  gl.uniform1f(U.u_depthLayerStrength,strengths.depthLayers);
   gl.uniform1f(U.u_edgeCleanup,parseFloat($("#edgeCleanup").value));
   gl.uniform1f(U.u_hologramNearSuppression,parseFloat($("#hologramNearSuppression").value));
-  const crop=cropValues();
-  gl.uniform4f(U.u_cropRect,crop.left,1-crop.bottom,crop.right,1-crop.top);
+  gl.uniform1f(U.u_contourCrop,$("#contourCrop").checked ? 1 : 0);
   gl.uniform1f(U.u_cropFeather,parseFloat($("#cropFeather").value));
   gl.drawArrays(gl.TRIANGLES,0,6);
   drawGuides();
