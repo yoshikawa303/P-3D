@@ -72,6 +72,18 @@
 
   作業AIモデルはCodex GPT-5系を継続し、動的切替なし。
 
+### 2026-08-16 03:38 JST - Codex GPT-5 - 種別: 作業結果 - 個別強度・ドラッグガイド・輪郭切り抜きを公開
+
+- 内容:
+
+  実装commit`1e79dfe0c29e23c5a959bbcf5845da8a3c266333`と文書commit`1864c33dfdb398e66ac710f116312145eff05f12`を既存`main`へpushした。GitHub品質ゲート`31901596026`とPagesデプロイ`31901595708`は成功した。公開版とローカル`index.html`のSHA-256は`8839a939b20ba666ca9a6692b891f9af0c7eb07592daf777fb7c4f52127a3c99`で一致し、公開HTMLに`hologramStrength`、`guideDragTargetAt`、`contourCrop`、`filterSubjectComponents`が存在することを確認した。
+
+  公開GitHub Pagesを`390×844`相当で再読込し、人物自動分離後60fpsへ復帰、輪郭切り抜き、4エフェクト個別強度`0.2／0.4／0.6／0.8`、キャラ中心ハンドルのX `0.50→0.55`／Y `0.45→0.40`、光源ハンドルのX `-0.42→-0.60`／Y `0.68→0.80`への同期、設定パネル非表示を確認した。アプリのconsole errorはなく、MediaPipe WASMの既知のOpenGLエラーチェック無効化warningだけを確認した。
+
+  ローカル`/Volumes/DATA/XCode_Project/P-3D`はGit checkoutではないため`git init`せず、既存の一時checkoutと一時indexからcommit／pushした。Codex GPT-5系を使用し、動的切替なし。iPhone Safari実機のカメラ／顔追跡、タッチドラッグ、120Hz、発熱、電力、輪郭精度は未検証。
+
+- 作業時間: 約21分
+
 ### 2026-08-15 19:52 JST - Codex GPT-5 - 種別: 依頼内容 - 設定パネルの表示切替
 
 - 内容:
