@@ -1,0 +1,18 @@
+name: P-3D quality gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run web and governance regression gate
+        run: python3 scripts/ci/web_regression_gate.py
+
