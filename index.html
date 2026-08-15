@@ -24,6 +24,7 @@ button.sample{background:#24242a;color:#fff;font-weight:600}
 input[type=file]{display:none}
 .row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:12px}
 input[type=range]{width:100%}
+select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
 #help{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
 #err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
@@ -57,6 +58,12 @@ input[type=range]{width:100%}
       <button id="sample1" class="sample">サンプル1</button>
       <button id="sample2" class="sample">サンプル2</button>
     </div>
+    <div class="row"><label for="effectMode">立体表現</label><select id="effectMode">
+      <option value="0">標準</option>
+      <option value="1">ホログラム</option>
+      <option value="2">簡易ポップ3D</option>
+    </select></div>
+    <div class="row"><label for="effectStrength">効果強度</label><input id="effectStrength" type="range" min="0" max="1" step="0.01" value="0.65"></div>
     <div class="row"><span>立体強度</span><input id="depth" type="range" min="0" max="0.10" step="0.001" value="0.040"></div>
     <div class="row"><span>キャラ中心X</span><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
     <div class="row"><span>キャラ中心Y</span><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
@@ -101,6 +108,8 @@ uniform vec2 u_center;
 uniform float u_radius;
 uniform float u_imgAspect;
 uniform float u_screenAspect;
+uniform float u_effectMode;
+uniform float u_effectStrength;
 varying vec2 v_uv;
 
 vec2 fitUV(vec2 uv){
@@ -120,19 +129,58 @@ float depthAt(vec2 uv){
   return 0.10+0.90*g;
 }
 
+vec3 hologramColor(float phase){
+  return 0.5+0.5*cos(6.2831853*(phase+vec3(0.0,0.333,0.667)));
+}
+
 void main(){
   vec2 base=fitUV(v_uv);
   float d=depthAt(base);
+  float strength=clamp(u_effectStrength,0.0,1.0);
+  float parallaxDepth=d;
+  float depthScale=1.0;
 
-  vec2 suv=base-u_view*u_depth*d;
+  if(u_effectMode>1.5){
+    // 中心領域をなだらかな面から厚みのあるカード状へ寄せる。
+    float cardDepth=smoothstep(0.30,0.82,d);
+    parallaxDepth=mix(d,cardDepth,strength);
+    depthScale=1.0+0.85*strength;
+  }
+
+  vec2 suv=base-u_view*u_depth*parallaxDepth*depthScale;
   if(suv.x<0.0||suv.x>1.0||suv.y<0.0||suv.y>1.0){
     gl_FragColor=vec4(0.0,0.0,0.0,1.0);
     return;
   }
 
   vec4 c=texture2D(u_tex,suv);
-  float light=1.0+(u_view.x*(v_uv.x-.5)+u_view.y*(v_uv.y-.5))*0.08*d;
+  float light=1.0+(u_view.x*(v_uv.x-.5)+u_view.y*(v_uv.y-.5))*0.08*parallaxDepth;
   c.rgb*=light;
+
+  if(u_effectMode>0.5&&u_effectMode<1.5){
+    // 視点に追従する分光色と細いハイライトで箔の反射を作る。
+    float phase=base.x*0.82+base.y*0.58+u_view.x*0.32-u_view.y*0.24;
+    float bands=0.5+0.5*sin(phase*38.0);
+    vec3 rainbow=hologramColor(phase*2.4+bands*0.08);
+    float sweep=pow(0.5+0.5*cos((phase+u_view.x*0.12-u_view.y*0.08)*14.0),8.0);
+    float mixAmount=clamp((0.12+0.18*bands+0.30*sweep)*strength,0.0,0.55);
+    vec3 foil=c.rgb*(0.84+0.30*rainbow)+rainbow*(0.12+0.12*sweep);
+    c.rgb=mix(c.rgb,foil,mixAmount);
+    c.rgb+=rainbow*sweep*0.08*strength;
+  }
+
+  if(u_effectMode>1.5){
+    // 円形Depthの傾斜へ明暗を付け、軽量な浮き彫り感を強める。
+    vec2 reliefPoint=base-u_center;
+    reliefPoint.x*=u_imgAspect;
+    float rim=clamp(4.0*d*(1.0-d),0.0,1.0);
+    vec2 reliefNormal=normalize(reliefPoint+vec2(0.0001));
+    vec2 lightDirection=normalize(vec2(-0.62,0.78)+u_view*0.18);
+    float bevel=dot(reliefNormal,lightDirection);
+    c.rgb*=1.0+bevel*rim*0.22*strength;
+    c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*strength;
+  }
+
   gl_FragColor=c;
 }`;
 
@@ -160,7 +208,7 @@ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([24,24,28,255]));
 
 const U={};
-["u_tex","u_view","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_view","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 
 let imgAspect=1, hasImage=false;
@@ -391,6 +439,8 @@ function render(now){
   gl.uniform1f(U.u_radius,parseFloat($("#radius").value));
   gl.uniform1f(U.u_imgAspect,imgAspect);
   gl.uniform1f(U.u_screenAspect,canvas.width/canvas.height);
+  gl.uniform1f(U.u_effectMode,parseFloat($("#effectMode").value));
+  gl.uniform1f(U.u_effectStrength,parseFloat($("#effectStrength").value));
   gl.drawArrays(gl.TRIANGLES,0,6);
 
   fpsN++;

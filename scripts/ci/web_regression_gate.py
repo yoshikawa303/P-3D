@@ -51,6 +51,30 @@ def main() -> int:
             f"contain補正後の画像比率が不正です: {screen_aspect=} {image_aspect=} {actual_aspect=}",
         )
 
+    require('id="effectMode"' in html, "立体表現モードの選択UIがありません")
+    for value, label in [("0", "標準"), ("1", "ホログラム"), ("2", "簡易ポップ3D")]:
+        require(
+            f'<option value="{value}">{label}</option>' in html,
+            f"立体表現モードがありません: {label}",
+        )
+    require('id="effectStrength"' in html, "効果強度の設定UIがありません")
+    require("uniform float u_effectMode;" in html, "立体表現モードのshader uniformがありません")
+    require("uniform float u_effectStrength;" in html, "効果強度のshader uniformがありません")
+    require("vec3 hologramColor(float phase)" in html, "ホログラム色のshader処理がありません")
+    require(
+        "u_effectMode>0.5&&u_effectMode<1.5" in html,
+        "ホログラムモードのshader分岐がありません",
+    )
+    require("u_effectMode>1.5" in html, "簡易ポップ3Dモードのshader分岐がありません")
+    require(
+        'gl.uniform1f(U.u_effectMode,parseFloat($("#effectMode").value))' in html,
+        "立体表現モードをshaderへ渡していません",
+    )
+    require(
+        'gl.uniform1f(U.u_effectStrength,parseFloat($("#effectStrength").value))' in html,
+        "効果強度をshaderへ渡していません",
+    )
+
     require("@mediapipe/tasks-vision@0.10.22" not in html, "存在しないMediaPipe 0.10.22参照が残っています")
     require(
         "@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs" in html,
@@ -110,6 +134,7 @@ def main() -> int:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
+    print("PASS: standard, hologram, and lightweight pop-3D effect modes")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
