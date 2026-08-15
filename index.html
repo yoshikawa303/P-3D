@@ -170,7 +170,7 @@ void main(){
     }
 
     // 背景は元UVで固定し、中心Depthを前景近似として毎フレーム微小移動する。
-    float foregroundMask=smoothstep(0.30,0.72,d);
+    float foregroundMask=smoothstep(0.42,0.72,d);
     float vibrationPhase=u_time*50.0;
     vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
     vibration*=vec2(0.0035,0.0016)*strength*u_motionScale;

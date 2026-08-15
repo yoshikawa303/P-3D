@@ -81,6 +81,10 @@ def main() -> int:
         "振動3Dで背景を固定サンプリングしていません",
     )
     require(
+        "float foregroundMask=smoothstep(0.42,0.72,d);" in html,
+        "前景マスクの裾が背景領域へ残らないよう、固定背景との境界を明確にしてください",
+    )
+    require(
         "const reduceMotion=window.matchMedia(\"(prefers-reduced-motion: reduce)\")" in html,
         "振動3Dが視差低減設定を参照していません",
     )
