@@ -62,6 +62,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <option value="0">標準</option>
       <option value="1">ホログラム</option>
       <option value="2">簡易ポップ3D</option>
+      <option value="3">振動3D（背景固定）</option>
     </select></div>
     <div class="row"><label for="effectStrength">効果強度</label><input id="effectStrength" type="range" min="0" max="1" step="0.01" value="0.65"></div>
     <div class="row"><span>立体強度</span><input id="depth" type="range" min="0" max="0.10" step="0.001" value="0.040"></div>
@@ -110,6 +111,9 @@ uniform float u_imgAspect;
 uniform float u_screenAspect;
 uniform float u_effectMode;
 uniform float u_effectStrength;
+uniform float u_time;
+uniform vec2 u_texelSize;
+uniform float u_motionScale;
 varying vec2 v_uv;
 
 vec2 fitUV(vec2 uv){
@@ -133,6 +137,18 @@ vec3 hologramColor(float phase){
   return 0.5+0.5*cos(6.2831853*(phase+vec3(0.0,0.333,0.667)));
 }
 
+float lumaAt(vec2 uv){
+  vec3 color=texture2D(u_tex,clamp(uv,vec2(0.0),vec2(1.0))).rgb;
+  return dot(color,vec3(0.299,0.587,0.114));
+}
+
+float imageEdgeAt(vec2 uv){
+  vec2 stepSize=max(u_texelSize,vec2(0.0005));
+  float gx=lumaAt(uv+vec2(stepSize.x,0.0))-lumaAt(uv-vec2(stepSize.x,0.0));
+  float gy=lumaAt(uv+vec2(0.0,stepSize.y))-lumaAt(uv-vec2(0.0,stepSize.y));
+  return smoothstep(0.14,0.42,abs(gx)+abs(gy));
+}
+
 void main(){
   vec2 base=fitUV(v_uv);
   float d=depthAt(base);
@@ -140,11 +156,38 @@ void main(){
   float parallaxDepth=d;
   float depthScale=1.0;
 
-  if(u_effectMode>1.5){
+  if(u_effectMode>1.5&&u_effectMode<2.5){
     // 中心領域をなだらかな面から厚みのあるカード状へ寄せる。
     float cardDepth=smoothstep(0.30,0.82,d);
     parallaxDepth=mix(d,cardDepth,strength);
     depthScale=1.0+0.85*strength;
+  }
+
+  if(u_effectMode>2.5){
+    if(base.x<0.0||base.x>1.0||base.y<0.0||base.y>1.0){
+      gl_FragColor=vec4(0.0,0.0,0.0,1.0);
+      return;
+    }
+
+    // 背景は元UVで固定し、中心Depthを前景近似として毎フレーム微小移動する。
+    float foregroundMask=smoothstep(0.30,0.72,d);
+    float vibrationPhase=u_time*50.0;
+    vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
+    vibration*=vec2(0.0035,0.0016)*strength*u_motionScale;
+    vec2 foregroundOffset=(u_view*u_depth*(0.80+0.80*strength)+vibration)*foregroundMask*strength;
+    vec2 foregroundUV=clamp(base-foregroundOffset,vec2(0.0),vec2(1.0));
+
+    vec4 background=texture2D(u_tex,base);
+    vec4 foreground=texture2D(u_tex,foregroundUV);
+    vec4 vibrationColor=mix(background,foreground,foregroundMask);
+
+    // 前景Depthの境界付近にある強い画像エッジだけを白く飛ばす。
+    float foregroundRim=smoothstep(0.24,0.44,d)*(1.0-smoothstep(0.86,0.98,d));
+    float contour=imageEdgeAt(foregroundUV)*foregroundRim;
+    float whiteEdge=clamp(contour*0.75*strength,0.0,0.72);
+    vibrationColor.rgb=mix(vibrationColor.rgb,vec3(1.0),whiteEdge);
+    gl_FragColor=vibrationColor;
+    return;
   }
 
   vec2 suv=base-u_view*u_depth*parallaxDepth*depthScale;
@@ -169,7 +212,7 @@ void main(){
     c.rgb+=rainbow*sweep*0.08*strength;
   }
 
-  if(u_effectMode>1.5){
+  if(u_effectMode>1.5&&u_effectMode<2.5){
     // 円形Depthの傾斜へ明暗を付け、軽量な浮き彫り感を強める。
     vec2 reliefPoint=base-u_center;
     reliefPoint.x*=u_imgAspect;
@@ -208,10 +251,10 @@ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([24,24,28,255]));
 
 const U={};
-["u_tex","u_view","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_view","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 
-let imgAspect=1, hasImage=false;
+let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false;
 let targetX=0,targetY=0,viewX=0,viewY=0;
 const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
 const VISION_WASM_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
@@ -220,6 +263,7 @@ const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landm
 let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
 let fpsN=0,fpsT=performance.now();
 const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
+const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
 let panelVisible=false;
 
 function setPanelVisible(visible,{persist=true}={}){
@@ -259,6 +303,8 @@ function uploadImage(img,label){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
     imgAspect=img.naturalWidth/img.naturalHeight;
+    imgWidth=img.naturalWidth;
+    imgHeight=img.naturalHeight;
     hasImage=true;
     statusEl.textContent="表示中: "+label;
     help.style.display="none";
@@ -441,6 +487,9 @@ function render(now){
   gl.uniform1f(U.u_screenAspect,canvas.width/canvas.height);
   gl.uniform1f(U.u_effectMode,parseFloat($("#effectMode").value));
   gl.uniform1f(U.u_effectStrength,parseFloat($("#effectStrength").value));
+  gl.uniform1f(U.u_time,now*0.001);
+  gl.uniform2f(U.u_texelSize,1/imgWidth,1/imgHeight);
+  gl.uniform1f(U.u_motionScale,reduceMotion.matches ? 0 : 1);
   gl.drawArrays(gl.TRIANGLES,0,6);
 
   fpsN++;

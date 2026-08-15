@@ -52,7 +52,12 @@ def main() -> int:
         )
 
     require('id="effectMode"' in html, "立体表現モードの選択UIがありません")
-    for value, label in [("0", "標準"), ("1", "ホログラム"), ("2", "簡易ポップ3D")]:
+    for value, label in [
+        ("0", "標準"),
+        ("1", "ホログラム"),
+        ("2", "簡易ポップ3D"),
+        ("3", "振動3D（背景固定）"),
+    ]:
         require(
             f'<option value="{value}">{label}</option>' in html,
             f"立体表現モードがありません: {label}",
@@ -66,6 +71,24 @@ def main() -> int:
         "ホログラムモードのshader分岐がありません",
     )
     require("u_effectMode>1.5" in html, "簡易ポップ3Dモードのshader分岐がありません")
+    require("u_effectMode>2.5" in html, "振動3Dモードのshader分岐がありません")
+    require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")
+    require("uniform vec2 u_texelSize;" in html, "輪郭検出用texelサイズのshader uniformがありません")
+    require("uniform float u_motionScale;" in html, "視差低減用のshader uniformがありません")
+    require("float imageEdgeAt(vec2 uv)" in html, "画像輪郭の検出処理がありません")
+    require(
+        "vec4 background=texture2D(u_tex,base);" in html,
+        "振動3Dで背景を固定サンプリングしていません",
+    )
+    require(
+        "const reduceMotion=window.matchMedia(\"(prefers-reduced-motion: reduce)\")" in html,
+        "振動3Dが視差低減設定を参照していません",
+    )
+    require(
+        "gl.uniform1f(U.u_motionScale,reduceMotion.matches ? 0 : 1)" in html,
+        "視差低減設定をshaderへ渡していません",
+    )
+    require("requestAnimationFrame(render)" in html, "表示更新が画面リフレッシュへ追従していません")
     require(
         'gl.uniform1f(U.u_effectMode,parseFloat($("#effectMode").value))' in html,
         "立体表現モードをshaderへ渡していません",
@@ -134,7 +157,7 @@ def main() -> int:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
-    print("PASS: standard, hologram, and lightweight pop-3D effect modes")
+    print("PASS: four lightweight effect modes including fixed-background vibration 3D")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
