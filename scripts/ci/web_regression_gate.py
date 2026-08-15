@@ -67,13 +67,32 @@ def main() -> int:
     require("uniform float u_effectMode;" in html, "立体表現モードのshader uniformがありません")
     require("uniform float u_effectStrength;" in html, "効果強度のshader uniformがありません")
     require("vec3 hologramColor(float phase)" in html, "ホログラム色のshader処理がありません")
-    require(
-        "u_effectMode>0.5&&u_effectMode<1.5" in html,
-        "ホログラムモードのshader分岐がありません",
-    )
-    require("u_effectMode>1.5" in html, "簡易ポップ3Dモードのshader分岐がありません")
-    require("u_effectMode>2.5&&u_effectMode<3.5" in html, "振動3Dモードのshader分岐がありません")
-    require("u_effectMode>3.5" in html, "Depth多層3Dモードのshader分岐がありません")
+    for element_id, label in [
+        ("combineEffects", "複合処理切替"),
+        ("enableHologram", "ホログラム合成"),
+        ("enableRelief", "ポップ3D合成"),
+        ("enableVibration", "振動3D合成"),
+        ("enableDepthLayers", "Depth多層3D合成"),
+        ("edgeCleanup", "共通輪郭ぼかし"),
+        ("hologramNearSuppression", "近景ホログラム抑制"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    require("function effectFlags()" in html, "単独モードと複合処理を統合する処理がありません")
+    for uniform in [
+        "uniform float u_enableHologram;",
+        "uniform float u_enableRelief;",
+        "uniform float u_enableVibration;",
+        "uniform float u_enableDepthLayers;",
+        "uniform float u_edgeCleanup;",
+        "uniform float u_hologramNearSuppression;",
+    ]:
+        require(uniform in html, f"複合／輪郭処理のshader uniformがありません: {uniform}")
+    require("float subjectBoundaryAt(vec2 uv)" in html, "人物／物体境界の検出処理がありません")
+    require("vec3 softBlurAt(vec2 uv)" in html, "不要輪郭のソフトぼかし処理がありません")
+    require("vec3 applyCommonCleanup" in html, "各モード共通の輪郭抑制処理がありません")
+    require("applyCommonCleanup" in html[html.index("void main()") :], "最終描画へ共通輪郭抑制を適用していません")
+    require("float hologramDepthAttenuation=" in html, "Depthに応じたホログラム強度制御がありません")
+    require("u_hologramNearSuppression" in html, "近景ホログラム抑制値をshaderで利用していません")
     for element_id, label in [
         ("depthFile", "Depth Map入力"),
         ("subjectMaskFile", "人物／物体マスク入力"),
@@ -117,7 +136,7 @@ def main() -> int:
     require("uniform float u_motionScale;" in html, "視差低減用のshader uniformがありません")
     require("float imageEdgeAt(vec2 uv)" in html, "画像輪郭の検出処理がありません")
     require(
-        "vec4 background=texture2D(u_tex,base);" in html,
+        "backgroundUV=base;" in html,
         "振動3Dで背景を固定サンプリングしていません",
     )
     require(
@@ -141,6 +160,29 @@ def main() -> int:
         'gl.uniform1f(U.u_effectStrength,parseFloat($("#effectStrength").value))' in html,
         "効果強度をshaderへ渡していません",
     )
+
+    require('id="guide"' in html, "編集対象を示すガイドcanvasがありません")
+    require("function drawGuides()" in html, "中心・範囲・光源・認識領域の動的ガイドがありません")
+    require("function updateRecognitionGuide(source)" in html, "認識マスクから編集ガイドを作成していません")
+    for element_id, label in [
+        ("cropLeft", "左トリミング"),
+        ("cropRight", "右トリミング"),
+        ("cropTop", "上トリミング"),
+        ("cropBottom", "下トリミング"),
+        ("cropFeather", "トリミング輪郭ぼかし"),
+        ("undoEdit", "アンドゥ"),
+        ("redoEdit", "リドゥ"),
+        ("resetDefaults", "初期値へ戻す"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    require("uniform vec4 u_cropRect;" in html, "非破壊トリミングのshader uniformがありません")
+    require("uniform float u_cropFeather;" in html, "トリミング輪郭ぼかしのshader uniformがありません")
+    require("float cropMaskAt(vec2 uv)" in html, "トリミングと輪郭ぼかしのshader処理がありません")
+    require("function captureEditState()" in html, "編集状態の取得処理がありません")
+    require("function applyEditState(state)" in html, "編集状態の復元処理がありません")
+    require("function pushEditHistory()" in html, "アンドゥ／リドゥ履歴処理がありません")
+    for removed in ['id="sample1"', 'id="sample2"', '$("#sample1")', '$("#sample2")']:
+        require(removed not in html, f"削除対象のサンプルUI／処理が残っています: {removed}")
 
     require("@mediapipe/tasks-vision@0.10.22" not in html, "存在しないMediaPipe 0.10.22参照が残っています")
     require(
@@ -202,6 +244,8 @@ def main() -> int:
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: five effect modes including Depth Map layered 3D")
+    print("PASS: stackable effects, common contour cleanup, and near-depth hologram control")
+    print("PASS: visual editing guides, non-destructive crop, undo/redo, and reset defaults")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
