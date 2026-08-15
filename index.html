@@ -106,8 +106,9 @@ varying vec2 v_uv;
 vec2 fitUV(vec2 uv){
   vec2 p=uv-0.5;
   float ratio=u_screenAspect/u_imgAspect;
-  if(ratio>1.0) p.y*=ratio;
-  else p.x/=ratio;
+  // CSSのobject-fit: containと同じ考え方で、画像全体と縦横比を保つ。
+  if(ratio>1.0) p.x*=ratio;
+  else p.y/=ratio;
   return p+0.5;
 }
 

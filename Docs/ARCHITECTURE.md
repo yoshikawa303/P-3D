@@ -18,6 +18,8 @@ viewX / viewY → WebGL parallax
 
 設定パネルは初期状態で非表示とし、画面右上のボタンで表示／非表示を切り替える。表示状態は`localStorage`の`p3d.settingsPanelVisible.v1`へ保存し、閉じた状態では`visibility: hidden`と`pointer-events: none`で操作対象から外す。Escキーでも閉じられる。
 
+画像は、画像比率とcanvas比率からWebGLのUVを`contain`方式で補正する。横長画面ではX軸、縦長画面ではY軸のUV範囲を狭め、画像全体の縦横比を維持する。画像と画面の比率が異なる部分は黒い余白として表示し、画像を切り取らない。
+
 ## 2. カメラ・顔追跡の開始順
 
 ```text

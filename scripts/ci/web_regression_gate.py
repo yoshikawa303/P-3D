@@ -18,8 +18,38 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def displayed_aspect_after_contain_uv(screen_aspect: float, image_aspect: float) -> float:
+    """Return the physical aspect produced by the shader's contain transform."""
+    ratio = screen_aspect / image_aspect
+    if ratio > 1.0:
+        normalized_width, normalized_height = 1.0 / ratio, 1.0
+    else:
+        normalized_width, normalized_height = 1.0, ratio
+    return screen_aspect * normalized_width / normalized_height
+
+
 def main() -> int:
     html = INDEX.read_text(encoding="utf-8")
+
+    require(
+        "if(ratio>1.0) p.x*=ratio;" in html,
+        "横長画面では画像UVのX軸を補正し、縦横比を保持してください",
+    )
+    require(
+        "else p.y/=ratio;" in html,
+        "縦長画面では画像UVのY軸を補正し、縦横比を保持してください",
+    )
+    for screen_aspect, image_aspect in [
+        (2.0, 1.0),
+        (0.5, 1.0),
+        (16.0 / 9.0, 4.0 / 3.0),
+        (9.0 / 19.5, 688.0 / 922.0),
+    ]:
+        actual_aspect = displayed_aspect_after_contain_uv(screen_aspect, image_aspect)
+        require(
+            abs(actual_aspect - image_aspect) < 1e-9,
+            f"contain補正後の画像比率が不正です: {screen_aspect=} {image_aspect=} {actual_aspect=}",
+        )
 
     require("@mediapipe/tasks-vision@0.10.22" not in html, "存在しないMediaPipe 0.10.22参照が残っています")
     require(
@@ -79,6 +109,7 @@ def main() -> int:
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
+    print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
