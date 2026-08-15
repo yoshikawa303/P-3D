@@ -16,6 +16,8 @@ viewX / viewY → WebGL parallax
 
 顔追跡が使用できない場合は、ポインタ／タッチドラッグで `viewX` と `viewY` を更新する。
 
+設定パネルは初期状態で非表示とし、画面右上のボタンで表示／非表示を切り替える。表示状態は`localStorage`の`p3d.settingsPanelVisible.v1`へ保存し、閉じた状態では`visibility: hidden`と`pointer-events: none`で操作対象から外す。Escキーでも閉じられる。
+
 ## 2. カメラ・顔追跡の開始順
 
 ```text
@@ -57,4 +59,3 @@ GPUでFaceLandmarker生成
 ## 5. 将来構成
 
 MVPの中心領域による疑似Depthから、人物セグメンテーション、Depth Map、背景Inpainting、Disocclusion補正、Off-Axis Projectionへ段階的に拡張する。各段階でiPhone Safari実機の性能とプライバシーを再評価する。
-

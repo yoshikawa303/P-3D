@@ -47,6 +47,16 @@ def main() -> int:
     require("カメラは起動しましたが、顔検出の準備に失敗しました" in start_body, "失敗境界の表示がありません")
     require("顔追跡を再試行" in start_body, "顔追跡だけを再試行する導線がありません")
 
+    require('id="panelToggle"' in html, "設定パネルの切替ボタンがありません")
+    require('aria-controls="panel"' in html, "設定パネル切替のaria-controlsがありません")
+    require('aria-expanded="false"' in html, "設定パネル切替の初期aria-expandedが不正です")
+    require('id="panel" class="is-hidden" aria-hidden="true"' in html, "設定パネルが初期非表示ではありません")
+    require('panel.classList.toggle("is-hidden",!visible)' in html, "設定パネルの表示切替処理がありません")
+    require('panel.setAttribute("aria-hidden",String(!visible))' in html, "設定パネルのaria-hidden更新がありません")
+    require('panelToggle.setAttribute("aria-expanded",String(visible))' in html, "切替ボタンのaria-expanded更新がありません")
+    require("p3d.settingsPanelVisible.v1" in html, "設定パネルの表示状態保存がありません")
+    require("prefers-reduced-motion:reduce" in html, "視差低減設定への対応がありません")
+
     for required in [
         "CLAUDE.md",
         "AGENTS.md",
@@ -71,6 +81,7 @@ def main() -> int:
 
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
+    print("PASS: settings panel visibility toggle and accessibility")
     print("PASS: Cross-AI governance documents")
     return 0
 
@@ -81,4 +92,3 @@ if __name__ == "__main__":
     except (AssertionError, ValueError, subprocess.CalledProcessError) as error:
         print(f"FAIL: {error}", file=sys.stderr)
         raise SystemExit(1)
-

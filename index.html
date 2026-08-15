@@ -9,9 +9,13 @@ html,body{margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-
 #stage{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block}
 #cam{position:absolute;width:2px;height:2px;opacity:.001;pointer-events:none}
-#top{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;justify-content:space-between;pointer-events:none}
+#top{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none}
 .pill{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.62);backdrop-filter:blur(10px);font-size:12px;white-space:nowrap}
-#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;gap:9px}
+#status{min-width:0;max-width:48vw;overflow:hidden;text-overflow:ellipsis}
+#topActions{display:flex;gap:6px;align-items:center;pointer-events:auto}
+#panelToggle{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
+#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));max-height:calc(100dvh - max(76px,env(safe-area-inset-top)) - max(20px,env(safe-area-inset-bottom)));overflow-y:auto;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;gap:9px;opacity:1;transform:translateY(0);visibility:visible;transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
+#panel.is-hidden{opacity:0;transform:translateY(calc(100% + 24px));visibility:hidden;pointer-events:none;transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s}
 .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 button,.filelabel{border:0;border-radius:12px;padding:11px 8px;font-size:14px;font-weight:700;text-align:center;background:#fff;color:#111}
 button:disabled{opacity:.58}
@@ -23,6 +27,7 @@ input[type=range]{width:100%}
 #help{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
 #err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
+@media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
 </style>
 </head>
 <body>
@@ -31,16 +36,19 @@ input[type=range]{width:100%}
   <video id="cam" playsinline muted autoplay></video>
   <div id="top">
     <div id="status" class="pill">画像未選択</div>
-    <div id="fps" class="pill">-- fps</div>
+    <div id="topActions">
+      <div id="fps" class="pill">-- fps</div>
+      <button id="panelToggle" type="button" aria-controls="panel" aria-expanded="false">設定を表示</button>
+    </div>
   </div>
 
   <div id="help">
     <b>Poster Pseudo 3D v2</b><br>
-    まず「画像を選択」またはサンプルを押してください。<br>
+    右上の「設定を表示」から画像やカメラを選択してください。<br>
     画像表示後は、画面ドラッグだけでも立体効果を確認できます。
   </div>
 
-  <div id="panel">
+  <div id="panel" class="is-hidden" aria-hidden="true">
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
       <button id="camera" class="secondary">フロントカメラ開始</button>
@@ -60,7 +68,7 @@ input[type=range]{width:100%}
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const canvas=$("#gl"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err");
+const canvas=$("#gl"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:true,preserveDrawingBuffer:false});
 
 if(!gl){
@@ -162,6 +170,29 @@ const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landm
 
 let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
 let fpsN=0,fpsT=performance.now();
+const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
+let panelVisible=false;
+
+function setPanelVisible(visible,{persist=true}={}){
+  panelVisible=visible;
+  panel.classList.toggle("is-hidden",!visible);
+  panel.setAttribute("aria-hidden",String(!visible));
+  panelToggle.setAttribute("aria-expanded",String(visible));
+  panelToggle.textContent=visible ? "設定を隠す" : "設定を表示";
+  if(persist){
+    try{localStorage.setItem(PANEL_VISIBILITY_KEY,String(visible))}catch(error){}
+  }
+}
+
+function savedPanelVisibility(){
+  try{return localStorage.getItem(PANEL_VISIBILITY_KEY)==="true"}catch(error){return false}
+}
+
+panelToggle.addEventListener("click",()=>setPanelVisible(!panelVisible));
+document.addEventListener("keydown",event=>{
+  if(event.key==="Escape" && panelVisible) setPanelVisible(false);
+});
+setPanelVisible(savedPanelVisibility(),{persist:false});
 
 function resize(){
   const dpr=Math.min(devicePixelRatio||1,2);
