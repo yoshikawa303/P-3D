@@ -57,6 +57,7 @@ def main() -> int:
         ("1", "ホログラム"),
         ("2", "簡易ポップ3D"),
         ("3", "振動3D（背景固定）"),
+        ("4", "Depth多層3D"),
     ]:
         require(
             f'<option value="{value}">{label}</option>' in html,
@@ -71,7 +72,46 @@ def main() -> int:
         "ホログラムモードのshader分岐がありません",
     )
     require("u_effectMode>1.5" in html, "簡易ポップ3Dモードのshader分岐がありません")
-    require("u_effectMode>2.5" in html, "振動3Dモードのshader分岐がありません")
+    require("u_effectMode>2.5&&u_effectMode<3.5" in html, "振動3Dモードのshader分岐がありません")
+    require("u_effectMode>3.5" in html, "Depth多層3Dモードのshader分岐がありません")
+    for element_id, label in [
+        ("depthFile", "Depth Map入力"),
+        ("subjectMaskFile", "人物／物体マスク入力"),
+        ("autoPerson", "端末内人物分離"),
+        ("clearMaps", "マップ解除"),
+        ("mapStatus", "マップ状態表示"),
+        ("lightX", "疑似光源X"),
+        ("lightY", "疑似光源Y"),
+        ("lightingStrength", "光・陰影強度"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    for uniform in [
+        "uniform sampler2D u_depthTex;",
+        "uniform sampler2D u_subjectMaskTex;",
+        "uniform float u_hasDepthMap;",
+        "uniform float u_hasSubjectMask;",
+        "uniform vec2 u_viewNear;",
+        "uniform vec2 u_viewMid;",
+        "uniform vec2 u_viewFar;",
+        "uniform vec2 u_lightDirection;",
+        "uniform float u_lightingStrength;",
+    ]:
+        require(uniform in html, f"Depth多層描画のshader uniformがありません: {uniform}")
+    require("float sampledDepthAt(vec2 uv)" in html, "任意Depth Mapの参照処理がありません")
+    require("float subjectMaskAt(vec2 uv)" in html, "人物／物体マスクの参照処理がありません")
+    require("vec3 depthNormalAt(vec2 uv)" in html, "Depth勾配から疑似法線を求める処理がありません")
+    require("float fresnel=" in html, "ホログラムの視点依存Fresnel反射がありません")
+    require("vec3 chromaticSample=" in html, "ホログラムの色収差視差がありません")
+    require("layeredView=mix(u_viewFar,u_viewMid" in html, "遠景／中景の視差遅延合成がありません")
+    require("layeredView=mix(layeredView,u_viewNear" in html, "近景の視差遅延合成がありません")
+    require("vec2 backgroundOffset=u_viewFar*u_depth*d" in html, "背景Depthの遠景視差がありません")
+    require("float whiteHighlight=" in html, "人物／物体の入射光による白飛びがありません")
+    require("float surfaceShadow=" in html, "光源と反対側の陰影がありません")
+    require("float aerialDepth=" in html, "背景空間の遠方減衰がありません")
+    require("selfie_multiclass_256x256/float32/1" in html, "固定版の人物部位分離モデルがありません")
+    require("ImageSegmenter.createFromOptions" in html, "端末内人物分離の初期化がありません")
+    require("function depthForPersonPart(category)" in html, "人物部位別Depth割当がありません")
+    require("result.categoryMask.getAsUint8Array()" in html, "人物カテゴリマスクをテクスチャ化していません")
     require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")
     require("uniform vec2 u_texelSize;" in html, "輪郭検出用texelサイズのshader uniformがありません")
     require("uniform float u_motionScale;" in html, "視差低減用のshader uniformがありません")
@@ -81,8 +121,8 @@ def main() -> int:
         "振動3Dで背景を固定サンプリングしていません",
     )
     require(
-        "float foregroundMask=smoothstep(0.42,0.72,d);" in html,
-        "前景マスクの裾が背景領域へ残らないよう、固定背景との境界を明確にしてください",
+        "float proceduralMask=smoothstep(0.42,0.72,proceduralDepthAt(uv));" in html,
+        "Depth Map未使用時も前景マスクの裾が背景領域へ残らないようにしてください",
     )
     require(
         "const reduceMotion=window.matchMedia(\"(prefers-reduced-motion: reduce)\")" in html,
@@ -161,7 +201,7 @@ def main() -> int:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
-    print("PASS: four lightweight effect modes including fixed-background vibration 3D")
+    print("PASS: five effect modes including Depth Map layered 3D")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")

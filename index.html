@@ -28,6 +28,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 #help{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
 #err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
+#mapStatus{font-size:11px;color:#d4d4dc;line-height:1.45}
 @media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
 </style>
 </head>
@@ -58,13 +59,26 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <button id="sample1" class="sample">サンプル1</button>
       <button id="sample2" class="sample">サンプル2</button>
     </div>
+    <div class="buttons">
+      <label class="filelabel">Depth Map<input id="depthFile" type="file" accept="image/*"></label>
+      <label class="filelabel">人物／物体マスク<input id="subjectMaskFile" type="file" accept="image/*"></label>
+    </div>
+    <div class="buttons">
+      <button id="autoPerson" class="secondary">人物を自動分離</button>
+      <button id="clearMaps" class="secondary">マップを解除</button>
+    </div>
+    <div id="mapStatus">Depth: 中心近似 ／ マスク: 中心近似</div>
     <div class="row"><label for="effectMode">立体表現</label><select id="effectMode">
       <option value="0">標準</option>
       <option value="1">ホログラム</option>
       <option value="2">簡易ポップ3D</option>
       <option value="3">振動3D（背景固定）</option>
+      <option value="4">Depth多層3D</option>
     </select></div>
     <div class="row"><label for="effectStrength">効果強度</label><input id="effectStrength" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+    <div class="row"><label for="lightX">光源X</label><input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.42"></div>
+    <div class="row"><label for="lightY">光源Y</label><input id="lightY" type="range" min="-1" max="1" step="0.01" value="0.68"></div>
+    <div class="row"><label for="lightingStrength">光・陰影強度</label><input id="lightingStrength" type="range" min="0" max="1" step="0.01" value="0.72"></div>
     <div class="row"><span>立体強度</span><input id="depth" type="range" min="0" max="0.10" step="0.001" value="0.040"></div>
     <div class="row"><span>キャラ中心X</span><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
     <div class="row"><span>キャラ中心Y</span><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
@@ -103,7 +117,12 @@ void main(){
 const fs=`
 precision highp float;
 uniform sampler2D u_tex;
+uniform sampler2D u_depthTex;
+uniform sampler2D u_subjectMaskTex;
 uniform vec2 u_view;
+uniform vec2 u_viewNear;
+uniform vec2 u_viewMid;
+uniform vec2 u_viewFar;
 uniform float u_depth;
 uniform vec2 u_center;
 uniform float u_radius;
@@ -114,6 +133,10 @@ uniform float u_effectStrength;
 uniform float u_time;
 uniform vec2 u_texelSize;
 uniform float u_motionScale;
+uniform float u_hasDepthMap;
+uniform float u_hasSubjectMask;
+uniform vec2 u_lightDirection;
+uniform float u_lightingStrength;
 varying vec2 v_uv;
 
 vec2 fitUV(vec2 uv){
@@ -125,12 +148,37 @@ vec2 fitUV(vec2 uv){
   return p+0.5;
 }
 
-float depthAt(vec2 uv){
+float proceduralDepthAt(vec2 uv){
   vec2 p=uv-u_center;
   p.x*=u_imgAspect;
   float r=max(u_radius,0.001);
   float g=exp(-dot(p,p)/(2.0*r*r));
   return 0.10+0.90*g;
+}
+
+float sampledDepthAt(vec2 uv){
+  return texture2D(u_depthTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
+}
+
+float depthAt(vec2 uv){
+  return mix(proceduralDepthAt(uv),sampledDepthAt(uv),u_hasDepthMap);
+}
+
+float subjectMaskAt(vec2 uv){
+  float proceduralMask=smoothstep(0.42,0.72,proceduralDepthAt(uv));
+  float depthMask=smoothstep(0.08,0.24,sampledDepthAt(uv));
+  float suppliedMask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
+  float mappedMask=mix(depthMask,suppliedMask,u_hasSubjectMask);
+  return mix(proceduralMask,smoothstep(0.08,0.92,mappedMask),max(u_hasDepthMap,u_hasSubjectMask));
+}
+
+vec3 depthNormalAt(vec2 uv){
+  vec2 stepSize=max(u_texelSize*2.0,vec2(0.001));
+  float leftDepth=depthAt(uv-vec2(stepSize.x,0.0));
+  float rightDepth=depthAt(uv+vec2(stepSize.x,0.0));
+  float bottomDepth=depthAt(uv-vec2(0.0,stepSize.y));
+  float topDepth=depthAt(uv+vec2(0.0,stepSize.y));
+  return normalize(vec3((leftDepth-rightDepth)*7.0,(bottomDepth-topDepth)*7.0,1.0));
 }
 
 vec3 hologramColor(float phase){
@@ -163,14 +211,14 @@ void main(){
     depthScale=1.0+0.85*strength;
   }
 
-  if(u_effectMode>2.5){
+  if(u_effectMode>2.5&&u_effectMode<3.5){
     if(base.x<0.0||base.x>1.0||base.y<0.0||base.y>1.0){
       gl_FragColor=vec4(0.0,0.0,0.0,1.0);
       return;
     }
 
     // 背景は元UVで固定し、中心Depthを前景近似として毎フレーム微小移動する。
-    float foregroundMask=smoothstep(0.42,0.72,d);
+    float foregroundMask=subjectMaskAt(base);
     float vibrationPhase=u_time*50.0;
     vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
     vibration*=vec2(0.0035,0.0016)*strength*u_motionScale;
@@ -190,6 +238,43 @@ void main(){
     return;
   }
 
+  if(u_effectMode>3.5){
+    if(base.x<0.0||base.x>1.0||base.y<0.0||base.y>1.0){
+      gl_FragColor=vec4(0.0,0.0,0.0,1.0);
+      return;
+    }
+
+    float foregroundMask=subjectMaskAt(base);
+    vec2 layeredView=mix(u_viewFar,u_viewMid,smoothstep(0.22,0.58,d));
+    layeredView=mix(layeredView,u_viewNear,smoothstep(0.58,0.86,d));
+    vec2 backgroundOffset=u_viewFar*u_depth*d*0.34*strength;
+    vec2 foregroundOffset=layeredView*u_depth*d*(1.0+0.95*strength);
+    vec2 backgroundUV=clamp(base-backgroundOffset,vec2(0.0),vec2(1.0));
+    vec2 layerUV=clamp(base-foregroundOffset,vec2(0.0),vec2(1.0));
+    vec4 fixedBackground=texture2D(u_tex,backgroundUV);
+    vec4 movedLayer=texture2D(u_tex,layerUV);
+    vec4 layeredColor=mix(fixedBackground,movedLayer,foregroundMask);
+
+    vec3 layerNormal=depthNormalAt(base);
+    vec3 layerLight=normalize(vec3(u_lightDirection,0.92)+vec3(u_view*0.20,0.0));
+    float layerRelief=dot(layerNormal,layerLight)*0.5+0.5;
+    float depthEdge=clamp(length(layerNormal.xy)*1.8,0.0,1.0);
+    float lighting=clamp(u_lightingStrength,0.0,1.0);
+    float lightFacing=dot(layerNormal,layerLight);
+    float whiteHighlight=pow(max(lightFacing,0.0),9.0)*foregroundMask*lighting;
+    float surfaceShadow=pow(max(-lightFacing,0.0),1.35)*foregroundMask*lighting;
+    float boundaryGlow=depthEdge*foregroundMask*(0.30+0.45*whiteHighlight)*lighting;
+    float separation=foregroundMask*(0.05+0.12*layerRelief+0.10*depthEdge)*strength;
+    layeredColor.rgb*=1.0+separation;
+    layeredColor.rgb*=1.0-surfaceShadow*(0.18+0.24*strength);
+    layeredColor.rgb=mix(layeredColor.rgb,vec3(1.0),clamp(whiteHighlight*0.42+boundaryGlow*0.28,0.0,0.62));
+    float aerialDepth=(1.0-d)*(1.0-foregroundMask);
+    layeredColor.rgb=mix(layeredColor.rgb,layeredColor.rgb*vec3(0.72,0.82,0.96),aerialDepth*0.24*strength);
+    layeredColor.rgb-=vec3(0.035,0.045,0.065)*(1.0-foregroundMask)*depthEdge*lighting;
+    gl_FragColor=layeredColor;
+    return;
+  }
+
   vec2 suv=base-u_view*u_depth*parallaxDepth*depthScale;
   if(suv.x<0.0||suv.x>1.0||suv.y<0.0||suv.y>1.0){
     gl_FragColor=vec4(0.0,0.0,0.0,1.0);
@@ -201,15 +286,29 @@ void main(){
   c.rgb*=light;
 
   if(u_effectMode>0.5&&u_effectMode<1.5){
-    // 視点に追従する分光色と細いハイライトで箔の反射を作る。
-    float phase=base.x*0.82+base.y*0.58+u_view.x*0.32-u_view.y*0.24;
+    // Depth勾配の面法線へFresnel、鏡面反射、色収差を重ね、箔の面方向を視点へ追従させる。
+    vec3 foilNormal=depthNormalAt(base);
+    vec3 viewDirection=normalize(vec3(u_view*0.72,1.0));
+    float fresnel=pow(1.0-clamp(dot(foilNormal,viewDirection),0.0,1.0),2.2);
+    vec3 foilLight=normalize(vec3(u_lightDirection,0.94));
+    vec3 halfVector=normalize(viewDirection+foilLight);
+    float specular=pow(max(dot(foilNormal,halfVector),0.0),28.0);
+    vec2 chromaShift=(foilNormal.xy+u_view*0.30)*u_texelSize*(2.0+4.0*strength);
+    vec3 chromaticSample=vec3(
+      texture2D(u_tex,clamp(suv+chromaShift,vec2(0.0),vec2(1.0))).r,
+      texture2D(u_tex,suv).g,
+      texture2D(u_tex,clamp(suv-chromaShift,vec2(0.0),vec2(1.0))).b
+    );
+    float phase=base.x*0.82+base.y*0.58+foilNormal.x*0.18-foilNormal.y*0.14+u_view.x*0.32-u_view.y*0.24;
     float bands=0.5+0.5*sin(phase*38.0);
     vec3 rainbow=hologramColor(phase*2.4+bands*0.08);
     float sweep=pow(0.5+0.5*cos((phase+u_view.x*0.12-u_view.y*0.08)*14.0),8.0);
-    float mixAmount=clamp((0.12+0.18*bands+0.30*sweep)*strength,0.0,0.55);
-    vec3 foil=c.rgb*(0.84+0.30*rainbow)+rainbow*(0.12+0.12*sweep);
+    float subjectMask=subjectMaskAt(base);
+    float mixAmount=clamp((0.10+0.16*bands+0.24*sweep+0.30*fresnel+0.34*specular)*strength,0.0,0.68)*mix(0.55,1.0,subjectMask);
+    vec3 foil=chromaticSample*(0.84+0.30*rainbow)+rainbow*(0.10+0.18*sweep+0.22*fresnel);
     c.rgb=mix(c.rgb,foil,mixAmount);
-    c.rgb+=rainbow*sweep*0.08*strength;
+    c.rgb+=rainbow*(sweep*0.08+specular*0.18*u_lightingStrength)*strength;
+    c.rgb=mix(c.rgb,vec3(1.0),clamp(specular*subjectMask*u_lightingStrength*0.24,0.0,0.32));
   }
 
   if(u_effectMode>1.5&&u_effectMode<2.5){
@@ -250,17 +349,39 @@ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([24,24,28,255]));
 
-const U={};
-["u_tex","u_view","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
-gl.uniform1i(U.u_tex,0);
+function createMapTexture(unit,initialValue){
+  const texture=gl.createTexture();
+  gl.activeTexture(unit);
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([initialValue,initialValue,initialValue,255]));
+  return texture;
+}
 
-let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false;
-let targetX=0,targetY=0,viewX=0,viewY=0;
+const depthTex=createMapTexture(gl.TEXTURE1,0);
+const subjectMaskTex=createMapTexture(gl.TEXTURE2,0);
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D,tex);
+
+const U={};
+["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+gl.uniform1i(U.u_tex,0);
+gl.uniform1i(U.u_depthTex,1);
+gl.uniform1i(U.u_subjectMaskTex,2);
+
+let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
+let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
+let targetX=0,targetY=0,viewX=0,viewY=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
 const VISION_WASM_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const PERSON_SEGMENTER_MODEL_URL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
 
 let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
+let imageSegmenter=null,startingSegmentation=false;
 let fpsN=0,fpsT=performance.now();
 const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
 const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -298,6 +419,7 @@ function resize(){
 
 function uploadImage(img,label){
   try{
+    clearMaps({announce:false});
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D,tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
@@ -306,6 +428,7 @@ function uploadImage(img,label){
     imgWidth=img.naturalWidth;
     imgHeight=img.naturalHeight;
     hasImage=true;
+    sourceImage=img;
     statusEl.textContent="表示中: "+label;
     help.style.display="none";
     errEl.textContent="";
@@ -337,6 +460,171 @@ $("#file").addEventListener("change",e=>{
 
 $("#sample1").addEventListener("click",()=>loadURL("sample1.jpeg","サンプル1"));
 $("#sample2").addEventListener("click",()=>loadURL("sample2.jpeg","サンプル2"));
+
+function updateMapStatus(note=""){
+  $("#mapStatus").textContent=`Depth: ${depthSource} ／ マスク: ${maskSource}${note ? ` ／ ${note}` : ""}`;
+}
+
+function resetMapTexture(texture,unit){
+  gl.activeTexture(unit);
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255]));
+}
+
+function clearMaps({announce=true}={}){
+  resetMapTexture(depthTex,gl.TEXTURE1);
+  resetMapTexture(subjectMaskTex,gl.TEXTURE2);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  hasDepthMap=false;
+  hasSubjectMask=false;
+  depthSource="中心近似";
+  maskSource="中心近似";
+  updateMapStatus(announce ? "解除しました" : "");
+}
+
+function uploadMapImage(texture,unit,img){
+  gl.activeTexture(unit);
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+}
+
+function loadMapFile(file,kind){
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{
+    if(kind==="depth"){
+      uploadMapImage(depthTex,gl.TEXTURE1,img);
+      hasDepthMap=true;
+      depthSource=file.name;
+    }else{
+      uploadMapImage(subjectMaskTex,gl.TEXTURE2,img);
+      hasSubjectMask=true;
+      maskSource=file.name;
+    }
+    updateMapStatus("端末内読込");
+    errEl.textContent="";
+    URL.revokeObjectURL(url);
+  };
+  img.onerror=()=>{
+    errEl.textContent=`${kind==="depth" ? "Depth Map" : "人物／物体マスク"}を読み込めませんでした。`;
+    URL.revokeObjectURL(url);
+  };
+  img.src=url;
+}
+
+$("#depthFile").addEventListener("change",event=>loadMapFile(event.target.files?.[0],"depth"));
+$("#subjectMaskFile").addEventListener("change",event=>loadMapFile(event.target.files?.[0],"mask"));
+$("#clearMaps").addEventListener("click",()=>clearMaps());
+
+async function createImageSegmenter(){
+  const mod=await import(VISION_MODULE_URL);
+  const vision=await mod.FilesetResolver.forVisionTasks(VISION_WASM_URL);
+  const options={
+    baseOptions:{modelAssetPath:PERSON_SEGMENTER_MODEL_URL,delegate:"GPU"},
+    runningMode:"IMAGE",
+    outputCategoryMask:true,
+    outputConfidenceMasks:false
+  };
+  try{
+    return await mod.ImageSegmenter.createFromOptions(vision,options);
+  }catch(gpuError){
+    console.warn("MediaPipe segmentation GPU initialization failed; retrying with CPU.",gpuError);
+    options.baseOptions={modelAssetPath:PERSON_SEGMENTER_MODEL_URL};
+    return mod.ImageSegmenter.createFromOptions(vision,options);
+  }
+}
+
+function segmentStillImage(segmenter,image){
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const finish=result=>{
+      if(settled)return;
+      settled=true;
+      resolve(result);
+    };
+    try{
+      const maybePromise=segmenter.segment(image,finish);
+      if(maybePromise && typeof maybePromise.then==="function"){
+        maybePromise.then(result=>{if(result)finish(result)}).catch(reject);
+      }
+    }catch(error){reject(error)}
+  });
+}
+
+function depthForPersonPart(category){
+  // モデル順: 背景、髪、身体の肌、顔の肌、服、その他。
+  return [0.0,0.86,0.80,1.0,0.72,0.62][category] ?? 0.64;
+}
+
+function personMapsFromResult(result){
+  const categoryMask=result.categoryMask;
+  const categories=result.categoryMask.getAsUint8Array();
+  const width=categoryMask.width;
+  const height=categoryMask.height;
+  const maskCanvas=document.createElement("canvas");
+  const depthCanvas=document.createElement("canvas");
+  maskCanvas.width=depthCanvas.width=width;
+  maskCanvas.height=depthCanvas.height=height;
+  const maskContext=maskCanvas.getContext("2d");
+  const depthContext=depthCanvas.getContext("2d");
+  const maskPixels=maskContext.createImageData(width,height);
+  const depthPixels=depthContext.createImageData(width,height);
+  for(let index=0;index<categories.length;index++){
+    const category=categories[index];
+    const subject=category===0 ? 0 : 255;
+    const depthValue=Math.round(depthForPersonPart(category)*255);
+    const offset=index*4;
+    maskPixels.data[offset]=maskPixels.data[offset+1]=maskPixels.data[offset+2]=subject;
+    maskPixels.data[offset+3]=255;
+    depthPixels.data[offset]=depthPixels.data[offset+1]=depthPixels.data[offset+2]=depthValue;
+    depthPixels.data[offset+3]=255;
+  }
+  maskContext.putImageData(maskPixels,0,0);
+  depthContext.putImageData(depthPixels,0,0);
+  uploadMapImage(subjectMaskTex,gl.TEXTURE2,maskCanvas);
+  uploadMapImage(depthTex,gl.TEXTURE1,depthCanvas);
+  categoryMask.close();
+  hasSubjectMask=true;
+  hasDepthMap=true;
+  maskSource="人物自動分離";
+  depthSource="人物部位Depth";
+  updateMapStatus("端末内AI");
+}
+
+async function autoSegmentPerson(){
+  if(!sourceImage){
+    errEl.textContent="先に元画像を選択してください。";
+    return;
+  }
+  if(startingSegmentation)return;
+  const button=$("#autoPerson");
+  startingSegmentation=true;
+  button.disabled=true;
+  button.textContent="人物分離中…";
+  statusEl.textContent="人物分離モデル読込中…";
+  errEl.textContent="";
+  try{
+    if(!imageSegmenter)imageSegmenter=await createImageSegmenter();
+    statusEl.textContent="人物と背景を分離中…";
+    const result=await segmentStillImage(imageSegmenter,sourceImage);
+    personMapsFromResult(result);
+    statusEl.textContent="人物分離済み・Depth多層3D対応";
+    $("#effectMode").value="4";
+  }catch(error){
+    errEl.textContent="人物分離に失敗しました。手動の人物／物体マスクは引き続き使用できます。詳細: "+cameraErrorMessage(error);
+    statusEl.textContent="人物分離失敗・手動マップ利用可";
+  }finally{
+    startingSegmentation=false;
+    button.disabled=false;
+    button.textContent="人物を自動分離";
+  }
+}
+$("#autoPerson").addEventListener("click",autoSegmentPerson);
 
 function cameraErrorMessage(error){
   const name=error && error.name ? error.name : "Error";
@@ -470,6 +758,7 @@ canvas.addEventListener("pointercancel",()=>dragging=false);
 window.addEventListener("pagehide",()=>{
   if(stream) stream.getTracks().forEach(track=>track.stop());
   if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
+  if(imageSegmenter && typeof imageSegmenter.close==="function") imageSegmenter.close();
 });
 
 function render(now){
@@ -477,9 +766,18 @@ function render(now){
   detect(now);
   viewX+=(targetX-viewX)*.12;
   viewY+=(targetY-viewY)*.12;
+  nearViewX+=(viewX-nearViewX)*.24;
+  nearViewY+=(viewY-nearViewY)*.24;
+  midViewX+=(viewX-midViewX)*.11;
+  midViewY+=(viewY-midViewY)*.11;
+  farViewX+=(viewX-farViewX)*.045;
+  farViewY+=(viewY-farViewY)*.045;
 
   gl.useProgram(prog);
   gl.uniform2f(U.u_view,viewX,viewY);
+  gl.uniform2f(U.u_viewNear,nearViewX,nearViewY);
+  gl.uniform2f(U.u_viewMid,midViewX,midViewY);
+  gl.uniform2f(U.u_viewFar,farViewX,farViewY);
   gl.uniform1f(U.u_depth,parseFloat($("#depth").value));
   gl.uniform2f(U.u_center,parseFloat($("#cx").value),1-parseFloat($("#cy").value));
   gl.uniform1f(U.u_radius,parseFloat($("#radius").value));
@@ -490,6 +788,10 @@ function render(now){
   gl.uniform1f(U.u_time,now*0.001);
   gl.uniform2f(U.u_texelSize,1/imgWidth,1/imgHeight);
   gl.uniform1f(U.u_motionScale,reduceMotion.matches ? 0 : 1);
+  gl.uniform1f(U.u_hasDepthMap,hasDepthMap ? 1 : 0);
+  gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
+  gl.uniform2f(U.u_lightDirection,parseFloat($("#lightX").value),parseFloat($("#lightY").value));
+  gl.uniform1f(U.u_lightingStrength,parseFloat($("#lightingStrength").value));
   gl.drawArrays(gl.TRIANGLES,0,6);
 
   fpsN++;
