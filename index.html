@@ -94,10 +94,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="row"><label for="lightX">光源X</label><input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.42"></div>
     <div class="row"><label for="lightY">光源Y</label><input id="lightY" type="range" min="-1" max="1" step="0.01" value="0.68"></div>
     <div class="row"><label for="lightingStrength">光・陰影強度</label><input id="lightingStrength" type="range" min="0" max="1" step="0.01" value="0.72"></div>
-    <div class="row"><span>立体強度</span><input id="depth" type="range" min="0" max="0.10" step="0.001" value="0.040"></div>
-    <div class="row"><span>キャラ中心X</span><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
-    <div class="row"><span>キャラ中心Y</span><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
-    <div class="row"><span>キャラ範囲</span><input id="radius" type="range" min="0.10" max="0.70" step="0.01" value="0.33"></div>
+    <div class="row"><label for="depth">立体強度</label><input id="depth" type="range" min="0" max="0.10" step="0.001" value="0.040"></div>
+    <div class="row"><label for="cx">キャラ中心X</label><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
+    <div class="row"><label for="cy">キャラ中心Y</label><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
+    <div class="row"><label for="radius">キャラ範囲</label><input id="radius" type="range" min="0.10" max="0.70" step="0.01" value="0.33"></div>
     <div class="sectionTitle">非破壊トリミング</div>
     <div class="row"><label for="cropLeft">左をカット</label><input id="cropLeft" type="range" min="0" max="0.45" step="0.01" value="0"></div>
     <div class="row"><label for="cropRight">右をカット</label><input id="cropRight" type="range" min="0" max="0.45" step="0.01" value="0"></div>
@@ -268,6 +268,8 @@ vec3 applyCommonCleanup(vec3 color,vec2 baseUV,vec2 sampledUV){
 }
 
 float cropMaskAt(vec2 uv){
+  float cropAmount=u_cropRect.x+u_cropRect.y+(1.0-u_cropRect.z)+(1.0-u_cropRect.w);
+  if(cropAmount<0.0001)return 1.0;
   float feather=max(u_cropFeather,0.0001);
   float horizontal=smoothstep(u_cropRect.x,u_cropRect.x+feather,uv.x);
   horizontal*=1.0-smoothstep(u_cropRect.z-feather,u_cropRect.z,uv.x);
@@ -717,7 +719,9 @@ async function autoSegmentPerson(){
     const result=await segmentStillImage(imageSegmenter,sourceImage);
     personMapsFromResult(result);
     statusEl.textContent="人物分離済み・Depth多層3D対応";
-    $("#effectMode").value="4";
+    if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
+    else $("#effectMode").value="4";
+    pushEditHistory();
   }catch(error){
     errEl.textContent="人物分離に失敗しました。手動の人物／物体マスクは引き続き使用できます。詳細: "+cameraErrorMessage(error);
     statusEl.textContent="人物分離失敗・手動マップ利用可";
