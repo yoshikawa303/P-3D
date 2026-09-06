@@ -79,6 +79,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <option value="2">簡易ポップ3D</option>
       <option value="3">振動3D（背景固定）</option>
       <option value="4">Depth多層3D</option>
+      <option value="5">トリックポータル3D</option>
     </select></div>
     <div class="row"><label for="effectStrength">効果強度</label><input id="effectStrength" type="range" min="0" max="1" step="0.01" value="0.65"></div>
     <div class="sectionTitle">複合エフェクト</div>
@@ -88,8 +89,9 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <div class="effectControl"><label class="check"><input id="enableRelief" type="checkbox">ポップ3D</label><input id="reliefStrength" aria-label="ポップ3D強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
       <div class="effectControl"><label class="check"><input id="enableVibration" type="checkbox">前景微振動</label><input id="vibrationStrength" aria-label="前景微振動強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
       <div class="effectControl"><label class="check"><input id="enableDepthLayers" type="checkbox">Depth多層</label><input id="depthLayerStrength" aria-label="Depth多層強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+      <div class="effectControl"><label class="check"><input id="enableTrickPortal" type="checkbox">トリックポータル</label><input id="trickPortalStrength" aria-label="トリックポータル強度" type="range" min="0" max="1" step="0.01" value="0.72"></div>
     </div>
-    <div class="hint">OFF時は「立体表現」の単独モード、ON時はチェックした処理を同時に適用します。</div>
+    <div class="hint">OFF時は単独モード、ON時はチェックした処理を同時適用します。人物分離後はDepth多層＋トリックポータルの組み合わせが効果的です。</div>
     <div class="row"><label for="edgeCleanup">不要輪郭ぼかし</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
     <div class="row"><label for="hologramNearSuppression">手前ホロ抑制</label><input id="hologramNearSuppression" type="range" min="0" max="1" step="0.01" value="0.55"></div>
     <div class="sectionTitle">裸眼3D強調</div>
@@ -173,10 +175,12 @@ uniform float u_enableHologram;
 uniform float u_enableRelief;
 uniform float u_enableVibration;
 uniform float u_enableDepthLayers;
+uniform float u_enableTrickPortal;
 uniform float u_hologramStrength;
 uniform float u_reliefStrength;
 uniform float u_vibrationStrength;
 uniform float u_depthLayerStrength;
+uniform float u_trickPortalStrength;
 uniform float u_edgeCleanup;
 uniform float u_hologramNearSuppression;
 uniform float u_contourCrop;
@@ -279,10 +283,44 @@ float depthDisparityAt(float depth){
   return mix(depth,relativeDepth,spatialAmount);
 }
 
+float portalSignedDistance(vec2 uv){
+  vec2 inset=vec2(0.075,0.060);
+  return min(min(uv.x-inset.x,1.0-inset.x-uv.x),min(uv.y-inset.y,1.0-inset.y-uv.y));
+}
+
+float portalInteriorAt(vec2 uv){
+  return smoothstep(-0.008,0.008,portalSignedDistance(uv));
+}
+
+float portalFrameAt(vec2 uv){
+  return 1.0-smoothstep(0.004,0.030,abs(portalSignedDistance(uv)));
+}
+
+vec2 trickPortalBackgroundUV(vec2 uv,float strength){
+  vec2 point=uv-0.5;
+  // 奥へ向かう台形変形と視点連動のずれだけで、追加モデルなしの窓奥行きを作る。
+  point.x*=1.0+point.y*0.24*strength;
+  point.y*=1.0+0.08*strength;
+  float farDepth=1.0-depthAt(uv);
+  point+=u_view*vec2(0.050,0.036)*(0.45+0.55*farDepth)*strength;
+  return point+0.5;
+}
+
+float portalFrameLightAt(vec2 uv){
+  vec2 inset=vec2(0.075,0.060);
+  float verticalDistance=min(abs(uv.x-inset.x),abs(uv.x-(1.0-inset.x)));
+  float horizontalDistance=min(abs(uv.y-inset.y),abs(uv.y-(1.0-inset.y)));
+  vec2 normal=verticalDistance<horizontalDistance ? vec2(sign(uv.x-0.5),0.0) : vec2(0.0,sign(uv.y-0.5));
+  vec2 lightDirection=normalize(u_lightDirection+vec2(0.0001));
+  return 0.5+0.5*dot(normal,lightDirection);
+}
+
 float contactShadowAt(vec2 uv){
   float spatialAmount=clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
+  float portalAmount=clamp(u_enableTrickPortal*u_trickPortalStrength,0.0,1.0);
+  float cueAmount=max(spatialAmount,portalAmount);
   vec2 lightDirection=normalize(u_lightDirection+vec2(0.0001));
-  vec2 shift=(-lightDirection*0.010+u_view*0.006)*(0.30+0.70*spatialAmount);
+  vec2 shift=(-lightDirection*0.010+u_view*0.006)*(0.30+0.70*cueAmount);
   vec2 blurStep=max(u_texelSize*2.4,vec2(0.0012));
   float caster=subjectMaskAt(uv+shift)*0.40;
   caster+=subjectMaskAt(uv+shift+vec2(blurStep.x,0.0))*0.15;
@@ -290,7 +328,7 @@ float contactShadowAt(vec2 uv){
   caster+=subjectMaskAt(uv+shift+vec2(0.0,blurStep.y))*0.15;
   caster+=subjectMaskAt(uv+shift-vec2(0.0,blurStep.y))*0.15;
   float outside=1.0-smoothstep(0.08,0.58,subjectMaskAt(uv));
-  return outside*smoothstep(0.10,0.78,caster)*spatialAmount;
+  return outside*smoothstep(0.10,0.78,caster)*cueAmount;
 }
 
 float spatialWindowShadeAt(vec2 uv){
@@ -351,6 +389,7 @@ void main(){
   float reliefStrength=clamp(u_reliefStrength,0.0,1.0);
   float vibrationStrength=clamp(u_vibrationStrength,0.0,1.0);
   float depthLayerStrength=clamp(u_depthLayerStrength,0.0,1.0);
+  float trickPortalStrength=clamp(u_trickPortalStrength,0.0,1.0);
   float parallaxDepth=d;
   float depthScale=1.0;
   float foregroundMask=subjectMaskAt(base);
@@ -385,6 +424,10 @@ void main(){
     if(u_enableDepthLayers<0.5)backgroundUV=base;
   }
 
+  if(u_enableTrickPortal>0.5){
+    backgroundUV=trickPortalBackgroundUV(backgroundUV,trickPortalStrength);
+  }
+
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
   foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
   // 移動先のマスクだけを軽くぼかし、低解像度AIマスクの階段状輪郭を見せない。
@@ -393,10 +436,30 @@ void main(){
   vec4 backgroundColor=texture2D(u_tex,backgroundUV);
   vec4 foregroundColor=texture2D(u_tex,foregroundUV);
   vec4 c;
-  if(u_enableDepthLayers>0.5||u_enableVibration>0.5){
+  if(u_enableDepthLayers>0.5||u_enableVibration>0.5||u_enableTrickPortal>0.5){
     c=mix(backgroundColor,foregroundColor,foregroundMask);
   }else{
     c=foregroundColor;
+  }
+
+
+  if(u_enableTrickPortal>0.5){
+    // 暗い外壁、透視変形した窓内、照明付き額縁、前景の順で重ねて越境錯視を作る。
+    float portalInterior=portalInteriorAt(base);
+    float portalFrame=portalFrameAt(base);
+    vec3 originalColor=texture2D(u_tex,base).rgb;
+    float originalLuma=dot(originalColor,vec3(0.299,0.587,0.114));
+    vec3 outerMatte=mix(originalColor,vec3(originalLuma)*vec3(0.58,0.62,0.70),0.48*trickPortalStrength);
+    outerMatte*=1.0-0.30*trickPortalStrength;
+    vec3 portalScene=mix(outerMatte,backgroundColor.rgb,portalInterior);
+    float frameLight=portalFrameLightAt(base);
+    vec3 darkFrame=vec3(0.035,0.045,0.065);
+    vec3 brightFrame=vec3(0.54,0.62,0.72);
+    vec3 frameColor=mix(darkFrame,brightFrame,0.18+0.68*frameLight);
+    frameColor+=vec3(0.10,0.13,0.17)*portalInterior;
+    portalScene=mix(portalScene,frameColor,portalFrame*trickPortalStrength);
+    portalScene=mix(portalScene,foregroundColor.rgb,foregroundMask);
+    c.rgb=mix(c.rgb,portalScene,trickPortalStrength);
   }
 
   if(u_enableDepthLayers>0.5){
@@ -509,7 +572,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -882,7 +945,7 @@ async function autoSegmentPerson(){
     statusEl.textContent="人物と背景を分離中…";
     const result=await segmentStillImage(imageSegmenter,sourceImage);
     personMapsFromResult(result);
-    statusEl.textContent="人物分離済み・Depth多層3D対応";
+    statusEl.textContent="人物分離済み・多層／ポータル対応";
     if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
     else $("#effectMode").value="4";
     syncEffectControls();
@@ -904,23 +967,25 @@ function effectFlags(){
       hologram:$("#enableHologram").checked,
       relief:$("#enableRelief").checked,
       vibration:$("#enableVibration").checked,
-      depthLayers:$("#enableDepthLayers").checked
+      depthLayers:$("#enableDepthLayers").checked,
+      trickPortal:$("#enableTrickPortal").checked
     };
   }
   const mode=parseInt($("#effectMode").value,10);
-  return {hologram:mode===1,relief:mode===2,vibration:mode===3,depthLayers:mode===4};
+  return {hologram:mode===1,relief:mode===2,vibration:mode===3,depthLayers:mode===4,trickPortal:mode===5};
 }
 
 function effectStrengths(){
   const preset=parseFloat($("#effectStrength").value);
   if(!$("#combineEffects").checked){
-    return {hologram:preset,relief:preset,vibration:preset,depthLayers:preset};
+    return {hologram:preset,relief:preset,vibration:preset,depthLayers:preset,trickPortal:preset};
   }
   return {
     hologram:parseFloat($("#hologramStrength").value),
     relief:parseFloat($("#reliefStrength").value),
     vibration:parseFloat($("#vibrationStrength").value),
-    depthLayers:parseFloat($("#depthLayerStrength").value)
+    depthLayers:parseFloat($("#depthLayerStrength").value),
+    trickPortal:parseFloat($("#trickPortalStrength").value)
   };
 }
 
@@ -931,7 +996,8 @@ function syncEffectControls(){
     ["enableHologram","hologramStrength"],
     ["enableRelief","reliefStrength"],
     ["enableVibration","vibrationStrength"],
-    ["enableDepthLayers","depthLayerStrength"]
+    ["enableDepthLayers","depthLayerStrength"],
+    ["enableTrickPortal","trickPortalStrength"]
   ];
   for(const [toggleId,strengthId] of controls){
     const toggle=$("#"+toggleId);
@@ -940,7 +1006,7 @@ function syncEffectControls(){
   }
 }
 $("#combineEffects").addEventListener("input",syncEffectControls);
-for(const id of ["enableHologram","enableRelief","enableVibration","enableDepthLayers"]){
+for(const id of ["enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal"]){
   $("#"+id).addEventListener("input",syncEffectControls);
 }
 
@@ -958,8 +1024,8 @@ function syncContourCropAvailability(){
 $("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
 const EDIT_CONTROL_IDS=[
-  "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers",
-  "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength",
+  "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal",
+  "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
   "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather"
 ];
@@ -1378,11 +1444,13 @@ function render(now){
   gl.uniform1f(U.u_enableRelief,effects.relief ? 1 : 0);
   gl.uniform1f(U.u_enableVibration,effects.vibration ? 1 : 0);
   gl.uniform1f(U.u_enableDepthLayers,effects.depthLayers ? 1 : 0);
+  gl.uniform1f(U.u_enableTrickPortal,effects.trickPortal ? 1 : 0);
   const strengths=effectStrengths();
   gl.uniform1f(U.u_hologramStrength,strengths.hologram);
   gl.uniform1f(U.u_reliefStrength,strengths.relief);
   gl.uniform1f(U.u_vibrationStrength,strengths.vibration);
   gl.uniform1f(U.u_depthLayerStrength,strengths.depthLayers);
+  gl.uniform1f(U.u_trickPortalStrength,strengths.trickPortal);
   gl.uniform1f(U.u_edgeCleanup,parseFloat($("#edgeCleanup").value));
   gl.uniform1f(U.u_hologramNearSuppression,parseFloat($("#hologramNearSuppression").value));
   gl.uniform1f(U.u_contourCrop,$("#contourCrop").checked ? 1 : 0);

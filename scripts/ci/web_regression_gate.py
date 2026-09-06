@@ -58,6 +58,7 @@ def main() -> int:
         ("2", "簡易ポップ3D"),
         ("3", "振動3D（背景固定）"),
         ("4", "Depth多層3D"),
+        ("5", "トリックポータル3D"),
     ]:
         require(
             f'<option value="{value}">{label}</option>' in html,
@@ -73,10 +74,12 @@ def main() -> int:
         ("enableRelief", "ポップ3D合成"),
         ("enableVibration", "振動3D合成"),
         ("enableDepthLayers", "Depth多層3D合成"),
+        ("enableTrickPortal", "トリックポータル3D合成"),
         ("hologramStrength", "ホログラム個別強度"),
         ("reliefStrength", "ポップ3D個別強度"),
         ("vibrationStrength", "前景微振動個別強度"),
         ("depthLayerStrength", "Depth多層個別強度"),
+        ("trickPortalStrength", "トリックポータル個別強度"),
         ("edgeCleanup", "共通輪郭ぼかし"),
         ("hologramNearSuppression", "近景ホログラム抑制"),
     ]:
@@ -88,10 +91,12 @@ def main() -> int:
         "uniform float u_enableRelief;",
         "uniform float u_enableVibration;",
         "uniform float u_enableDepthLayers;",
+        "uniform float u_enableTrickPortal;",
         "uniform float u_hologramStrength;",
         "uniform float u_reliefStrength;",
         "uniform float u_vibrationStrength;",
         "uniform float u_depthLayerStrength;",
+        "uniform float u_trickPortalStrength;",
         "uniform float u_edgeCleanup;",
         "uniform float u_hologramNearSuppression;",
     ]:
@@ -107,8 +112,14 @@ def main() -> int:
         "float reliefStrength=clamp(u_reliefStrength",
         "float vibrationStrength=clamp(u_vibrationStrength",
         "float depthLayerStrength=clamp(u_depthLayerStrength",
+        "float trickPortalStrength=clamp(u_trickPortalStrength",
     ]:
         require(use in html, f"個別強度をshaderで利用していません: {use}")
+    require("float portalInteriorAt(vec2 uv)" in html, "トリックポータル内側の領域判定がありません")
+    require("float portalFrameAt(vec2 uv)" in html, "トリックポータルの額縁判定がありません")
+    require("vec2 trickPortalBackgroundUV(vec2 uv,float strength)" in html, "背景の透視変形がありません")
+    require("portalScene=mix(portalScene,foregroundColor.rgb,foregroundMask);" in html, "前景が額縁を越える合成順序になっていません")
+    require("float portalAmount=clamp(u_enableTrickPortal*u_trickPortalStrength" in html, "背後影へポータル強度が反映されていません")
     for element_id, label in [
         ("depthFile", "Depth Map入力"),
         ("subjectMaskFile", "人物／物体マスク入力"),
@@ -309,7 +320,7 @@ def main() -> int:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
-    print("PASS: five effect modes including Depth Map layered 3D")
+    print("PASS: six effect modes including Depth Map layered and Trick Portal 3D")
     print("PASS: stackable effects, common contour cleanup, and near-depth hologram control")
     print("PASS: zero-parallax motion, head-distance zoom, contact shadow, and spatial window cues")
     print("PASS: draggable guides, mask-contour crop, undo/redo, and reset defaults")
