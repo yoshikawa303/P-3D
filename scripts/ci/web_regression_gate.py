@@ -139,10 +139,38 @@ def main() -> int:
     require("vec3 chromaticSample=" in html, "ホログラムの色収差視差がありません")
     require("layeredView=mix(u_viewFar,u_viewMid" in html, "遠景／中景の視差遅延合成がありません")
     require("layeredView=mix(layeredView,u_viewNear" in html, "近景の視差遅延合成がありません")
-    require("vec2 backgroundOffset=u_viewFar*u_depth*d" in html, "背景Depthの遠景視差がありません")
+    require(
+        "vec2 backgroundOffset=u_viewFar*u_depth*layeredDisparity" in html,
+        "背景Depthの遠景相対視差がありません",
+    )
     require("float whiteHighlight=" in html, "人物／物体の入射光による白飛びがありません")
     require("float surfaceShadow=" in html, "光源と反対側の陰影がありません")
     require("float aerialDepth=" in html, "背景空間の遠方減衰がありません")
+    for element_id, label in [
+        ("enableSpatial", "裸眼3D強調切替"),
+        ("spatialStrength", "空間強調"),
+        ("zeroParallax", "ゼロ視差面"),
+        ("viewDepth", "前後視点"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    for uniform in [
+        "uniform float u_spatialEnhance;",
+        "uniform float u_spatialStrength;",
+        "uniform float u_zeroParallax;",
+        "uniform float u_viewZ;",
+    ]:
+        require(uniform in html, f"裸眼3D強調のshader uniformがありません: {uniform}")
+    require("float depthDisparityAt(float depth)" in html, "ゼロ視差面を基準にした奥行き視差がありません")
+    require("depth-u_zeroParallax" in html, "手前と奥を逆方向へ分ける相対視差がありません")
+    require("float contactShadowAt(vec2 uv)" in html, "視点連動の被写体背後影がありません")
+    require("float spatialWindowShadeAt(vec2 uv)" in html, "画面面を固定する空間ウィンドウ陰影がありません")
+    require("float softSubjectMaskAt(vec2 uv)" in html, "移動した被写体輪郭のソフト化がありません")
+    require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動した被写体輪郭による動的遮蔽がありません")
+    require("foregroundMask=mix(foregroundMask,displacedForegroundMask" in html, "動的遮蔽マスクが最終合成へ反映されていません")
+    require("const leftEye=lm[33],rightEye=lm[263]" in html, "顔サイズから前後位置を求めていません")
+    require("faceScaleBaseline" in html and "targetZ=" in html, "顔の接近／離反追跡がありません")
+    require("function smoothingFactor(rate,deltaSeconds)" in html, "更新レート非依存の視点追従がありません")
+    require("1-Math.exp(-rate*deltaSeconds)" in html, "視点追従が経過時間で正規化されていません")
     require("selfie_multiclass_256x256/float32/1" in html, "固定版の人物部位分離モデルがありません")
     require("ImageSegmenter.createFromOptions" in html, "端末内人物分離の初期化がありません")
     require("function depthForPersonPart(category)" in html, "人物部位別Depth割当がありません")
@@ -283,6 +311,7 @@ def main() -> int:
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: five effect modes including Depth Map layered 3D")
     print("PASS: stackable effects, common contour cleanup, and near-depth hologram control")
+    print("PASS: zero-parallax motion, head-distance zoom, contact shadow, and spatial window cues")
     print("PASS: draggable guides, mask-contour crop, undo/redo, and reset defaults")
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")

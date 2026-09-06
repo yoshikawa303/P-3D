@@ -92,6 +92,12 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="hint">OFF時は「立体表現」の単独モード、ON時はチェックした処理を同時に適用します。</div>
     <div class="row"><label for="edgeCleanup">不要輪郭ぼかし</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
     <div class="row"><label for="hologramNearSuppression">手前ホロ抑制</label><input id="hologramNearSuppression" type="range" min="0" max="1" step="0.01" value="0.55"></div>
+    <div class="sectionTitle">裸眼3D強調</div>
+    <label class="check"><input id="enableSpatial" type="checkbox" checked>視点追従の空間表現を強める</label>
+    <div class="row"><label for="spatialStrength">空間強調</label><input id="spatialStrength" type="range" min="0" max="1" step="0.01" value="0.72"></div>
+    <div class="row"><label for="zeroParallax">画面面Depth</label><input id="zeroParallax" type="range" min="0.15" max="0.80" step="0.01" value="0.45"></div>
+    <div class="row"><label for="viewDepth">前後視点</label><input id="viewDepth" type="range" min="-1" max="1" step="0.01" value="0"></div>
+    <div class="hint">画面面を基準に手前／奥を逆方向へ動かし、遮蔽・背後影・近接ズームを同期します。通常画面の1人向け視点追従で、左右眼別のステレオ映像ではありません。</div>
     <div class="sectionTitle">立体・照明ガイド</div>
     <div class="row"><label for="lightX">光源X</label><input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.42"></div>
     <div class="row"><label for="lightY">光源Y</label><input id="lightY" type="range" min="-1" max="1" step="0.01" value="0.68"></div>
@@ -175,6 +181,10 @@ uniform float u_edgeCleanup;
 uniform float u_hologramNearSuppression;
 uniform float u_contourCrop;
 uniform float u_cropFeather;
+uniform float u_spatialEnhance;
+uniform float u_spatialStrength;
+uniform float u_zeroParallax;
+uniform float u_viewZ;
 varying vec2 v_uv;
 
 vec2 fitUV(vec2 uv){
@@ -183,6 +193,9 @@ vec2 fitUV(vec2 uv){
   // CSSのobject-fit: containと同じ考え方で、画像全体の縦横比を保つ。
   if(ratio>1.0) p.x*=ratio;
   else p.y/=ratio;
+  float spatialAmount=clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
+  float viewZoom=clamp(1.0+u_viewZ*0.055*spatialAmount,0.94,1.06);
+  p/=viewZoom;
   return p+0.5;
 }
 
@@ -208,6 +221,20 @@ float subjectMaskAt(vec2 uv){
   float suppliedMask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
   float mappedMask=mix(depthMask,suppliedMask,u_hasSubjectMask);
   return mix(proceduralMask,smoothstep(0.08,0.92,mappedMask),max(u_hasDepthMap,u_hasSubjectMask));
+}
+
+float softSubjectMaskAt(vec2 uv){
+  vec2 stepSize=max(u_texelSize*1.8,vec2(0.0009));
+  float mask=subjectMaskAt(uv)*0.40;
+  mask+=subjectMaskAt(uv+vec2(stepSize.x,0.0))*0.12;
+  mask+=subjectMaskAt(uv-vec2(stepSize.x,0.0))*0.12;
+  mask+=subjectMaskAt(uv+vec2(0.0,stepSize.y))*0.12;
+  mask+=subjectMaskAt(uv-vec2(0.0,stepSize.y))*0.12;
+  mask+=subjectMaskAt(uv+stepSize)*0.03;
+  mask+=subjectMaskAt(uv-stepSize)*0.03;
+  mask+=subjectMaskAt(uv+vec2(stepSize.x,-stepSize.y))*0.03;
+  mask+=subjectMaskAt(uv+vec2(-stepSize.x,stepSize.y))*0.03;
+  return smoothstep(0.12,0.88,mask);
 }
 
 vec3 depthNormalAt(vec2 uv){
@@ -244,6 +271,33 @@ float subjectBoundaryAt(vec2 uv){
   delta=max(delta,abs(centerMask-subjectMaskAt(uv+vec2(0.0,stepSize.y))));
   delta=max(delta,abs(centerMask-subjectMaskAt(uv-vec2(0.0,stepSize.y))));
   return smoothstep(0.06,0.42,delta);
+}
+
+float depthDisparityAt(float depth){
+  float spatialAmount=clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
+  float relativeDepth=(depth-u_zeroParallax)*1.45;
+  return mix(depth,relativeDepth,spatialAmount);
+}
+
+float contactShadowAt(vec2 uv){
+  float spatialAmount=clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
+  vec2 lightDirection=normalize(u_lightDirection+vec2(0.0001));
+  vec2 shift=(-lightDirection*0.010+u_view*0.006)*(0.30+0.70*spatialAmount);
+  vec2 blurStep=max(u_texelSize*2.4,vec2(0.0012));
+  float caster=subjectMaskAt(uv+shift)*0.40;
+  caster+=subjectMaskAt(uv+shift+vec2(blurStep.x,0.0))*0.15;
+  caster+=subjectMaskAt(uv+shift-vec2(blurStep.x,0.0))*0.15;
+  caster+=subjectMaskAt(uv+shift+vec2(0.0,blurStep.y))*0.15;
+  caster+=subjectMaskAt(uv+shift-vec2(0.0,blurStep.y))*0.15;
+  float outside=1.0-smoothstep(0.08,0.58,subjectMaskAt(uv));
+  return outside*smoothstep(0.10,0.78,caster)*spatialAmount;
+}
+
+float spatialWindowShadeAt(vec2 uv){
+  float edgeDistance=min(min(uv.x,1.0-uv.x),min(uv.y,1.0-uv.y));
+  float fixedFrame=1.0-smoothstep(0.0,0.055,edgeDistance);
+  float viewBias=0.72+0.28*clamp(dot(uv-0.5,u_view)*2.0+0.5,0.0,1.0);
+  return fixedFrame*viewBias*clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
 }
 
 vec3 softBlurAt(vec2 uv){
@@ -308,13 +362,15 @@ void main(){
     depthScale=1.0+0.85*reliefStrength;
   }
 
+  float depthDisparity=depthDisparityAt(parallaxDepth);
   vec2 backgroundUV=base;
-  vec2 foregroundUV=base-u_view*u_depth*parallaxDepth*depthScale;
+  vec2 foregroundUV=base-u_view*u_depth*depthDisparity*depthScale;
   if(u_enableDepthLayers>0.5){
     vec2 layeredView=mix(u_viewFar,u_viewMid,smoothstep(0.22,0.58,d));
     layeredView=mix(layeredView,u_viewNear,smoothstep(0.58,0.86,d));
-    vec2 backgroundOffset=u_viewFar*u_depth*d*0.34*depthLayerStrength;
-    vec2 foregroundOffset=layeredView*u_depth*d*(1.0+0.95*depthLayerStrength)*depthLayerStrength;
+    float layeredDisparity=depthDisparityAt(d);
+    vec2 backgroundOffset=u_viewFar*u_depth*layeredDisparity*0.34*depthLayerStrength;
+    vec2 foregroundOffset=layeredView*u_depth*layeredDisparity*(1.0+0.95*depthLayerStrength)*depthLayerStrength;
     backgroundUV=base-backgroundOffset;
     foregroundUV=base-foregroundOffset;
   }
@@ -331,6 +387,9 @@ void main(){
 
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
   foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
+  // 移動先のマスクだけを軽くぼかし、低解像度AIマスクの階段状輪郭を見せない。
+  float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
+  foregroundMask=mix(foregroundMask,displacedForegroundMask,clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0));
   vec4 backgroundColor=texture2D(u_tex,backgroundUV);
   vec4 foregroundColor=texture2D(u_tex,foregroundUV);
   vec4 c;
@@ -401,6 +460,8 @@ void main(){
     c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*reliefStrength;
   }
 
+  c.rgb*=1.0-contactShadowAt(base)*0.42;
+  c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20;
   vec2 cleanupUV=mix(backgroundUV,foregroundUV,foregroundMask);
   c.rgb=applyCommonCleanup(c.rgb,base,cleanupUV);
   c.rgb*=contourCropMaskAt(foregroundUV);
@@ -448,7 +509,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -457,7 +518,8 @@ let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let recognitionBounds=null,recognitionGuideCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1},guideDragTarget=null;
-let targetX=0,targetY=0,viewX=0,viewY=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
+let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
+let faceScaleBaseline=0,lastRenderTime=performance.now();
 const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
 const VISION_WASM_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
@@ -882,6 +944,12 @@ for(const id of ["enableHologram","enableRelief","enableVibration","enableDepthL
   $("#"+id).addEventListener("input",syncEffectControls);
 }
 
+function syncSpatialControls(){
+  const enabled=$("#enableSpatial").checked;
+  for(const id of ["spatialStrength","zeroParallax","viewDepth"])$("#"+id).disabled=!enabled;
+}
+$("#enableSpatial").addEventListener("input",syncSpatialControls);
+
 function syncContourCropAvailability(){
   const available=hasSubjectMask;
   $("#contourCrop").disabled=!available;
@@ -893,7 +961,7 @@ const EDIT_CONTROL_IDS=[
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers",
   "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
-  "contourCrop","cropFeather"
+  "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather"
 ];
 
 function captureEditState(){
@@ -912,6 +980,7 @@ function applyEditState(state){
     else control.value=state[id];
   }
   syncEffectControls();
+  syncSpatialControls();
   syncContourCropAvailability();
 }
 
@@ -953,6 +1022,7 @@ $("#resetDefaults").addEventListener("click",()=>{
   errEl.textContent="設定値を初期化しました。";
 });
 syncEffectControls();
+syncSpatialControls();
 syncContourCropAvailability();
 updateHistoryButtons();
 
@@ -1199,6 +1269,8 @@ async function startFace(){
   try{
     statusEl.textContent="カメラ動作中・顔検出モジュール読込中…";
     if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
+    faceScaleBaseline=0;
+    targetZ=0;
     faceLandmarker=await createFaceLandmarker();
     trackingOn=true;
     cameraButton.textContent="カメラ・顔追跡 動作中";
@@ -1226,10 +1298,19 @@ function detect(now){
     const lm=r.faceLandmarks && r.faceLandmarks[0];
     if(lm){
       const nose=lm[1];
+      const leftEye=lm[33],rightEye=lm[263];
+      const eyeSpan=Math.hypot(leftEye.x-rightEye.x,leftEye.y-rightEye.y);
+      if(eyeSpan>0.01){
+        if(faceScaleBaseline<=0)faceScaleBaseline=eyeSpan;
+        targetZ=Math.max(-0.70,Math.min(0.70,(eyeSpan/faceScaleBaseline-1.0)*2.2));
+      }
       targetX=Math.max(-1,Math.min(1,(0.5-nose.x)*3.0));
       targetY=Math.max(-1,Math.min(1,(0.5-nose.y)*3.0));
-      statusEl.textContent=`FACE ${targetX.toFixed(2)}, ${targetY.toFixed(2)}`;
-    }else statusEl.textContent="顔を探しています…";
+      statusEl.textContent=`FACE ${targetX.toFixed(2)}, ${targetY.toFixed(2)}, Z ${targetZ.toFixed(2)}`;
+    }else{
+      targetZ=0;
+      statusEl.textContent="顔を探しています…";
+    }
   }catch(e){}
 }
 
@@ -1250,17 +1331,28 @@ window.addEventListener("pagehide",()=>{
   if(imageSegmenter && typeof imageSegmenter.close==="function") imageSegmenter.close();
 });
 
+function smoothingFactor(rate,deltaSeconds){
+  return 1-Math.exp(-rate*deltaSeconds);
+}
+
 function render(now){
   resize();
   detect(now);
-  viewX+=(targetX-viewX)*.12;
-  viewY+=(targetY-viewY)*.12;
-  nearViewX+=(viewX-nearViewX)*.24;
-  nearViewY+=(viewY-nearViewY)*.24;
-  midViewX+=(viewX-midViewX)*.11;
-  midViewY+=(viewY-midViewY)*.11;
-  farViewX+=(viewX-farViewX)*.045;
-  farViewY+=(viewY-farViewY)*.045;
+  const deltaSeconds=Math.max(0.001,Math.min(0.05,(now-lastRenderTime)/1000));
+  lastRenderTime=now;
+  const viewFollow=smoothingFactor(7.7,deltaSeconds);
+  const nearFollow=smoothingFactor(16.5,deltaSeconds);
+  const midFollow=smoothingFactor(7.0,deltaSeconds);
+  const farFollow=smoothingFactor(2.8,deltaSeconds);
+  viewX+=(targetX-viewX)*viewFollow;
+  viewY+=(targetY-viewY)*viewFollow;
+  viewZ+=(targetZ-viewZ)*smoothingFactor(6.0,deltaSeconds);
+  nearViewX+=(viewX-nearViewX)*nearFollow;
+  nearViewY+=(viewY-nearViewY)*nearFollow;
+  midViewX+=(viewX-midViewX)*midFollow;
+  midViewY+=(viewY-midViewY)*midFollow;
+  farViewX+=(viewX-farViewX)*farFollow;
+  farViewY+=(viewY-farViewY)*farFollow;
 
   gl.useProgram(prog);
   gl.uniform2f(U.u_view,viewX,viewY);
@@ -1295,6 +1387,12 @@ function render(now){
   gl.uniform1f(U.u_hologramNearSuppression,parseFloat($("#hologramNearSuppression").value));
   gl.uniform1f(U.u_contourCrop,$("#contourCrop").checked ? 1 : 0);
   gl.uniform1f(U.u_cropFeather,parseFloat($("#cropFeather").value));
+  gl.uniform1f(U.u_spatialEnhance,$("#enableSpatial").checked ? 1 : 0);
+  gl.uniform1f(U.u_spatialStrength,parseFloat($("#spatialStrength").value));
+  gl.uniform1f(U.u_zeroParallax,parseFloat($("#zeroParallax").value));
+  const manualViewZ=parseFloat($("#viewDepth").value);
+  const effectiveViewZ=Math.max(-1,Math.min(1,manualViewZ+(reduceMotion.matches ? 0 : viewZ)));
+  gl.uniform1f(U.u_viewZ,effectiveViewZ);
   gl.drawArrays(gl.TRIANGLES,0,6);
   drawGuides();
 
