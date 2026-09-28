@@ -41,3 +41,13 @@
   画像生成スキルの参照画像編集で、3体の透過立ち絵と3枚のクリーン背景プレートを作成した。WebGLへ`u_backgroundTex`と`u_foregroundTex`を追加し、背景と前景を別UVでサンプリングする。透過立ち絵のalphaを認識マスク、輪郭ガイド、背後影、境界ぼかし、輪郭トリミングへ共用する。2層素材が失敗した場合は完成絵の単一表示へフォールバックし、自分の画像を選択した場合は従来の単一画像経路へ戻す。
 
   ローカルHTTPをChromeのモバイル相当表示で確認した。ゆるキャラ、美少女キャラ、モフモフ動物の全3セットで`表示中: デモ: ...（2層）`、選択状態、トリックポータル3D、設定内の3枚ギャラリー、透過輪郭ガイドを確認した。全デモ切替後もコンソール警告／エラー0件、モフモフ動物で60fpsを確認した。ブラウザ上の見た目と縦横比に崩れはない。iPhone Safari実機とPublic Pagesはこの時点では未確認。
+
+### 2026-09-28 19:46 JST - Codex GPT-5 - 種別: 結果 - commit／push／Pages公開確認
+
+- 内容:
+
+  機能と素材を`3fe9adc feat: add layered character demo gallery`として`origin/main`へpushした。GitHub Actionsの`P-3D quality gates` Run 36411523418と`pages build and deployment` Run 36411522218はいずれもsuccess。公開URLの`index.html`とローカル版のSHA-256は`74ecb6fba621280cdf1832684346ec0ad8c1dd674fb341b6c3d84d5490feeef1`で一致し、公開ゆるキャラ透過PNGも`740dd41726f7c2cf097b251f9b092e6e070f15cdd45fbe623afc7ce99ad5585b`で一致した。公開背景JPEGはHTTP 200、`content-type: image/jpeg`を確認した。
+
+  Public Pagesをモバイル相当表示で開き、初回のゆるキャラが`表示中: デモ: 激烈ゆるキャラ（2層）`、トリックポータル3D、設定内の3枚ギャラリー、透過輪郭ガイド、60fpsで表示されることを目視確認した。Public URL由来のJavaScript／WebGLエラーは確認されなかった。デスクトップブラウザとモバイル相当表示は確認済みだが、物理iPhone Safariのカメラ、タッチ追従、GPU性能は未確認として区別する。
+
+  ローカル回帰ゲートは全項目PASS。Node.jsがローカル環境で検出できず同ゲート内の独立JavaScript構文検査はSKIPしたが、同一`index.html`をChromeで実行し、3デモ切替とWebGL描画を確認済み。GitHub品質ゲートはsuccess。使用モデルはCodex GPT-5系のまま、動的切替なし。
