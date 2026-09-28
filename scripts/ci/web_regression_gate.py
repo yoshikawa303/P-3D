@@ -52,6 +52,32 @@ def main() -> int:
         )
 
     require('id="effectMode"' in html, "立体表現モードの選択UIがありません")
+    for demo_path in [
+        "assets/demos/demo-mascot.jpg",
+        "assets/demos/demo-mascot-background.jpg",
+        "assets/demos/demo-mascot-foreground.png",
+        "assets/demos/demo-heroine.jpg",
+        "assets/demos/demo-heroine-background.jpg",
+        "assets/demos/demo-heroine-foreground.png",
+        "assets/demos/demo-fluffy.jpg",
+        "assets/demos/demo-fluffy-background.jpg",
+        "assets/demos/demo-fluffy-foreground.png",
+    ]:
+        require((ROOT / demo_path).is_file(), f"デモ画像がありません: {demo_path}")
+        require(demo_path in html, f"デモ画像がUIから参照されていません: {demo_path}")
+    for element_id, label in [
+        ("demoNext", "デモ画像切替ボタン"),
+        ("demoGallery", "デモ画像ギャラリー"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}がありません")
+    require("const DEMO_ASSETS=[" in html, "デモ画像のプリセット定義がありません")
+    require("function loadDemo(index" in html, "デモ画像を読み込む処理がありません")
+    require("uniform sampler2D u_backgroundTex;" in html, "デモ背景の独立テクスチャがありません")
+    require("uniform sampler2D u_foregroundTex;" in html, "透過立ち絵の独立テクスチャがありません")
+    require("uniform float u_hasLayeredDemo;" in html, "2層デモの切替uniformがありません")
+    require("vec4 sourceColorAt(vec2 uv)" in html, "背景と透過立ち絵の合成処理がありません")
+    require("loadDemo(0,{hidePanel:false,recordHistory:false});" in html, "初回表示でデモ画像を鑑賞できません")
+    require('aria-pressed="false"' in html, "デモ選択状態のアクセシビリティ属性がありません")
     for value, label in [
         ("0", "標準"),
         ("1", "ホログラム"),
@@ -218,7 +244,7 @@ def main() -> int:
 
     require('id="guide"' in html, "編集対象を示すガイドcanvasがありません")
     require("function drawGuides()" in html, "中心・範囲・光源・認識領域の動的ガイドがありません")
-    require("function updateRecognitionGuide(source)" in html, "認識マスクから編集ガイドを作成していません")
+    require("function updateRecognitionGuide(source" in html, "認識マスクから編集ガイドを作成していません")
     require("function guideDragTargetAt(event)" in html, "画像上の編集ハンドル判定がありません")
     require("function updateGuideDrag(event)" in html, "画像上のガイドドラッグ編集がありません")
     require('stage.addEventListener("pointerdown",beginGuideDrag,true)' in html, "ガイドの直接ドラッグ開始処理がありません")
@@ -235,7 +261,7 @@ def main() -> int:
     require("uniform float u_contourCrop;" in html, "輪郭トリミングのshader uniformがありません")
     require("uniform float u_cropFeather;" in html, "トリミング輪郭ぼかしのshader uniformがありません")
     require("float contourCropMaskAt(vec2 uv)" in html, "人物／物体輪郭トリミングのshader処理がありません")
-    require("texture2D(u_subjectMaskTex" in html[html.index("float contourCropMaskAt") :], "入力マスク輪郭をトリミングへ利用していません")
+    require("subjectMaskAt(" in html[html.index("float contourCropMaskAt") :], "入力マスク／透過立ち絵輪郭をトリミングへ利用していません")
     require("c.rgb*=contourCropMaskAt(foregroundUV);" in html, "最終描画を人物／物体輪郭で切り抜いていません")
     require("function syncContourCropAvailability()" in html, "マスク有無に応じた輪郭トリミング制御がありません")
     require(

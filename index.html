@@ -14,7 +14,8 @@ html,body{margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-
 .pill{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.62);backdrop-filter:blur(10px);font-size:12px;white-space:nowrap}
 #status{min-width:0;max-width:48vw;overflow:hidden;text-overflow:ellipsis}
 #topActions{display:flex;gap:6px;align-items:center;pointer-events:auto}
-#panelToggle{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
+#panelToggle,#demoNext{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
+#demoNext{background:linear-gradient(135deg,rgba(255,112,180,.94),rgba(116,97,255,.94));border-color:rgba(255,255,255,.34)}
 #panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;max-height:46dvh;overflow-y:auto;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;gap:9px;opacity:1;transform:translateY(0);visibility:visible;transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
 #panel.is-hidden{opacity:0;transform:translateY(calc(100% + 24px));visibility:hidden;pointer-events:none;transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s}
 .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -31,12 +32,18 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 .check input{width:18px;height:18px}
 .effectControl{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:8px}
 .effectControl .check{min-width:0}
+.demoGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.demoCard{position:relative;min-width:0;aspect-ratio:2/3;overflow:hidden;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#25252b;color:#fff}
+.demoCard img{display:block;width:100%;height:100%;object-fit:cover}
+.demoCard span{position:absolute;left:4px;right:4px;bottom:4px;padding:5px 3px;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font-size:10px;font-weight:800;line-height:1.15;text-align:center;backdrop-filter:blur(8px)}
+.demoCard[aria-pressed="true"]{border-color:#79e7ff;box-shadow:0 0 0 2px rgba(121,231,255,.36)}
 .hint{font-size:10px;color:#b8b8c2;line-height:1.45}
 #help{position:absolute;left:50%;top:42%;z-index:2;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
 #err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
 #mapStatus{font-size:11px;color:#d4d4dc;line-height:1.45}
 @media (min-width:720px){#panel{left:auto;width:min(390px,calc(100vw - 32px));max-height:calc(100dvh - 86px)}}
+@media (max-width:480px){#status{max-width:28vw}#panelToggle,#demoNext{padding:8px 9px;font-size:11px}}
 @media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
 </style>
 </head>
@@ -49,6 +56,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div id="status" class="pill">画像未選択</div>
     <div id="topActions">
       <div id="fps" class="pill">-- fps</div>
+      <button id="demoNext" type="button" aria-label="デモ画像を切り替えて愛でる" title="デモ画像を切り替える">愛でる</button>
       <button id="panelToggle" type="button" aria-controls="panel" aria-expanded="false">設定を表示</button>
     </div>
   </div>
@@ -60,6 +68,14 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
   </div>
 
   <div id="panel" class="is-hidden" aria-hidden="true">
+    <div class="sectionTitle">デモ画像</div>
+    <div class="demoGrid" id="demoGallery" aria-label="オリジナルデモ画像">
+      <button class="demoCard" type="button" data-demo-index="0" aria-pressed="false"><img src="assets/demos/demo-mascot.jpg" alt="" loading="lazy"><span>激烈ゆるキャラ</span></button>
+      <button class="demoCard" type="button" data-demo-index="1" aria-pressed="false"><img src="assets/demos/demo-heroine.jpg" alt="" loading="lazy"><span>美少女キャラ</span></button>
+      <button class="demoCard" type="button" data-demo-index="2" aria-pressed="false"><img src="assets/demos/demo-fluffy.jpg" alt="" loading="lazy"><span>モフモフ動物</span></button>
+    </div>
+    <div class="hint">完全オリジナルの背景＋透過立ち絵です。画像を押すと2層で立体表示し、右上の「愛でる」で順番に切り替えられます。</div>
+    <div class="sectionTitle">自分の画像</div>
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
       <button id="camera" class="secondary">フロントカメラ開始</button>
@@ -124,7 +140,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle");
+const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), help=$("#help"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle"), demoNext=$("#demoNext");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:true,preserveDrawingBuffer:false});
 
 if(!gl){
@@ -153,6 +169,8 @@ precision highp float;
 uniform sampler2D u_tex;
 uniform sampler2D u_depthTex;
 uniform sampler2D u_subjectMaskTex;
+uniform sampler2D u_backgroundTex;
+uniform sampler2D u_foregroundTex;
 uniform vec2 u_view;
 uniform vec2 u_viewNear;
 uniform vec2 u_viewMid;
@@ -189,7 +207,16 @@ uniform float u_spatialEnhance;
 uniform float u_spatialStrength;
 uniform float u_zeroParallax;
 uniform float u_viewZ;
+uniform float u_hasLayeredDemo;
 varying vec2 v_uv;
+
+vec4 sourceColorAt(vec2 uv){
+  vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
+  vec4 original=texture2D(u_tex,safeUV);
+  vec4 layerForeground=texture2D(u_foregroundTex,safeUV);
+  vec4 layered=mix(texture2D(u_backgroundTex,safeUV),layerForeground,layerForeground.a);
+  return mix(original,layered,u_hasLayeredDemo);
+}
 
 vec2 fitUV(vec2 uv){
   vec2 p=uv-0.5;
@@ -220,6 +247,8 @@ float depthAt(vec2 uv){
 }
 
 float subjectMaskAt(vec2 uv){
+  float layerMask=texture2D(u_foregroundTex,clamp(uv,vec2(0.0),vec2(1.0))).a;
+  if(u_hasLayeredDemo>0.5)return smoothstep(0.02,0.98,layerMask);
   float proceduralMask=smoothstep(0.42,0.72,proceduralDepthAt(uv));
   float depthMask=smoothstep(0.08,0.24,sampledDepthAt(uv));
   float suppliedMask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
@@ -255,7 +284,7 @@ vec3 hologramColor(float phase){
 }
 
 float lumaAt(vec2 uv){
-  vec3 color=texture2D(u_tex,clamp(uv,vec2(0.0),vec2(1.0))).rgb;
+  vec3 color=sourceColorAt(uv).rgb;
   return dot(color,vec3(0.299,0.587,0.114));
 }
 
@@ -340,15 +369,15 @@ float spatialWindowShadeAt(vec2 uv){
 
 vec3 softBlurAt(vec2 uv){
   vec2 stepSize=max(u_texelSize*2.2,vec2(0.0008));
-  vec3 color=texture2D(u_tex,clamp(uv,vec2(0.0),vec2(1.0))).rgb*0.28;
-  color+=texture2D(u_tex,clamp(uv+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).rgb*0.12;
-  color+=texture2D(u_tex,clamp(uv-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).rgb*0.12;
-  color+=texture2D(u_tex,clamp(uv+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).rgb*0.12;
-  color+=texture2D(u_tex,clamp(uv-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).rgb*0.12;
-  color+=texture2D(u_tex,clamp(uv+stepSize,vec2(0.0),vec2(1.0))).rgb*0.06;
-  color+=texture2D(u_tex,clamp(uv-stepSize,vec2(0.0),vec2(1.0))).rgb*0.06;
-  color+=texture2D(u_tex,clamp(uv+vec2(stepSize.x,-stepSize.y),vec2(0.0),vec2(1.0))).rgb*0.06;
-  color+=texture2D(u_tex,clamp(uv+vec2(-stepSize.x,stepSize.y),vec2(0.0),vec2(1.0))).rgb*0.06;
+  vec3 color=sourceColorAt(uv).rgb*0.28;
+  color+=sourceColorAt(uv+vec2(stepSize.x,0.0)).rgb*0.12;
+  color+=sourceColorAt(uv-vec2(stepSize.x,0.0)).rgb*0.12;
+  color+=sourceColorAt(uv+vec2(0.0,stepSize.y)).rgb*0.12;
+  color+=sourceColorAt(uv-vec2(0.0,stepSize.y)).rgb*0.12;
+  color+=sourceColorAt(uv+stepSize).rgb*0.06;
+  color+=sourceColorAt(uv-stepSize).rgb*0.06;
+  color+=sourceColorAt(uv+vec2(stepSize.x,-stepSize.y)).rgb*0.06;
+  color+=sourceColorAt(uv+vec2(-stepSize.x,stepSize.y)).rgb*0.06;
   return color;
 }
 
@@ -362,17 +391,17 @@ vec3 applyCommonCleanup(vec3 color,vec2 baseUV,vec2 sampledUV){
 }
 
 float contourCropMaskAt(vec2 uv){
-  if(u_contourCrop<0.5||u_hasSubjectMask<0.5)return 1.0;
+  if(u_contourCrop<0.5||(u_hasSubjectMask<0.5&&u_hasLayeredDemo<0.5))return 1.0;
   vec2 stepSize=max(u_texelSize*1.5,vec2(u_cropFeather));
-  float mask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r*0.28;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).r*0.12;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).r*0.12;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).r*0.12;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).r*0.12;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv+stepSize,vec2(0.0),vec2(1.0))).r*0.06;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv-stepSize,vec2(0.0),vec2(1.0))).r*0.06;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(stepSize.x,-stepSize.y),vec2(0.0),vec2(1.0))).r*0.06;
-  mask+=texture2D(u_subjectMaskTex,clamp(uv+vec2(-stepSize.x,stepSize.y),vec2(0.0),vec2(1.0))).r*0.06;
+  float mask=subjectMaskAt(uv)*0.28;
+  mask+=subjectMaskAt(uv+vec2(stepSize.x,0.0))*0.12;
+  mask+=subjectMaskAt(uv-vec2(stepSize.x,0.0))*0.12;
+  mask+=subjectMaskAt(uv+vec2(0.0,stepSize.y))*0.12;
+  mask+=subjectMaskAt(uv-vec2(0.0,stepSize.y))*0.12;
+  mask+=subjectMaskAt(uv+stepSize)*0.06;
+  mask+=subjectMaskAt(uv-stepSize)*0.06;
+  mask+=subjectMaskAt(uv+vec2(stepSize.x,-stepSize.y))*0.06;
+  mask+=subjectMaskAt(uv+vec2(-stepSize.x,stepSize.y))*0.06;
   float softness=mix(0.01,0.24,clamp(u_cropFeather*12.0,0.0,1.0));
   return smoothstep(0.5-softness,0.5+softness,mask);
 }
@@ -433,10 +462,11 @@ void main(){
   // 移動先のマスクだけを軽くぼかし、低解像度AIマスクの階段状輪郭を見せない。
   float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
   foregroundMask=mix(foregroundMask,displacedForegroundMask,clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0));
-  vec4 backgroundColor=texture2D(u_tex,backgroundUV);
-  vec4 foregroundColor=texture2D(u_tex,foregroundUV);
+  vec4 backgroundColor=mix(texture2D(u_tex,backgroundUV),texture2D(u_backgroundTex,backgroundUV),u_hasLayeredDemo);
+  vec4 foregroundColor=mix(texture2D(u_tex,foregroundUV),texture2D(u_foregroundTex,foregroundUV),u_hasLayeredDemo);
+  foregroundMask=mix(foregroundMask,foregroundColor.a,u_hasLayeredDemo);
   vec4 c;
-  if(u_enableDepthLayers>0.5||u_enableVibration>0.5||u_enableTrickPortal>0.5){
+  if(u_enableDepthLayers>0.5||u_enableVibration>0.5||u_enableTrickPortal>0.5||u_hasLayeredDemo>0.5){
     c=mix(backgroundColor,foregroundColor,foregroundMask);
   }else{
     c=foregroundColor;
@@ -447,7 +477,7 @@ void main(){
     // 暗い外壁、透視変形した窓内、照明付き額縁、前景の順で重ねて越境錯視を作る。
     float portalInterior=portalInteriorAt(base);
     float portalFrame=portalFrameAt(base);
-    vec3 originalColor=texture2D(u_tex,base).rgb;
+    vec3 originalColor=sourceColorAt(base).rgb;
     float originalLuma=dot(originalColor,vec3(0.299,0.587,0.114));
     vec3 outerMatte=mix(originalColor,vec3(originalLuma)*vec3(0.58,0.62,0.70),0.48*trickPortalStrength);
     outerMatte*=1.0-0.30*trickPortalStrength;
@@ -495,9 +525,9 @@ void main(){
     vec2 chromaShift=(foilNormal.xy+u_view*0.30)*u_texelSize*(2.0+4.0*hologramStrength);
     vec2 materialUV=mix(backgroundUV,foregroundUV,foregroundMask);
     vec3 chromaticSample=vec3(
-      texture2D(u_tex,clamp(materialUV+chromaShift,vec2(0.0),vec2(1.0))).r,
-      texture2D(u_tex,materialUV).g,
-      texture2D(u_tex,clamp(materialUV-chromaShift,vec2(0.0),vec2(1.0))).b
+      sourceColorAt(materialUV+chromaShift).r,
+      sourceColorAt(materialUV).g,
+      sourceColorAt(materialUV-chromaShift).b
     );
     float phase=base.x*0.82+base.y*0.58+foilNormal.x*0.18-foilNormal.y*0.14+u_view.x*0.32-u_view.y*0.24;
     float bands=0.5+0.5*sin(phase*38.0);
@@ -568,17 +598,22 @@ function createMapTexture(unit,initialValue){
 
 const depthTex=createMapTexture(gl.TEXTURE1,0);
 const subjectMaskTex=createMapTexture(gl.TEXTURE2,0);
+const backgroundTex=createMapTexture(gl.TEXTURE3,0);
+const foregroundTex=createMapTexture(gl.TEXTURE4,0);
 gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
+gl.uniform1i(U.u_backgroundTex,3);
+gl.uniform1i(U.u_foregroundTex,4);
 
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
+let hasLayeredDemo=false,demoLoadSerial=0;
 let recognitionBounds=null,recognitionGuideCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1},guideDragTarget=null;
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
@@ -650,6 +685,15 @@ function uploadImage(img,label){
   }
 }
 
+function loadImageAsset(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error(url));
+    img.src=url;
+  });
+}
+
 function loadURL(url,label,revoke=false){
   const img=new Image();
   img.onload=()=>{
@@ -663,9 +707,71 @@ function loadURL(url,label,revoke=false){
   img.src=url;
 }
 
+const DEMO_ASSETS=[
+  {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
+  {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68"},
+  {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"}
+];
+let activeDemoIndex=-1;
+
+function updateDemoSelection(){
+  for(const card of document.querySelectorAll("[data-demo-index]")){
+    card.setAttribute("aria-pressed",String(Number(card.dataset.demoIndex)===activeDemoIndex));
+  }
+}
+
+async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
+  const normalized=((Number(index)%DEMO_ASSETS.length)+DEMO_ASSETS.length)%DEMO_ASSETS.length;
+  const demo=DEMO_ASSETS[normalized];
+  const loadSerial=++demoLoadSerial;
+  activeDemoIndex=normalized;
+  $("#combineEffects").checked=false;
+  $("#effectMode").value="5";
+  $("#effectStrength").value=demo.strength;
+  $("#cx").value=demo.centerX;
+  $("#cy").value=demo.centerY;
+  $("#radius").value=demo.radius;
+  syncEffectControls();
+  updateDemoSelection();
+  statusEl.textContent="デモ読込中: "+demo.label;
+  try{
+    const [original,background,foreground]=await Promise.all([
+      loadImageAsset(demo.src),
+      loadImageAsset(demo.background),
+      loadImageAsset(demo.foreground)
+    ]);
+    if(loadSerial!==demoLoadSerial)return;
+    uploadImage(original,"デモ: "+demo.label);
+    uploadMapImage(backgroundTex,gl.TEXTURE3,background);
+    uploadMapImage(foregroundTex,gl.TEXTURE4,foreground);
+    hasLayeredDemo=true;
+    hasSubjectMask=true;
+    maskSource="透過立ち絵";
+    updateRecognitionGuide(foreground,{useAlpha:true});
+    updateMapStatus("背景＋立ち絵の2層");
+    syncContourCropAvailability();
+    statusEl.textContent="表示中: デモ: "+demo.label+"（2層）";
+  }catch(error){
+    if(loadSerial!==demoLoadSerial)return;
+    hasLayeredDemo=false;
+    loadURL(demo.src,"デモ: "+demo.label+"（単一画像）");
+    errEl.textContent="2層素材を読み込めないため単一画像で表示します。";
+  }
+  if(hidePanel)setPanelVisible(false);
+  if(recordHistory)pushEditHistory();
+}
+
+for(const card of document.querySelectorAll("[data-demo-index]")){
+  card.addEventListener("click",()=>loadDemo(Number(card.dataset.demoIndex)));
+}
+demoNext.addEventListener("click",()=>loadDemo(activeDemoIndex+1));
+
 $("#file").addEventListener("change",e=>{
   const f=e.target.files && e.target.files[0];
   if(!f)return;
+  demoLoadSerial++;
+  activeDemoIndex=-1;
+  updateDemoSelection();
   statusEl.textContent="画像読込中…";
   const url=URL.createObjectURL(f);
   loadURL(url,f.name,true);
@@ -684,10 +790,13 @@ function resetMapTexture(texture,unit){
 function clearMaps({announce=true}={}){
   resetMapTexture(depthTex,gl.TEXTURE1);
   resetMapTexture(subjectMaskTex,gl.TEXTURE2);
+  resetMapTexture(backgroundTex,gl.TEXTURE3);
+  resetMapTexture(foregroundTex,gl.TEXTURE4);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D,tex);
   hasDepthMap=false;
   hasSubjectMask=false;
+  hasLayeredDemo=false;
   recognitionBounds=null;
   recognitionGuideCanvas=null;
   depthSource="中心近似";
@@ -705,7 +814,7 @@ function uploadMapImage(texture,unit,img){
   gl.bindTexture(gl.TEXTURE_2D,tex);
 }
 
-function updateRecognitionGuide(source){
+function updateRecognitionGuide(source,{useAlpha=false}={}){
   const size=160;
   const sample=document.createElement("canvas");
   sample.width=sample.height=size;
@@ -716,12 +825,13 @@ function updateRecognitionGuide(source){
   const maskLuma=(x,y)=>{
     if(x<0||x>=size||y<0||y>=size)return 0;
     const offset=(y*size+x)*4;
+    if(useAlpha)return pixels.data[offset+3];
     return (pixels.data[offset]+pixels.data[offset+1]+pixels.data[offset+2])/3;
   };
   let minX=size,minY=size,maxX=-1,maxY=-1;
   for(let index=0;index<size*size;index++){
     const offset=index*4;
-    const luminance=(pixels.data[offset]+pixels.data[offset+1]+pixels.data[offset+2])/3;
+    const luminance=useAlpha ? pixels.data[offset+3] : (pixels.data[offset]+pixels.data[offset+1]+pixels.data[offset+2])/3;
     const x=index%size;
     const y=Math.floor(index/size);
     let boundary=false;
@@ -1091,6 +1201,7 @@ syncEffectControls();
 syncSpatialControls();
 syncContourCropAvailability();
 updateHistoryButtons();
+loadDemo(0,{hidePanel:false,recordHistory:false});
 
 function guideImageRect(){
   const screenAspect=guideCanvas.width/guideCanvas.height;
@@ -1437,6 +1548,7 @@ function render(now){
   gl.uniform1f(U.u_motionScale,reduceMotion.matches ? 0 : 1);
   gl.uniform1f(U.u_hasDepthMap,hasDepthMap ? 1 : 0);
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
+  gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
   gl.uniform2f(U.u_lightDirection,parseFloat($("#lightX").value),parseFloat($("#lightY").value));
   gl.uniform1f(U.u_lightingStrength,parseFloat($("#lightingStrength").value));
   const effects=effectFlags();
