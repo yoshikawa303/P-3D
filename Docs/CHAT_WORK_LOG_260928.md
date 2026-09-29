@@ -120,3 +120,19 @@
   昨夜分の成人美少女2体／イケメン2体、共通ショーケース、4部位ばね、アクリル反射と、追加の背景なしゆるキャラ／モフモフ動物を`ad68de1 feat: add animated acrylic stand demos`として`origin/main`へpushした。GitHub Actionsの`P-3D quality gates` Run 36505274726と`pages build and deployment` Run 36505272238はいずれもsuccess。Pages workflowにはNode.js 20非推奨と将来のubuntu-latest移行に関するGitHub側annotationがあるが、build／deploy／reportは全job成功しており今回コードの失敗ではない。
 
   公開URLの`index.html`とローカル版のSHA-256は`1194e3987c10d77449f190bdd7c32065dd1a2337aa5c6b5523284e3da20ebc0c`で一致した。公開の背景なしゆるキャラサムネイルは`1f5b8597c2358e2924f6632fd18775b03182de31ab29fd9f8576443a4f6efd11`、背景なしモフモフサムネイルは`fa22008215fdbb5919e4fa4870707fa7c4340a93e2ebb8492fdd14e5f2801ebf`でローカルと一致し、新規美少女PNGもHTTP 200／`content-type: image/png`を確認した。Public Pagesを実ブラウザで開き、両透過アクスタ、9カード、59〜60fps、console warning／error 0件を確認した。使用モデルはCodex GPT-5系、動的切替なし。物理iPhone SafariのGPU性能、タッチ、カメラ追跡は未確認として区別する。
+
+### 2026-09-29 10:06 JST - Codex - 種別: 依頼内容 - 残像抑制・アクスタ配置・Live2D風自動リグ
+
+- 内容:
+
+  ```text
+  ・視線変更した際、元の画像の輪郭が残ってしまい微妙。
+  ・アクスタの大背景を折角作ったのに、キャラの配置とサイズが、背景に合っていない。
+  ・キャラクターのボーンや分割パーツ認識でLive2D風の自動アニメができていない。デフォルト自動でLive2D風認識して動いてほしい。
+  ```
+
+### 2026-09-29 10:06 JST - Codex - 種別: 経過 - 実装方針と使用モデル
+
+- 内容:
+
+  現在のCodexモデルを継続使用し、動的切替なし。元輪郭が残る原因を前景の移動前マスクと移動後alphaの混在、アクスタ配置を素材ごとの余白未補正、Live2D風不足を固定楕円3領域と4ばねだけの疑似リグとして調査する。透過alphaの実境界に描画を収束させる残像抑制、共通背景の展示台に合わせた素材別fit、頭・目・口・胴体・髪／耳・小物の自動推定モーションを初期ONで追加し、商用品質Live2Dや隠れ領域復元とは区別する。回帰検査、ローカルHTTP、モバイル相当表示、Public Pagesを確認する。

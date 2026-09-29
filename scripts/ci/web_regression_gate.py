@@ -119,6 +119,15 @@ def main() -> int:
         "abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13" in html,
         "アクスタ反射帯を0〜1へ収める幅正規化がありません",
     )
+    require("function alphaBounds(source)" in html, "透過輪郭の自動認識がありません")
+    require("function prepareStandeeForStage(source,demo)" in html, "展示背景へアクスタを自動配置できません")
+    require("targetBottom=demo.stageBottom||0.84" in html, "アクスタの足元が展示台へ揃いません")
+    require("activeRigProfile=prepared?.rig||demo.rig||null" in html, "認識結果を自動リグへ使用していません")
+    require("uniform vec4 u_live2dMotion;" in html, "瞬き・口元・呼吸のLive2D風uniformがありません")
+    require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
+    require("const blinkPulse=" in html and "const breathMotion=" in html, "自動瞬き・呼吸がありません")
+    require("float boundary=subjectBoundaryAt(sampledUV);" in html, "輪郭補正が移動後の境界へ追従していません")
+    require("vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);" in html, "背後影が移動前輪郭へ残ります")
     require("loadDemo(0,{hidePanel:false,recordHistory:false});" in html, "初回表示でデモ画像を鑑賞できません")
     require('aria-pressed="false"' in html, "デモ選択状態のアクセシビリティ属性がありません")
     for value, label in [
@@ -396,7 +405,7 @@ def main() -> int:
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
-    print("PASS: nine demos and four-part acrylic stand spring rig")
+    print("PASS: nine demos, stage-fit placement, silhouette auto-rig, and Live2D-style motion")
     print("PASS: Cross-AI governance documents")
     return 0
 

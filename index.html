@@ -83,9 +83,9 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     </div>
     <div class="hint">完全オリジナルの背景＋透過立ち絵です。画像を押すと2層で立体表示し、右上の「愛でる」で順番に切り替えられます。</div>
     <div class="sectionTitle">動くアクスタ</div>
-    <label class="check"><input id="autoMotion" type="checkbox" checked>部位別の自動モーション</label>
+    <label class="check"><input id="autoMotion" type="checkbox" checked>Live2D風自動認識モーション</label>
     <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.62"></div>
-    <div class="hint">アクスタ用デモでは頭・胴体・髪・布／毛・小物・尻尾を別の減衰ばねで常時微動させます。視差低減設定では停止します。</div>
+    <div class="hint">透過輪郭から頭・顔・胴体・髪／耳・小物を自動推定し、瞬き・呼吸と部位別の減衰ばねを初期状態から動かします。視差低減設定では停止します。</div>
     <div class="sectionTitle">自分の画像</div>
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
@@ -228,6 +228,7 @@ uniform vec4 u_rigCenters;
 uniform vec4 u_rigRadii;
 uniform vec4 u_materialRegion;
 uniform float u_standeeMode;
+uniform vec4 u_live2dMotion;
 varying vec2 v_uv;
 
 vec4 sourceColorAt(vec2 uv){
@@ -287,10 +288,19 @@ vec2 riggedForegroundUV(vec2 uv){
   float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy);
   float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw);
   float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw);
+  vec2 headPoint=(uv-u_rigCenters.xy)/max(u_rigRadii.xy,vec2(0.001));
+  float eyeBand=headInfluence*exp(-pow((headPoint.y-0.10)*8.5,2.0));
+  float mouthBand=headInfluence*exp(-pow((headPoint.y+0.34)*10.0,2.0));
+  float torsoInfluence=rigEllipseAt(uv,u_materialRegion.xy,vec2(u_materialRegion.z*0.62,u_materialRegion.w*0.72));
   vec2 displacement=u_bodyMotion;
   displacement+=u_headMotion*headInfluence;
   displacement+=u_materialMotion*materialInfluence;
   displacement+=u_propMotion*propInfluence;
+  // 透過輪郭から推定した顔・胴体領域へ、瞬き、口元、呼吸、視線の軽い連続変形を加える。
+  displacement.x+=(headPoint.y*u_live2dMotion.z*0.0018)*headInfluence;
+  displacement.y+=eyeBand*u_live2dMotion.x*0.0022;
+  displacement.y-=mouthBand*u_live2dMotion.y*0.0012;
+  displacement.y-=torsoInfluence*u_live2dMotion.w*0.0015;
   return uv-displacement*subjectMaskAt(uv)*enabled;
 }
 
@@ -421,7 +431,8 @@ vec3 softBlurAt(vec2 uv){
 
 vec3 applyCommonCleanup(vec3 color,vec2 baseUV,vec2 sampledUV){
   float movement=clamp(length(sampledUV-baseUV)*72.0,0.0,1.0);
-  float boundary=subjectBoundaryAt(baseUV);
+  // 移動前ではなく移動後のalpha境界だけを使い、元位置の輪郭を再強調しない。
+  float boundary=subjectBoundaryAt(sampledUV);
   float displacedEdge=imageEdgeAt(sampledUV)*boundary;
   float artifactRisk=clamp(boundary*(0.30+0.70*movement)+displacedEdge*0.48,0.0,1.0);
   float blurAmount=clamp(u_edgeCleanup,0.0,1.0)*artifactRisk*0.86;
@@ -599,7 +610,9 @@ void main(){
   c.rgb=mix(c.rgb,vec3(0.72,0.94,1.0),clamp(acrylicRim*0.30,0.0,0.32));
   c.rgb+=vec3(0.26,0.54,0.66)*acrylicSweep*0.16;
 
-  c.rgb*=1.0-contactShadowAt(base)*0.42;
+  // 2層素材では影も移動後の輪郭へ追従させ、元位置へ人物形状を残さない。
+  vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);
+  c.rgb*=1.0-contactShadowAt(shadowUV)*0.42;
   c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20;
   vec2 cleanupUV=mix(backgroundUV,foregroundUV,foregroundMask);
   c.rgb=applyCommonCleanup(c.rgb,base,cleanupUV);
@@ -650,7 +663,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_materialRegion","u_standeeMode"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_materialRegion","u_standeeMode","u_live2dMotion"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -731,9 +744,11 @@ function uploadImage(img,label){
     gl.bindTexture(gl.TEXTURE_2D,tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
-    imgAspect=img.naturalWidth/img.naturalHeight;
-    imgWidth=img.naturalWidth;
-    imgHeight=img.naturalHeight;
+    const sourceWidth=img.naturalWidth||img.width;
+    const sourceHeight=img.naturalHeight||img.height;
+    imgAspect=sourceWidth/sourceHeight;
+    imgWidth=sourceWidth;
+    imgHeight=sourceHeight;
     hasImage=true;
     sourceImage=img;
     statusEl.textContent="表示中: "+label;
@@ -766,12 +781,74 @@ function loadURL(url,label,revoke=false){
   img.src=url;
 }
 
+function alphaBounds(source){
+  const sample=document.createElement("canvas");
+  const width=192;
+  const height=Math.max(1,Math.round(width*source.naturalHeight/source.naturalWidth));
+  sample.width=width;sample.height=height;
+  const context=sample.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,width,height);
+  const pixels=context.getImageData(0,0,width,height).data;
+  let minX=width,minY=height,maxX=-1,maxY=-1,weightedX=0,weight=0;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const alpha=pixels[(y*width+x)*4+3];
+    if(alpha<28)continue;
+    minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+    minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+    weightedX+=x*alpha;weight+=alpha;
+  }
+  if(maxX<minX||maxY<minY)return {x:0,y:0,width,height,centerX:width/2};
+  return {x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1,centerX:weight ? weightedX/weight : (minX+maxX)/2};
+}
+
+function prepareStandeeForStage(source,demo){
+  const canvas=document.createElement("canvas");
+  canvas.width=768;canvas.height=1152;
+  const bounds=alphaBounds(source);
+  const sourceScaleX=source.naturalWidth/192;
+  const sampledHeight=Math.max(1,Math.round(192*source.naturalHeight/source.naturalWidth));
+  const sourceScaleY=source.naturalHeight/sampledHeight;
+  const sourceRect={
+    x:bounds.x*sourceScaleX,y:bounds.y*sourceScaleY,
+    width:bounds.width*sourceScaleX,height:bounds.height*sourceScaleY
+  };
+  // 展示台上面(y=0.84)へ足元を揃え、左右のケースを隠さない幅に自動fitする。
+  const targetBottom=demo.stageBottom||0.84;
+  const targetTop=demo.stageTop||0.13;
+  const maxWidth=demo.stageWidth||0.58;
+  const scale=Math.min(canvas.width*maxWidth/sourceRect.width,canvas.height*(targetBottom-targetTop)/sourceRect.height);
+  const drawWidth=sourceRect.width*scale;
+  const drawHeight=sourceRect.height*scale;
+  const drawX=(canvas.width-drawWidth)/2;
+  const drawY=canvas.height*targetBottom-drawHeight;
+  canvas.getContext("2d").drawImage(source,sourceRect.x,sourceRect.y,sourceRect.width,sourceRect.height,drawX,drawY,drawWidth,drawHeight);
+
+  const left=drawX/canvas.width,top=drawY/canvas.height;
+  const width=drawWidth/canvas.width,height=drawHeight/canvas.height;
+  const centerX=left+width*0.5;
+  // alpha外接矩形から人型／マスコット共通の骨格領域を推定する。固定座標より素材余白に強い。
+  const headY=top+height*0.18;
+  const isWide=width/height>0.72;
+  const headRadiusX=Math.min(width*(isWide?0.34:0.27),0.24);
+  const headRadiusY=Math.min(height*(isWide?0.22:0.16),0.17);
+  const propSide=bounds.centerX<192*0.5 ? 1 : -1;
+  return {
+    canvas,
+    rig:{
+      head:[centerX,headY,headRadiusX,headRadiusY],
+      material:[centerX,top+height*0.38,width*0.48,height*0.38],
+      prop:[centerX+propSide*width*0.30,top+height*0.48,width*0.20,height*0.22]
+    },
+    placement:{left,top,width,height,bottom:targetBottom}
+  };
+}
+
 const DEMO_ASSETS=[
   {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
   {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68"},
   {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
-  {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,rig:{head:[0.50,0.45,0.39,0.22],material:[0.50,0.40,0.48,0.27],prop:[0.50,0.60,0.12,0.11]}},
-  {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,rig:{head:[0.62,0.36,0.30,0.24],material:[0.34,0.57,0.36,0.32],prop:[0.22,0.60,0.22,0.24]}},
+  {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,stageWidth:0.64},
+  {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,stageWidth:0.66},
   {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
   {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
   {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
@@ -806,19 +883,21 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
       loadImageAsset(demo.foreground)
     ]);
     if(loadSerial!==demoLoadSerial)return;
-    uploadImage(original,"デモ: "+demo.label);
+    const prepared=demo.standee ? prepareStandeeForStage(foreground,demo) : null;
+    const displayedForeground=prepared ? prepared.canvas : foreground;
+    uploadImage(demo.standee ? displayedForeground : original,"デモ: "+demo.label);
     uploadMapImage(backgroundTex,gl.TEXTURE3,background);
-    uploadMapImage(foregroundTex,gl.TEXTURE4,foreground);
+    uploadMapImage(foregroundTex,gl.TEXTURE4,displayedForeground);
     hasLayeredDemo=true;
     hasSubjectMask=true;
-    activeRigProfile=demo.rig||null;
+    activeRigProfile=prepared?.rig||demo.rig||null;
     activeStandee=Boolean(demo.standee);
     resetRigSprings();
     maskSource="透過立ち絵";
-    updateRecognitionGuide(foreground,{useAlpha:true});
-    updateMapStatus("背景＋立ち絵の2層");
+    updateRecognitionGuide(displayedForeground,{useAlpha:true});
+    updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ" : "背景＋立ち絵の2層");
     syncContourCropAvailability();
-    statusEl.textContent="表示中: デモ: "+demo.label+(demo.standee ? "（動くアクスタ）" : "（2層）");
+    statusEl.textContent="表示中: デモ: "+demo.label+(demo.standee ? "（Live2D風自動リグ）" : "（2層）");
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
     hasLayeredDemo=false;
@@ -1666,6 +1745,12 @@ function render(now){
   gl.uniform4f(U.u_rigRadii,rig.head[2],rig.head[3],rig.prop[2],rig.prop[3]);
   gl.uniform4f(U.u_materialRegion,rig.material[0],1-rig.material[1],rig.material[2],rig.material[3]);
   gl.uniform1f(U.u_standeeMode,activeStandee&&hasLayeredDemo ? 1 : 0);
+  const liveSeconds=now*0.001;
+  const blinkPulse=Math.pow(Math.max(0,Math.sin(liveSeconds*1.73+0.35)),24);
+  const mouthMotion=0.5+0.5*Math.sin(liveSeconds*2.15+0.8);
+  const gazeMotion=Math.sin(liveSeconds*0.71)+viewX*0.55;
+  const breathMotion=0.5+0.5*Math.sin(liveSeconds*1.38);
+  gl.uniform4f(U.u_live2dMotion,autoRigActive?blinkPulse:0,autoRigActive?mouthMotion:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
   gl.uniform2f(U.u_lightDirection,parseFloat($("#lightX").value),parseFloat($("#lightY").value));
   gl.uniform1f(U.u_lightingStrength,parseFloat($("#lightingStrength").value));
   const effects=effectFlags();
