@@ -112,3 +112,11 @@
   誤って添付されたmaruPlay画像はP-3Dの要件・実装へ使用せず、昨夜のP-3D作業だけを継続した。既存の`demo-mascot-foreground.png`と`demo-fluffy-foreground.png`は背景除去済みRGBA素材のため再生成せず、共通`standee-stage.jpg`へ載せる独立デモとして追加した。ギャラリー用に256x384の透過サムネイル2点だけを生成元PNGから縮小し、ラベルを`ゆるアクスタ（透過）`、`モフモフアクスタ（透過）`とした。両方に個別の頭、髪・毛／布相当、小物・尻尾の影響域を定義し、既存4部位ばねとアクリル反射を適用した。
 
   回帰検査は9デモと2枚の透過サムネイルを必須化し、追加前はサムネイル未配置で想定どおりFAIL、追加後はNode.js構文検査を含め全項目PASS。ローカルHTTPの実ブラウザで両デモが`（動くアクスタ）`として表示されること、背景焼き込みのない輪郭、9カード、59〜60fps、console warning／error 0件を確認した。390x844のiPhone相当表示でも、9カード、透過サムネイル、スクロール可能な設定パネル、モフモフアクスタの縦横比を確認した。物理iPhone Safariは未確認。
+
+### 2026-09-29 09:55 JST - Codex GPT-5 - 種別: 結果 - commit／push／Pages公開確認
+
+- 内容:
+
+  昨夜分の成人美少女2体／イケメン2体、共通ショーケース、4部位ばね、アクリル反射と、追加の背景なしゆるキャラ／モフモフ動物を`ad68de1 feat: add animated acrylic stand demos`として`origin/main`へpushした。GitHub Actionsの`P-3D quality gates` Run 36505274726と`pages build and deployment` Run 36505272238はいずれもsuccess。Pages workflowにはNode.js 20非推奨と将来のubuntu-latest移行に関するGitHub側annotationがあるが、build／deploy／reportは全job成功しており今回コードの失敗ではない。
+
+  公開URLの`index.html`とローカル版のSHA-256は`1194e3987c10d77449f190bdd7c32065dd1a2337aa5c6b5523284e3da20ebc0c`で一致した。公開の背景なしゆるキャラサムネイルは`1f5b8597c2358e2924f6632fd18775b03182de31ab29fd9f8576443a4f6efd11`、背景なしモフモフサムネイルは`fa22008215fdbb5919e4fa4870707fa7c4340a93e2ebb8492fdd14e5f2801ebf`でローカルと一致し、新規美少女PNGもHTTP 200／`content-type: image/png`を確認した。Public Pagesを実ブラウザで開き、両透過アクスタ、9カード、59〜60fps、console warning／error 0件を確認した。使用モデルはCodex GPT-5系、動的切替なし。物理iPhone SafariのGPU性能、タッチ、カメラ追跡は未確認として区別する。
