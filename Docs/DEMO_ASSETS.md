@@ -4,13 +4,13 @@
 
 P-3Dの初回表示とデモ切替で使用する、完全オリジナルの生成画像である。既存作品、商標、実在人物を参照せず、文字、ロゴ、透かしを含めない。P-3Dの疑似立体表示で前景・中景・背景を認識しやすい縦長構図とし、完成絵、背景、透過立ち絵の3ファイルを1セットとする。
 
-生成日: 2026-09-28
+生成日: 2026-09-28、2026-09-29
 
 生成手段: OpenAI組み込み画像生成機能（新規生成と参照画像編集）
 
 生成元: 1024x1536 PNG
 
-配信用: 完成絵／背景は1024x1536 JPEG品質86、透過立ち絵は1024x1536 RGBA PNG
+配信用: 既存3セットは完成絵／背景が1024x1536 JPEG品質86、透過立ち絵が1024x1536 RGBA PNG。アクスタ4体は768x1152 RGBA PNG、ギャラリーは256x384 RGBA PNG、共通背景は768x1152 JPEG品質84。
 
 ## 生成プロンプト
 
@@ -52,6 +52,82 @@ Edit this exact original artwork into the clean background plate for a layered p
 
 個別指定は、ゆるキャラでは庭園の石畳・花・橋・木・空・家、美少女ではテーブル・椅子・温室・植物・噴水・城景、モフモフ動物では苔・岩・小川・滝・落葉・木・木漏れ日を背景復元対象に含めた。
 
+## 動くアクスタ追加生成プロンプト
+
+4体とも新規生成で、`transparent_background: true`を指定した。成人であること、全身と手足が収まること、髪・布・小物を微動させやすい明確な輪郭、透明alpha、既存作品・実在人物・商標へ依存しないことを共通条件とした。
+
+既存の`demo-mascot-foreground.png`と`demo-fluffy-foreground.png`も背景除去済み素材のため、追加生成せず共通ショーケースへ載せる透過アクスタとして再利用する。ギャラリーには各素材を256x384へ縮小した専用サムネイルを使用する。
+
+### 星詠み美少女
+
+```text
+Use case: stylized-concept
+Asset type: transparent character standee for a mobile WebGL demo
+Primary request: a completely original adult anime woman in her mid-20s, celestial academy fashion, gentle cheerful smile, long lavender-to-silver gradient hair, layered navy and ivory short cape over an elegant practical dress, star-shaped hair ornament and a small hanging book charm as a separate visible accessory
+Subject: one character only, front three-quarter neutral standing pose, both hands and both feet fully visible, anatomically coherent, clear silhouette, flowing hair tips and cape hems suitable for subtle secondary motion
+Style/medium: premium polished Japanese anime game character illustration, crisp clean linework, softly shaded fabric and hair, expressive but unmistakably adult proportions
+Composition/framing: portrait 2:3, entire body centered with generous transparent padding around hair, sleeves, hands, charm, and shoes; no cropping
+Lighting/mood: luminous soft studio key light with controlled highlights, cute and refined
+Constraints: genuinely transparent background with preserved alpha; no floor, no ground shadow, no pedestal, no scene, no text, no logo, no watermark, no franchise resemblance, no real-person likeness, no extra limbs or duplicate accessories; keep every part inside the canvas
+Output intent: production-ready alpha PNG for an acrylic-stand-style interactive demo
+```
+
+### ネオン美少女
+
+```text
+Use case: stylized-concept
+Asset type: transparent character standee for a mobile WebGL demo
+Primary request: a completely original adult anime woman in her mid-20s, upbeat cyber street performer, vivid coral bob haircut with asymmetrical teal underlayer, cropped technical jacket over a tasteful black-and-teal performance outfit, translucent ribbon cables and a small floating music-player charm clipped at the hip
+Subject: one character only, energetic but stable full-body standing pose, both hands and both feet fully visible, anatomically coherent, clear silhouette; jacket tails, ribbon cables, and charm visibly separated for subtle secondary motion
+Style/medium: premium polished Japanese anime game character illustration, crisp clean linework, cel shading with neon accents, expressive but unmistakably adult proportions
+Composition/framing: portrait 2:3, entire body centered with generous transparent padding on every side; no cropping
+Lighting/mood: colorful controlled rim light, playful and confident
+Constraints: genuinely transparent background with preserved alpha; no floor, no shadow, no pedestal, no scene, no text, no logo, no watermark, no franchise resemblance, no real-person likeness, no extra limbs or duplicate props; keep every part inside canvas
+Output intent: production-ready alpha PNG for an acrylic-stand-style interactive demo
+```
+
+### 王宮イケメン
+
+```text
+Use case: stylized-concept
+Asset type: transparent character standee for a mobile WebGL demo
+Primary request: a completely original handsome adult anime man in his late 20s, refined fantasy royal archivist, deep auburn hair, calm warm gaze, tailored midnight-blue long coat with ivory waistcoat, restrained gold trim, short shoulder cape, one visible earring and a pocket-watch tassel as separate accessories
+Subject: one character only, elegant relaxed full-body standing pose, both hands and both boots fully visible, anatomically coherent, masculine adult proportions, clean silhouette; coat tails, cape edge, earring and tassel suitable for subtle secondary motion
+Style/medium: premium polished Japanese anime game character illustration, crisp clean linework, rich fabric shading, handsome but original design
+Composition/framing: portrait 2:3, entire body centered with generous transparent padding on every side; no cropping
+Lighting/mood: soft museum-like key light, dignified and inviting
+Constraints: genuinely transparent background with preserved alpha; no floor, no shadow, no pedestal, no scene, no text, no logo, no watermark, no franchise resemblance, no real-person likeness, no extra limbs or duplicate props; keep every part inside canvas
+Output intent: production-ready alpha PNG for an acrylic-stand-style interactive demo
+```
+
+### ストリートイケメン
+
+```text
+Use case: stylized-concept
+Asset type: transparent character standee for a mobile WebGL demo
+Primary request: a completely original handsome adult anime man in his mid-20s, modern street photographer, charcoal wavy hair with a subtle blue streak, friendly confident expression, layered oversized cream hoodie and cropped graphite jacket, slim cargo trousers, camera hanging from a separate shoulder strap, small keychain at the belt
+Subject: one character only, casual full-body standing pose, both hands and both sneakers fully visible, anatomically coherent, masculine adult proportions, clear silhouette; hoodie strings, jacket hem, camera strap, camera and keychain visibly distinct for subtle secondary motion
+Style/medium: premium polished Japanese anime game character illustration, crisp clean linework, contemporary fashion rendering, handsome but original design
+Composition/framing: portrait 2:3, entire body centered with generous transparent padding on every side; no cropping
+Lighting/mood: clean cool studio light with a soft magenta accent, approachable urban mood
+Constraints: genuinely transparent background with preserved alpha; no floor, no shadow, no pedestal, no scene, no text, no logo, no watermark, no franchise resemblance, no real-person likeness, no extra limbs or duplicate props; keep every part inside canvas
+Output intent: production-ready alpha PNG for an acrylic-stand-style interactive demo
+```
+
+### 共通ショーケース背景
+
+```text
+Use case: stylized-concept
+Asset type: clean vertical background plate for a mobile WebGL acrylic-stand character showcase
+Primary request: an empty premium miniature display alcove viewed straight on, designed to feel like a character lives inside a smartphone; deep midnight navy back wall, subtle cyan and magenta edge lights, soft glass reflections, a small clear acrylic oval base centered near the bottom, gentle contact-light pool, layered recessed arches creating strong depth
+Scene/backdrop: no people, no characters, no creatures, no products
+Style/medium: polished anime-game UI environment illustration with realistic acrylic and glass materials, restrained and uncluttered
+Composition/framing: portrait 2:3, symmetrical front view, central open space from top to base reserved for a full-body character, base entirely inside canvas
+Lighting/mood: cozy collectible display case, luminous but dark enough for colorful characters to read clearly
+Constraints: no text, no logo, no watermark, no signage, no character silhouette, no cropped frame, no trademarks
+Output intent: reusable clean background JPEG for several transparent character standees
+```
+
 ## 配信ファイル
 
 |ファイル|SHA-256|
@@ -65,5 +141,16 @@ Edit this exact original artwork into the clean background plate for a layered p
 |`assets/demos/demo-fluffy.jpg`|`e95fa6d388242d45fad3b5ce3cdac3df608f132c9a470cd05c218672366626b6`|
 |`assets/demos/demo-fluffy-background.jpg`|`6395283c0ab4e6f5ba4c5525ffae42345eeb97f3631315949a07b55975a257f9`|
 |`assets/demos/demo-fluffy-foreground.png`|`1064fb3cf7a0e37552ff01b367870b8baad5e39904b81e5b62ba1798afed311f`|
+|`assets/demos/standee-stage.jpg`|`80dd931206effb2ac57fdb683dd6b70e6d946ff1c6083cd161da0b4ab70b9682`|
+|`assets/demos/demo-standee-girl-celestial.png`|`2bb13bf608080bac6f4ce0f281838b4135468678696b00963812e00d91d37707`|
+|`assets/demos/demo-standee-girl-celestial-thumb.png`|`905422aebf5cd67ff5414af8ec782e7c9963918c0e0949bba532cea432282713`|
+|`assets/demos/demo-standee-girl-cyber.png`|`3eb9ac487941673697fa5540dc91b3b4c05d56aacd593d347ec1d62510f08507`|
+|`assets/demos/demo-standee-girl-cyber-thumb.png`|`69fcd8f8ba0e8fe4384073796c91169e8467ed5cfbb8b168db797bfbfa990356`|
+|`assets/demos/demo-standee-man-royal.png`|`47b137b78ca34453a0d5e203f8745c4baf30f56611476f248f0d692078c30405`|
+|`assets/demos/demo-standee-man-royal-thumb.png`|`8056d62fa1a994a845c015b335639e0ab4b52df0de5271cf1e6aa7ace11dfed4`|
+|`assets/demos/demo-standee-man-street.png`|`a7c6caf784d8efb864278654a652e15fbaacc540bab0399010243513947f47d0`|
+|`assets/demos/demo-standee-man-street-thumb.png`|`1003786e30589effa343c8f8851af3a51970e528d419df5d1437364b27d20870`|
+|`assets/demos/demo-mascot-standee-thumb.png`|`1f5b8597c2358e2924f6632fd18775b03182de31ab29fd9f8576443a4f6efd11`|
+|`assets/demos/demo-fluffy-standee-thumb.png`|`fa22008215fdbb5919e4fa4870707fa7c4340a93e2ebb8492fdd14e5f2801ebf`|
 
 生成元PNGは配信サイズとリポジトリ容量を抑えるため公開リポジトリへ含めない。配信素材は同一オリジンから読み込み、利用者の端末画像やカメラ画像と同様にブラウザ内でWebGL処理する。透過立ち絵のalphaは人物／物体マスクとしても利用する。

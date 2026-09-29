@@ -35,6 +35,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 .demoGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .demoCard{position:relative;min-width:0;aspect-ratio:2/3;overflow:hidden;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#25252b;color:#fff}
 .demoCard img{display:block;width:100%;height:100%;object-fit:cover}
+.demoCard.standee img{object-fit:contain;background:linear-gradient(160deg,#111a31,#25152b 72%,#0e1728)}
 .demoCard span{position:absolute;left:4px;right:4px;bottom:4px;padding:5px 3px;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font-size:10px;font-weight:800;line-height:1.15;text-align:center;backdrop-filter:blur(8px)}
 .demoCard[aria-pressed="true"]{border-color:#79e7ff;box-shadow:0 0 0 2px rgba(121,231,255,.36)}
 .hint{font-size:10px;color:#b8b8c2;line-height:1.45}
@@ -73,8 +74,18 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <button class="demoCard" type="button" data-demo-index="0" aria-pressed="false"><img src="assets/demos/demo-mascot.jpg" alt="" loading="lazy"><span>激烈ゆるキャラ</span></button>
       <button class="demoCard" type="button" data-demo-index="1" aria-pressed="false"><img src="assets/demos/demo-heroine.jpg" alt="" loading="lazy"><span>美少女キャラ</span></button>
       <button class="demoCard" type="button" data-demo-index="2" aria-pressed="false"><img src="assets/demos/demo-fluffy.jpg" alt="" loading="lazy"><span>モフモフ動物</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="3" aria-pressed="false"><img src="assets/demos/demo-mascot-standee-thumb.png" alt="" loading="lazy"><span>ゆるアクスタ（透過）</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="4" aria-pressed="false"><img src="assets/demos/demo-fluffy-standee-thumb.png" alt="" loading="lazy"><span>モフモフアクスタ（透過）</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="5" aria-pressed="false"><img src="assets/demos/demo-standee-girl-celestial-thumb.png" alt="" loading="lazy"><span>星詠み美少女</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="6" aria-pressed="false"><img src="assets/demos/demo-standee-girl-cyber-thumb.png" alt="" loading="lazy"><span>ネオン美少女</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="7" aria-pressed="false"><img src="assets/demos/demo-standee-man-royal-thumb.png" alt="" loading="lazy"><span>王宮イケメン</span></button>
+      <button class="demoCard standee" type="button" data-demo-index="8" aria-pressed="false"><img src="assets/demos/demo-standee-man-street-thumb.png" alt="" loading="lazy"><span>ストリートイケメン</span></button>
     </div>
     <div class="hint">完全オリジナルの背景＋透過立ち絵です。画像を押すと2層で立体表示し、右上の「愛でる」で順番に切り替えられます。</div>
+    <div class="sectionTitle">動くアクスタ</div>
+    <label class="check"><input id="autoMotion" type="checkbox" checked>部位別の自動モーション</label>
+    <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.62"></div>
+    <div class="hint">アクスタ用デモでは頭・胴体・髪・布／毛・小物・尻尾を別の減衰ばねで常時微動させます。視差低減設定では停止します。</div>
     <div class="sectionTitle">自分の画像</div>
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
@@ -208,6 +219,15 @@ uniform float u_spatialStrength;
 uniform float u_zeroParallax;
 uniform float u_viewZ;
 uniform float u_hasLayeredDemo;
+uniform float u_autoRigEnabled;
+uniform vec2 u_bodyMotion;
+uniform vec2 u_headMotion;
+uniform vec2 u_materialMotion;
+uniform vec2 u_propMotion;
+uniform vec4 u_rigCenters;
+uniform vec4 u_rigRadii;
+uniform vec4 u_materialRegion;
+uniform float u_standeeMode;
 varying vec2 v_uv;
 
 vec4 sourceColorAt(vec2 uv){
@@ -254,6 +274,24 @@ float subjectMaskAt(vec2 uv){
   float suppliedMask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
   float mappedMask=mix(depthMask,suppliedMask,u_hasSubjectMask);
   return mix(proceduralMask,smoothstep(0.08,0.92,mappedMask),max(u_hasDepthMap,u_hasSubjectMask));
+}
+
+float rigEllipseAt(vec2 uv,vec2 center,vec2 radius){
+  vec2 point=(uv-center)/max(radius,vec2(0.001));
+  return 1.0-smoothstep(0.62,1.04,length(point));
+}
+
+vec2 riggedForegroundUV(vec2 uv){
+  float enabled=u_autoRigEnabled*u_hasLayeredDemo*u_motionScale;
+  if(enabled<0.001)return uv;
+  float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy);
+  float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw);
+  float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw);
+  vec2 displacement=u_bodyMotion;
+  displacement+=u_headMotion*headInfluence;
+  displacement+=u_materialMotion*materialInfluence;
+  displacement+=u_propMotion*propInfluence;
+  return uv-displacement*subjectMaskAt(uv)*enabled;
 }
 
 float softSubjectMaskAt(vec2 uv){
@@ -458,6 +496,7 @@ void main(){
   }
 
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
+  foregroundUV=riggedForegroundUV(foregroundUV);
   foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
   // 移動先のマスクだけを軽くぼかし、低解像度AIマスクの階段状輪郭を見せない。
   float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
@@ -553,6 +592,13 @@ void main(){
     c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*reliefStrength;
   }
 
+  // 透過立ち絵の縁へ薄いアクリル反射と移動するハイライトを加える。
+  float acrylicRim=subjectBoundaryAt(foregroundUV)*u_standeeMode;
+  float acrylicSweep=pow(max(0.0,1.0-abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13),3.0);
+  acrylicSweep*=foregroundMask*u_standeeMode*u_motionScale;
+  c.rgb=mix(c.rgb,vec3(0.72,0.94,1.0),clamp(acrylicRim*0.30,0.0,0.32));
+  c.rgb+=vec3(0.26,0.54,0.66)*acrylicSweep*0.16;
+
   c.rgb*=1.0-contactShadowAt(base)*0.42;
   c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20;
   vec2 cleanupUV=mix(backgroundUV,foregroundUV,foregroundMask);
@@ -604,7 +650,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_materialRegion","u_standeeMode"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -614,6 +660,13 @@ gl.uniform1i(U.u_foregroundTex,4);
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let hasLayeredDemo=false,demoLoadSerial=0;
+let activeRigProfile=null,activeStandee=false;
+const rigSprings={
+  body:{x:0,y:0,vx:0,vy:0},
+  head:{x:0,y:0,vx:0,vy:0},
+  material:{x:0,y:0,vx:0,vy:0},
+  prop:{x:0,y:0,vx:0,vy:0}
+};
 let recognitionBounds=null,recognitionGuideCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1},guideDragTarget=null;
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
@@ -629,6 +682,12 @@ let fpsN=0,fpsT=performance.now();
 const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
 const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
 let panelVisible=false;
+
+function resetRigSprings(){
+  for(const spring of Object.values(rigSprings)){
+    spring.x=0;spring.y=0;spring.vx=0;spring.vy=0;
+  }
+}
 
 function setPanelVisible(visible,{persist=true}={}){
   panelVisible=visible;
@@ -710,7 +769,13 @@ function loadURL(url,label,revoke=false){
 const DEMO_ASSETS=[
   {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
   {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68"},
-  {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"}
+  {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
+  {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,rig:{head:[0.50,0.45,0.39,0.22],material:[0.50,0.40,0.48,0.27],prop:[0.50,0.60,0.12,0.11]}},
+  {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,rig:{head:[0.62,0.36,0.30,0.24],material:[0.34,0.57,0.36,0.32],prop:[0.22,0.60,0.22,0.24]}},
+  {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
+  {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
+  {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
+  {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}}
 ];
 let activeDemoIndex=-1;
 
@@ -746,14 +811,19 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     uploadMapImage(foregroundTex,gl.TEXTURE4,foreground);
     hasLayeredDemo=true;
     hasSubjectMask=true;
+    activeRigProfile=demo.rig||null;
+    activeStandee=Boolean(demo.standee);
+    resetRigSprings();
     maskSource="透過立ち絵";
     updateRecognitionGuide(foreground,{useAlpha:true});
     updateMapStatus("背景＋立ち絵の2層");
     syncContourCropAvailability();
-    statusEl.textContent="表示中: デモ: "+demo.label+"（2層）";
+    statusEl.textContent="表示中: デモ: "+demo.label+(demo.standee ? "（動くアクスタ）" : "（2層）");
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
     hasLayeredDemo=false;
+    activeRigProfile=null;
+    activeStandee=false;
     loadURL(demo.src,"デモ: "+demo.label+"（単一画像）");
     errEl.textContent="2層素材を読み込めないため単一画像で表示します。";
   }
@@ -771,6 +841,9 @@ $("#file").addEventListener("change",e=>{
   if(!f)return;
   demoLoadSerial++;
   activeDemoIndex=-1;
+  activeRigProfile=null;
+  activeStandee=false;
+  resetRigSprings();
   updateDemoSelection();
   statusEl.textContent="画像読込中…";
   const url=URL.createObjectURL(f);
@@ -1134,6 +1207,7 @@ function syncContourCropAvailability(){
 $("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
 const EDIT_CONTROL_IDS=[
+  "autoMotion","motionStrength",
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal",
   "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
@@ -1512,6 +1586,38 @@ function smoothingFactor(rate,deltaSeconds){
   return 1-Math.exp(-rate*deltaSeconds);
 }
 
+function stepRigSpring(spring,targetX,targetY,stiffness,damping,gravity,deltaSeconds){
+  const accelerationX=(targetX-spring.x)*stiffness-spring.vx*damping;
+  const accelerationY=(targetY+gravity-spring.y)*stiffness-spring.vy*damping;
+  spring.vx+=accelerationX*deltaSeconds;
+  spring.vy+=accelerationY*deltaSeconds;
+  spring.x=Math.max(-0.010,Math.min(0.010,spring.x+spring.vx*deltaSeconds));
+  spring.y=Math.max(-0.010,Math.min(0.010,spring.y+spring.vy*deltaSeconds));
+}
+
+function updateRigMotion(now,deltaSeconds){
+  const enabled=Boolean(activeRigProfile&&activeStandee&&hasLayeredDemo&&$("#autoMotion").checked&&!reduceMotion.matches);
+  if(!enabled){
+    resetRigSprings();
+    return false;
+  }
+  const seconds=now*0.001;
+  const strength=parseFloat($("#motionStrength").value);
+  const bodyTargetX=Math.sin(seconds*0.83)*0.00045*strength;
+  const bodyTargetY=Math.sin(seconds*1.66)*0.00070*strength;
+  const headTargetX=(-viewX*0.00070+Math.sin(seconds*1.13)*0.00080)*strength;
+  const headTargetY=(Math.cos(seconds*1.41)*0.00055-viewY*0.00022)*strength;
+  const materialTargetX=(-viewX*0.00110+Math.sin(seconds*1.76+0.8)*0.00165)*strength;
+  const materialTargetY=Math.cos(seconds*1.24+0.4)*0.00055*strength;
+  const propTargetX=(-viewX*0.00155+Math.sin(seconds*1.29+1.7)*0.00220)*strength;
+  const propTargetY=Math.cos(seconds*0.91+1.2)*0.00075*strength;
+  stepRigSpring(rigSprings.body,bodyTargetX,bodyTargetY,34.0,10.5,-0.00004*strength,deltaSeconds);
+  stepRigSpring(rigSprings.head,headTargetX,headTargetY,25.0,8.2,-0.00014*strength,deltaSeconds);
+  stepRigSpring(rigSprings.material,materialTargetX,materialTargetY,14.0,5.8,-0.00082*strength,deltaSeconds);
+  stepRigSpring(rigSprings.prop,propTargetX,propTargetY,8.5,4.2,-0.00135*strength,deltaSeconds);
+  return true;
+}
+
 function render(now){
   resize();
   detect(now);
@@ -1530,6 +1636,7 @@ function render(now){
   midViewY+=(viewY-midViewY)*midFollow;
   farViewX+=(viewX-farViewX)*farFollow;
   farViewY+=(viewY-farViewY)*farFollow;
+  const autoRigActive=updateRigMotion(now,deltaSeconds);
 
   gl.useProgram(prog);
   gl.uniform2f(U.u_view,viewX,viewY);
@@ -1549,6 +1656,16 @@ function render(now){
   gl.uniform1f(U.u_hasDepthMap,hasDepthMap ? 1 : 0);
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
   gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
+  gl.uniform1f(U.u_autoRigEnabled,autoRigActive ? 1 : 0);
+  gl.uniform2f(U.u_bodyMotion,rigSprings.body.x,rigSprings.body.y);
+  gl.uniform2f(U.u_headMotion,rigSprings.head.x,rigSprings.head.y);
+  gl.uniform2f(U.u_materialMotion,rigSprings.material.x,rigSprings.material.y);
+  gl.uniform2f(U.u_propMotion,rigSprings.prop.x,rigSprings.prop.y);
+  const rig=activeRigProfile||{head:[0.5,0.2,0.18,0.16],material:[0.5,0.38,0.42,0.38],prop:[0.62,0.46,0.16,0.18]};
+  gl.uniform4f(U.u_rigCenters,rig.head[0],1-rig.head[1],rig.prop[0],1-rig.prop[1]);
+  gl.uniform4f(U.u_rigRadii,rig.head[2],rig.head[3],rig.prop[2],rig.prop[3]);
+  gl.uniform4f(U.u_materialRegion,rig.material[0],1-rig.material[1],rig.material[2],rig.material[3]);
+  gl.uniform1f(U.u_standeeMode,activeStandee&&hasLayeredDemo ? 1 : 0);
   gl.uniform2f(U.u_lightDirection,parseFloat($("#lightX").value),parseFloat($("#lightY").value));
   gl.uniform1f(U.u_lightingStrength,parseFloat($("#lightingStrength").value));
   const effects=effectFlags();

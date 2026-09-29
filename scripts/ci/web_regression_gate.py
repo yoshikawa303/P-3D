@@ -62,6 +62,17 @@ def main() -> int:
         "assets/demos/demo-fluffy.jpg",
         "assets/demos/demo-fluffy-background.jpg",
         "assets/demos/demo-fluffy-foreground.png",
+        "assets/demos/standee-stage.jpg",
+        "assets/demos/demo-standee-girl-celestial.png",
+        "assets/demos/demo-standee-girl-celestial-thumb.png",
+        "assets/demos/demo-standee-girl-cyber.png",
+        "assets/demos/demo-standee-girl-cyber-thumb.png",
+        "assets/demos/demo-standee-man-royal.png",
+        "assets/demos/demo-standee-man-royal-thumb.png",
+        "assets/demos/demo-standee-man-street.png",
+        "assets/demos/demo-standee-man-street-thumb.png",
+        "assets/demos/demo-mascot-standee-thumb.png",
+        "assets/demos/demo-fluffy-standee-thumb.png",
     ]:
         require((ROOT / demo_path).is_file(), f"デモ画像がありません: {demo_path}")
         require(demo_path in html, f"デモ画像がUIから参照されていません: {demo_path}")
@@ -76,6 +87,38 @@ def main() -> int:
     require("uniform sampler2D u_foregroundTex;" in html, "透過立ち絵の独立テクスチャがありません")
     require("uniform float u_hasLayeredDemo;" in html, "2層デモの切替uniformがありません")
     require("vec4 sourceColorAt(vec2 uv)" in html, "背景と透過立ち絵の合成処理がありません")
+    require(html.count("data-demo-index=") >= 9, "背景なしゆるキャラ／モフモフを含む9種類以上のデモがありません")
+    require("ゆるアクスタ（透過）" in html, "背景なしゆるキャラのアクスタデモがありません")
+    require("モフモフアクスタ（透過）" in html, "背景なしモフモフ動物のアクスタデモがありません")
+    for element_id, label in [
+        ("autoMotion", "アクスタ自動モーション切替"),
+        ("motionStrength", "簡易重力モーション強度"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    for uniform in [
+        "uniform float u_autoRigEnabled;",
+        "uniform vec2 u_bodyMotion;",
+        "uniform vec2 u_headMotion;",
+        "uniform vec2 u_materialMotion;",
+        "uniform vec2 u_propMotion;",
+        "uniform vec4 u_rigCenters;",
+        "uniform vec4 u_rigRadii;",
+        "uniform vec4 u_materialRegion;",
+        "uniform float u_standeeMode;",
+    ]:
+        require(uniform in html, f"アクスタ疑似リグのshader uniformがありません: {uniform}")
+    require("function stepRigSpring(" in html, "簡易重力ばねの更新処理がありません")
+    require("const rigSprings=" in html, "部位別の独立ばね状態がありません")
+    require("stepRigSpring(rigSprings.body" in html, "胴体の独立ばねがありません")
+    require("stepRigSpring(rigSprings.head" in html, "頭部の独立ばねがありません")
+    require("stepRigSpring(rigSprings.material" in html, "髪／布の独立ばねがありません")
+    require("stepRigSpring(rigSprings.prop" in html, "小物の独立ばねがありません")
+    require("vec2 riggedForegroundUV(vec2 uv)" in html, "部位別の微小UV変形がありません")
+    require("float acrylicRim=" in html, "アクスタ輪郭の透明素材表現がありません")
+    require(
+        "abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13" in html,
+        "アクスタ反射帯を0〜1へ収める幅正規化がありません",
+    )
     require("loadDemo(0,{hidePanel:false,recordHistory:false});" in html, "初回表示でデモ画像を鑑賞できません")
     require('aria-pressed="false"' in html, "デモ選択状態のアクセシビリティ属性がありません")
     for value, label in [
@@ -353,6 +396,7 @@ def main() -> int:
     print("PASS: camera-before-MediaPipe ordering")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
+    print("PASS: nine demos and four-part acrylic stand spring rig")
     print("PASS: Cross-AI governance documents")
     return 0
 
