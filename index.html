@@ -766,6 +766,9 @@ function alphaBounds(source){
   return {x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1,centerX:weight ? weightedX/weight : (minX+maxX)/2};
 }
 
+// 共通背景の回転台中央上面。足先最下端を前縁ではなく、この接地線へ合わせる。
+const STANDEE_STAGE_CONTACT_Y=0.795;
+
 function prepareStandeeForStage(source,demo){
   const canvas=document.createElement("canvas");
   canvas.width=768;canvas.height=1152;
@@ -777,8 +780,8 @@ function prepareStandeeForStage(source,demo){
     x:bounds.x*sourceScaleX,y:bounds.y*sourceScaleY,
     width:bounds.width*sourceScaleX,height:bounds.height*sourceScaleY
   };
-  // 展示台上面(y=0.84)へ足元を揃え、左右のケースを隠さない幅に自動fitする。
-  const targetBottom=demo.stageBottom||0.84;
+  // 回転台中央の上面へ足元を揃え、左右のケースを隠さない幅に自動fitする。
+  const targetBottom=demo.stageBottom||STANDEE_STAGE_CONTACT_Y;
   const targetTop=demo.stageTop||0.13;
   const maxWidth=demo.stageWidth||0.58;
   const scale=Math.min(canvas.width*maxWidth/sourceRect.width,canvas.height*(targetBottom-targetTop)/sourceRect.height);
