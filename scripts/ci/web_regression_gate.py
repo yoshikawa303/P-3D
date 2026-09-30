@@ -114,7 +114,8 @@ def main() -> int:
     require("stepRigSpring(rigSprings.material" in html, "髪／布の独立ばねがありません")
     require("stepRigSpring(rigSprings.prop" in html, "小物の独立ばねがありません")
     require("vec2 riggedForegroundUV(vec2 uv)" in html, "部位別の微小UV変形がありません")
-    require("float acrylicRim=" in html, "アクスタ輪郭の透明素材表現がありません")
+    require("float acrylicSweep=" in html, "アクスタ内側の透明素材表現がありません")
+    require("acrylicRim" not in html, "アクスタへ常時着色する輪郭反射が残っています")
     require(
         "abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13" in html,
         "アクスタ反射帯を0〜1へ収める幅正規化がありません",
@@ -126,8 +127,11 @@ def main() -> int:
     require("uniform vec4 u_live2dMotion;" in html, "瞬き・口元・呼吸のLive2D風uniformがありません")
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
     require("const blinkPulse=" in html and "const breathMotion=" in html, "自動瞬き・呼吸がありません")
-    require("float boundary=subjectBoundaryAt(sampledUV);" in html, "輪郭補正が移動後の境界へ追従していません")
+    require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
+    require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
+    require("foregroundMask=displacedForegroundMask;" in html, "移動前マスクが最終合成へ残る可能性があります")
     require("vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);" in html, "背後影が移動前輪郭へ残ります")
+    require("float groundBand=1.0-smoothstep" in html, "背後影が足元以外の全輪郭へ回り込みます")
     require("loadDemo(0,{hidePanel:false,recordHistory:false});" in html, "初回表示でデモ画像を鑑賞できません")
     require('aria-pressed="false"' in html, "デモ選択状態のアクセシビリティ属性がありません")
     for value, label in [
@@ -179,10 +183,9 @@ def main() -> int:
         "uniform float u_hologramNearSuppression;",
     ]:
         require(uniform in html, f"複合／輪郭処理のshader uniformがありません: {uniform}")
-    require("float subjectBoundaryAt(vec2 uv)" in html, "人物／物体境界の検出処理がありません")
-    require("vec3 softBlurAt(vec2 uv)" in html, "不要輪郭のソフトぼかし処理がありません")
-    require("vec3 applyCommonCleanup" in html, "各モード共通の輪郭抑制処理がありません")
-    require("applyCommonCleanup" in html[html.index("void main()") :], "最終描画へ共通輪郭抑制を適用していません")
+    require("subjectBoundaryAt" not in html, "輪郭だけを抽出して再着色する処理が残っています")
+    require("softBlurAt" not in html, "元の合成画像を再サンプルする輪郭ぼかしが残っています")
+    require("applyCommonCleanup" not in html, "移動前背景を境界へ混ぜる共通輪郭処理が残っています")
     require("float hologramDepthAttenuation=" in html, "Depthに応じたホログラム強度制御がありません")
     require("u_hologramNearSuppression" in html, "近景ホログラム抑制値をshaderで利用していません")
     for use in [
@@ -254,8 +257,6 @@ def main() -> int:
     require("float contactShadowAt(vec2 uv)" in html, "視点連動の被写体背後影がありません")
     require("float spatialWindowShadeAt(vec2 uv)" in html, "画面面を固定する空間ウィンドウ陰影がありません")
     require("float softSubjectMaskAt(vec2 uv)" in html, "移動した被写体輪郭のソフト化がありません")
-    require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動した被写体輪郭による動的遮蔽がありません")
-    require("foregroundMask=mix(foregroundMask,displacedForegroundMask" in html, "動的遮蔽マスクが最終合成へ反映されていません")
     require("const leftEye=lm[33],rightEye=lm[263]" in html, "顔サイズから前後位置を求めていません")
     require("faceScaleBaseline" in html and "targetZ=" in html, "顔の接近／離反追跡がありません")
     require("function smoothingFactor(rate,deltaSeconds)" in html, "更新レート非依存の視点追従がありません")
@@ -267,7 +268,7 @@ def main() -> int:
     require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")
     require("uniform vec2 u_texelSize;" in html, "輪郭検出用texelサイズのshader uniformがありません")
     require("uniform float u_motionScale;" in html, "視差低減用のshader uniformがありません")
-    require("float imageEdgeAt(vec2 uv)" in html, "画像輪郭の検出処理がありません")
+    require("imageEdgeAt" not in html, "輪郭再強調に使われる画像エッジ検出が残っています")
     require(
         "backgroundUV=base;" in html,
         "振動3Dで背景を固定サンプリングしていません",
@@ -296,6 +297,9 @@ def main() -> int:
 
     require('id="guide"' in html, "編集対象を示すガイドcanvasがありません")
     require("function drawGuides()" in html, "中心・範囲・光源・認識領域の動的ガイドがありません")
+    require('id="showGuides"' in html, "編集ガイドの表示切替がありません")
+    require('!$("#showGuides").checked' in html, "編集ガイドが初期状態で画像へ重なります")
+    require("const size=384;" in html, "認識ガイドの輪郭解像度が低すぎます")
     require("function updateRecognitionGuide(source" in html, "認識マスクから編集ガイドを作成していません")
     require("function guideDragTargetAt(event)" in html, "画像上の編集ハンドル判定がありません")
     require("function updateGuideDrag(event)" in html, "画像上のガイドドラッグ編集がありません")

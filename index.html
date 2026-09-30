@@ -119,7 +119,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <div class="effectControl"><label class="check"><input id="enableTrickPortal" type="checkbox">トリックポータル</label><input id="trickPortalStrength" aria-label="トリックポータル強度" type="range" min="0" max="1" step="0.01" value="0.72"></div>
     </div>
     <div class="hint">OFF時は単独モード、ON時はチェックした処理を同時適用します。人物分離後はDepth多層＋トリックポータルの組み合わせが効果的です。</div>
-    <div class="row"><label for="edgeCleanup">不要輪郭ぼかし</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
+    <div class="row"><label for="edgeCleanup">輪郭ノイズ除去</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
     <div class="row"><label for="hologramNearSuppression">手前ホロ抑制</label><input id="hologramNearSuppression" type="range" min="0" max="1" step="0.01" value="0.55"></div>
     <div class="sectionTitle">裸眼3D強調</div>
     <label class="check"><input id="enableSpatial" type="checkbox" checked>視点追従の空間表現を強める</label>
@@ -128,6 +128,8 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="row"><label for="viewDepth">前後視点</label><input id="viewDepth" type="range" min="-1" max="1" step="0.01" value="0"></div>
     <div class="hint">画面面を基準に手前／奥を逆方向へ動かし、遮蔽・背後影・近接ズームを同期します。通常画面の1人向け視点追従で、左右眼別のステレオ映像ではありません。</div>
     <div class="sectionTitle">立体・照明ガイド</div>
+    <label class="check"><input id="showGuides" type="checkbox">編集ガイドを表示</label>
+    <div class="hint">ON時だけ認識マスク、中心、範囲、光源を画像へ重ねます。ガイドは処理結果には含まれません。</div>
     <div class="row"><label for="lightX">光源X</label><input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.42"></div>
     <div class="row"><label for="lightY">光源Y</label><input id="lightY" type="range" min="-1" max="1" step="0.01" value="0.68"></div>
     <div class="row"><label for="lightingStrength">光・陰影強度</label><input id="lightingStrength" type="range" min="0" max="1" step="0.01" value="0.72"></div>
@@ -231,11 +233,27 @@ uniform float u_standeeMode;
 uniform vec4 u_live2dMotion;
 varying vec2 v_uv;
 
+float cleanLayerAlphaAt(vec2 uv){
+  vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
+  vec2 stepSize=max(u_texelSize,vec2(0.0005));
+  float center=texture2D(u_foregroundTex,safeUV).a;
+  float crossMean=0.25*(
+    texture2D(u_foregroundTex,clamp(safeUV+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).a+
+    texture2D(u_foregroundTex,clamp(safeUV-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).a+
+    texture2D(u_foregroundTex,clamp(safeUV+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).a+
+    texture2D(u_foregroundTex,clamp(safeUV-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).a
+  );
+  float cleanup=clamp(u_edgeCleanup,0.0,1.0);
+  float inwardAlpha=mix(center,min(center,crossMean),cleanup*0.72);
+  return smoothstep(mix(0.02,0.16,cleanup),mix(0.98,0.82,cleanup),inwardAlpha);
+}
+
 vec4 sourceColorAt(vec2 uv){
   vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
   vec4 original=texture2D(u_tex,safeUV);
   vec4 layerForeground=texture2D(u_foregroundTex,safeUV);
-  vec4 layered=mix(texture2D(u_backgroundTex,safeUV),layerForeground,layerForeground.a);
+  float layerAlpha=cleanLayerAlphaAt(safeUV);
+  vec4 layered=vec4(mix(texture2D(u_backgroundTex,safeUV).rgb,layerForeground.rgb,layerAlpha),1.0);
   return mix(original,layered,u_hasLayeredDemo);
 }
 
@@ -268,8 +286,7 @@ float depthAt(vec2 uv){
 }
 
 float subjectMaskAt(vec2 uv){
-  float layerMask=texture2D(u_foregroundTex,clamp(uv,vec2(0.0),vec2(1.0))).a;
-  if(u_hasLayeredDemo>0.5)return smoothstep(0.02,0.98,layerMask);
+  if(u_hasLayeredDemo>0.5)return cleanLayerAlphaAt(uv);
   float proceduralMask=smoothstep(0.42,0.72,proceduralDepthAt(uv));
   float depthMask=smoothstep(0.08,0.24,sampledDepthAt(uv));
   float suppliedMask=texture2D(u_subjectMaskTex,clamp(uv,vec2(0.0),vec2(1.0))).r;
@@ -331,29 +348,6 @@ vec3 hologramColor(float phase){
   return 0.5+0.5*cos(6.2831853*(phase+vec3(0.0,0.333,0.667)));
 }
 
-float lumaAt(vec2 uv){
-  vec3 color=sourceColorAt(uv).rgb;
-  return dot(color,vec3(0.299,0.587,0.114));
-}
-
-float imageEdgeAt(vec2 uv){
-  vec2 stepSize=max(u_texelSize,vec2(0.0005));
-  float gx=lumaAt(uv+vec2(stepSize.x,0.0))-lumaAt(uv-vec2(stepSize.x,0.0));
-  float gy=lumaAt(uv+vec2(0.0,stepSize.y))-lumaAt(uv-vec2(0.0,stepSize.y));
-  return smoothstep(0.14,0.42,abs(gx)+abs(gy));
-}
-
-float subjectBoundaryAt(vec2 uv){
-  vec2 stepSize=max(u_texelSize*2.5,vec2(0.0012));
-  float centerMask=subjectMaskAt(uv);
-  float delta=0.0;
-  delta=max(delta,abs(centerMask-subjectMaskAt(uv+vec2(stepSize.x,0.0))));
-  delta=max(delta,abs(centerMask-subjectMaskAt(uv-vec2(stepSize.x,0.0))));
-  delta=max(delta,abs(centerMask-subjectMaskAt(uv+vec2(0.0,stepSize.y))));
-  delta=max(delta,abs(centerMask-subjectMaskAt(uv-vec2(0.0,stepSize.y))));
-  return smoothstep(0.06,0.42,delta);
-}
-
 float depthDisparityAt(float depth){
   float spatialAmount=clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
   float relativeDepth=(depth-u_zeroParallax)*1.45;
@@ -405,7 +399,9 @@ float contactShadowAt(vec2 uv){
   caster+=subjectMaskAt(uv+shift+vec2(0.0,blurStep.y))*0.15;
   caster+=subjectMaskAt(uv+shift-vec2(0.0,blurStep.y))*0.15;
   float outside=1.0-smoothstep(0.08,0.58,subjectMaskAt(uv));
-  return outside*smoothstep(0.10,0.78,caster)*cueAmount;
+  // 全身の外周を影で縁取らず、接地する足元だけへ限定する。
+  float groundBand=1.0-smoothstep(0.20,0.38,uv.y);
+  return outside*smoothstep(0.10,0.78,caster)*cueAmount*groundBand;
 }
 
 float spatialWindowShadeAt(vec2 uv){
@@ -413,30 +409,6 @@ float spatialWindowShadeAt(vec2 uv){
   float fixedFrame=1.0-smoothstep(0.0,0.055,edgeDistance);
   float viewBias=0.72+0.28*clamp(dot(uv-0.5,u_view)*2.0+0.5,0.0,1.0);
   return fixedFrame*viewBias*clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0);
-}
-
-vec3 softBlurAt(vec2 uv){
-  vec2 stepSize=max(u_texelSize*2.2,vec2(0.0008));
-  vec3 color=sourceColorAt(uv).rgb*0.28;
-  color+=sourceColorAt(uv+vec2(stepSize.x,0.0)).rgb*0.12;
-  color+=sourceColorAt(uv-vec2(stepSize.x,0.0)).rgb*0.12;
-  color+=sourceColorAt(uv+vec2(0.0,stepSize.y)).rgb*0.12;
-  color+=sourceColorAt(uv-vec2(0.0,stepSize.y)).rgb*0.12;
-  color+=sourceColorAt(uv+stepSize).rgb*0.06;
-  color+=sourceColorAt(uv-stepSize).rgb*0.06;
-  color+=sourceColorAt(uv+vec2(stepSize.x,-stepSize.y)).rgb*0.06;
-  color+=sourceColorAt(uv+vec2(-stepSize.x,stepSize.y)).rgb*0.06;
-  return color;
-}
-
-vec3 applyCommonCleanup(vec3 color,vec2 baseUV,vec2 sampledUV){
-  float movement=clamp(length(sampledUV-baseUV)*72.0,0.0,1.0);
-  // 移動前ではなく移動後のalpha境界だけを使い、元位置の輪郭を再強調しない。
-  float boundary=subjectBoundaryAt(sampledUV);
-  float displacedEdge=imageEdgeAt(sampledUV)*boundary;
-  float artifactRisk=clamp(boundary*(0.30+0.70*movement)+displacedEdge*0.48,0.0,1.0);
-  float blurAmount=clamp(u_edgeCleanup,0.0,1.0)*artifactRisk*0.86;
-  return mix(color,softBlurAt(sampledUV),blurAmount);
 }
 
 float contourCropMaskAt(vec2 uv){
@@ -509,12 +481,12 @@ void main(){
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
   foregroundUV=riggedForegroundUV(foregroundUV);
   foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
-  // 移動先のマスクだけを軽くぼかし、低解像度AIマスクの階段状輪郭を見せない。
+  // すべてのモードで移動先のマスクを使い、移動前の輪郭を合成へ残さない。
   float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
-  foregroundMask=mix(foregroundMask,displacedForegroundMask,clamp(u_spatialEnhance*u_spatialStrength,0.0,1.0));
+  foregroundMask=displacedForegroundMask;
   vec4 backgroundColor=mix(texture2D(u_tex,backgroundUV),texture2D(u_backgroundTex,backgroundUV),u_hasLayeredDemo);
   vec4 foregroundColor=mix(texture2D(u_tex,foregroundUV),texture2D(u_foregroundTex,foregroundUV),u_hasLayeredDemo);
-  foregroundMask=mix(foregroundMask,foregroundColor.a,u_hasLayeredDemo);
+  foregroundColor.a=mix(foregroundColor.a,cleanLayerAlphaAt(foregroundUV),u_hasLayeredDemo);
   vec4 c;
   if(u_enableDepthLayers>0.5||u_enableVibration>0.5||u_enableTrickPortal>0.5||u_hasLayeredDemo>0.5){
     c=mix(backgroundColor,foregroundColor,foregroundMask);
@@ -546,19 +518,16 @@ void main(){
     vec3 layerNormal=depthNormalAt(base);
     vec3 layerLight=normalize(vec3(u_lightDirection,0.92)+vec3(u_view*0.20,0.0));
     float layerRelief=dot(layerNormal,layerLight)*0.5+0.5;
-    float depthEdge=clamp(length(layerNormal.xy)*1.8,0.0,1.0);
     float lighting=clamp(u_lightingStrength,0.0,1.0)*depthLayerStrength;
     float lightFacing=dot(layerNormal,layerLight);
     float whiteHighlight=pow(max(lightFacing,0.0),9.0)*foregroundMask*lighting;
     float surfaceShadow=pow(max(-lightFacing,0.0),1.35)*foregroundMask*lighting;
-    float boundaryGlow=depthEdge*foregroundMask*(0.30+0.45*whiteHighlight)*lighting;
-    float separation=foregroundMask*(0.05+0.12*layerRelief+0.10*depthEdge)*depthLayerStrength;
+    float separation=foregroundMask*(0.05+0.12*layerRelief)*depthLayerStrength;
     c.rgb*=1.0+separation;
     c.rgb*=1.0-surfaceShadow*(0.18+0.24*depthLayerStrength);
-    c.rgb=mix(c.rgb,vec3(1.0),clamp(whiteHighlight*0.42+boundaryGlow*0.20,0.0,0.58));
+    c.rgb=mix(c.rgb,vec3(1.0),clamp(whiteHighlight*0.42,0.0,0.58));
     float aerialDepth=(1.0-d)*(1.0-foregroundMask);
     c.rgb=mix(c.rgb,c.rgb*vec3(0.72,0.82,0.96),aerialDepth*0.24*depthLayerStrength);
-    c.rgb-=vec3(0.035,0.045,0.065)*(1.0-foregroundMask)*depthEdge*lighting;
   }
 
   float light=1.0+(u_view.x*(v_uv.x-.5)+u_view.y*(v_uv.y-.5))*0.08*parallaxDepth;
@@ -603,19 +572,15 @@ void main(){
     c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*reliefStrength;
   }
 
-  // 透過立ち絵の縁へ薄いアクリル反射と移動するハイライトを加える。
-  float acrylicRim=subjectBoundaryAt(foregroundUV)*u_standeeMode;
+  // アクリル表現は輪郭を着色せず、被写体内側を横切る弱い反射だけにする。
   float acrylicSweep=pow(max(0.0,1.0-abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13),3.0);
-  acrylicSweep*=foregroundMask*u_standeeMode*u_motionScale;
-  c.rgb=mix(c.rgb,vec3(0.72,0.94,1.0),clamp(acrylicRim*0.30,0.0,0.32));
-  c.rgb+=vec3(0.26,0.54,0.66)*acrylicSweep*0.16;
+  acrylicSweep*=smoothstep(0.25,0.75,foregroundMask)*u_standeeMode*u_motionScale;
+  c.rgb+=vec3(0.26,0.54,0.66)*acrylicSweep*0.10;
 
   // 2層素材では影も移動後の輪郭へ追従させ、元位置へ人物形状を残さない。
   vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);
   c.rgb*=1.0-contactShadowAt(shadowUV)*0.42;
   c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20;
-  vec2 cleanupUV=mix(backgroundUV,foregroundUV,foregroundMask);
-  c.rgb=applyCommonCleanup(c.rgb,base,cleanupUV);
   c.rgb*=contourCropMaskAt(foregroundUV);
   gl_FragColor=vec4(c.rgb,1.0);
 }`;
@@ -967,7 +932,7 @@ function uploadMapImage(texture,unit,img){
 }
 
 function updateRecognitionGuide(source,{useAlpha=false}={}){
-  const size=160;
+  const size=384;
   const sample=document.createElement("canvas");
   sample.width=sample.height=size;
   const context=sample.getContext("2d",{willReadFrequently:true});
@@ -1380,7 +1345,7 @@ function drawArrowHead(context,fromX,fromY,toX,toY,size){
 
 function drawGuides(){
   guideContext.clearRect(0,0,guideCanvas.width,guideCanvas.height);
-  if(!panelVisible||!hasImage){
+  if(!panelVisible||!hasImage||!$("#showGuides").checked){
     guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1};
     return;
   }
