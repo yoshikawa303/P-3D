@@ -121,14 +121,28 @@ def main() -> int:
         "アクスタ反射帯を0〜1へ収める幅正規化がありません",
     )
     require("function alphaBounds(source)" in html, "透過輪郭の自動認識がありません")
+    require("function inferRigProfile(source)" in html, "人物／動物／物体の共通リグ推定がありません")
     require("function prepareStandeeForStage(source,demo)" in html, "展示背景へアクスタを自動配置できません")
     require("const STANDEE_STAGE_CONTACT_Y=0.795;" in html, "回転台上面の接地線が定義されていません")
     require("targetBottom=demo.stageBottom||STANDEE_STAGE_CONTACT_Y" in html, "アクスタの足元が回転台上面へ揃いません")
     require("targetBottom=demo.stageBottom||0.84" not in html, "古い回転台前縁の接地線が残っています")
-    require("activeRigProfile=prepared?.rig||demo.rig||null" in html, "認識結果を自動リグへ使用していません")
+    require("activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground)" in html, "背景付きデモ全体の認識結果を自動リグへ使用していません")
+    require("activeRigProfile&&hasLayeredDemo&&$(\"#autoMotion\").checked" in html, "アクスタ以外でLive2D風モーションが無効です")
+    require("activeRigProfile&&activeStandee&&hasLayeredDemo" not in html, "アクスタ限定の旧モーション条件が残っています")
     require("uniform vec4 u_live2dMotion;" in html, "瞬き・口元・呼吸のLive2D風uniformがありません")
+    require("uniform vec4 u_bodyRegion;" in html, "胴体領域を独立認識していません")
+    require("uniform float u_groundAnchor;" in html, "背景内の接地基準がありません")
+    require("uniform vec2 u_motionRange;" in html, "背景内の許容稼働範囲がありません")
+    require("float anchoredMotionWeight(vec2 uv)" in html, "足元へ向けて前景視差を減衰できません")
+    require("mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base))" in html, "背景と足元の共通座標がありません")
+    require("vec2 portalPivot=vec2(0.5,u_groundAnchor);" in html, "背景透視変形が接地点を中心にしていません")
+    require("(1.0-anchoredMotionWeight(base))*u_hasLayeredDemo" in html, "ポータル背景が接地点で固定されていません")
+    require("clamp(offset,-u_motionRange,u_motionRange)" in html, "前景と背景の稼働範囲制限がありません")
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
     require("const blinkPulse=" in html and "const breathMotion=" in html, "自動瞬き・呼吸がありません")
+    require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
+    require("*0.00180*strength" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
+    require("足元は背景の接地点へ保持します" in html, "接地保持のUI説明がありません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
     require("foregroundMask=displacedForegroundMask;" in html, "移動前マスクが最終合成へ残る可能性があります")
@@ -234,7 +248,7 @@ def main() -> int:
     require("layeredView=mix(u_viewFar,u_viewMid" in html, "遠景／中景の視差遅延合成がありません")
     require("layeredView=mix(layeredView,u_viewNear" in html, "近景の視差遅延合成がありません")
     require(
-        "vec2 backgroundOffset=u_viewFar*u_depth*layeredDisparity" in html,
+        "vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredDisparity" in html,
         "背景Depthの遠景相対視差がありません",
     )
     require("float whiteHighlight=" in html, "人物／物体の入射光による白飛びがありません")

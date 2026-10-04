@@ -82,10 +82,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <button class="demoCard standee" type="button" data-demo-index="8" aria-pressed="false"><img src="assets/demos/demo-standee-man-street-thumb.png" alt="" loading="lazy"><span>ストリートイケメン</span></button>
     </div>
     <div class="hint">完全オリジナルの背景＋透過立ち絵です。画像を押すと2層で立体表示し、右上の「愛でる」で順番に切り替えられます。</div>
-    <div class="sectionTitle">動くアクスタ</div>
+    <div class="sectionTitle">Live2D風モーション</div>
     <label class="check"><input id="autoMotion" type="checkbox" checked>Live2D風自動認識モーション</label>
-    <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.62"></div>
-    <div class="hint">透過輪郭から頭・顔・胴体・髪／耳・小物を自動推定し、瞬き・呼吸と部位別の減衰ばねを初期状態から動かします。視差低減設定では停止します。</div>
+    <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"></div>
+    <div class="hint">背景付きデモ全てで透過輪郭から頭・顔・胴体・髪／耳／布・小物を自動推定し、瞬き・呼吸と部位別の減衰ばねを動かします。足元は背景の接地点へ保持します。視差低減設定では停止します。</div>
     <div class="sectionTitle">自分の画像</div>
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
@@ -228,7 +228,10 @@ uniform vec2 u_materialMotion;
 uniform vec2 u_propMotion;
 uniform vec4 u_rigCenters;
 uniform vec4 u_rigRadii;
+uniform vec4 u_bodyRegion;
 uniform vec4 u_materialRegion;
+uniform float u_groundAnchor;
+uniform vec2 u_motionRange;
 uniform float u_standeeMode;
 uniform vec4 u_live2dMotion;
 varying vec2 v_uv;
@@ -299,25 +302,41 @@ float rigEllipseAt(vec2 uv,vec2 center,vec2 radius){
   return 1.0-smoothstep(0.62,1.04,length(point));
 }
 
+float anchoredMotionWeight(vec2 uv){
+  float anchorSpan=max(u_bodyRegion.w*1.15,0.12);
+  return smoothstep(0.0,anchorSpan,uv.y-u_groundAnchor);
+}
+
+vec2 constrainMotionOffset(vec2 offset){
+  return clamp(offset,-u_motionRange,u_motionRange);
+}
+
 vec2 riggedForegroundUV(vec2 uv){
   float enabled=u_autoRigEnabled*u_hasLayeredDemo*u_motionScale;
   if(enabled<0.001)return uv;
   float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy);
   float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw);
   float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw);
+  float bodyInfluence=rigEllipseAt(uv,u_bodyRegion.xy,u_bodyRegion.zw);
+  float anchorWeight=anchoredMotionWeight(uv);
   vec2 headPoint=(uv-u_rigCenters.xy)/max(u_rigRadii.xy,vec2(0.001));
+  vec2 bodyPoint=(uv-u_bodyRegion.xy)/max(u_bodyRegion.zw,vec2(0.001));
   float eyeBand=headInfluence*exp(-pow((headPoint.y-0.10)*8.5,2.0));
   float mouthBand=headInfluence*exp(-pow((headPoint.y+0.34)*10.0,2.0));
-  float torsoInfluence=rigEllipseAt(uv,u_materialRegion.xy,vec2(u_materialRegion.z*0.62,u_materialRegion.w*0.72));
-  vec2 displacement=u_bodyMotion;
-  displacement+=u_headMotion*headInfluence;
-  displacement+=u_materialMotion*materialInfluence;
-  displacement+=u_propMotion*propInfluence;
-  // 透過輪郭から推定した顔・胴体領域へ、瞬き、口元、呼吸、視線の軽い連続変形を加える。
-  displacement.x+=(headPoint.y*u_live2dMotion.z*0.0018)*headInfluence;
-  displacement.y+=eyeBand*u_live2dMotion.x*0.0022;
-  displacement.y-=mouthBand*u_live2dMotion.y*0.0012;
-  displacement.y-=torsoInfluence*u_live2dMotion.w*0.0015;
+  vec2 displacement=vec2(0.0);
+  // 足元では0へ減衰させ、胴体を接地点から傾ける。
+  displacement.x+=u_bodyMotion.x*bodyInfluence*anchorWeight*(0.55+0.65*abs(bodyPoint.y));
+  displacement.y+=u_bodyMotion.y*bodyInfluence*anchorWeight;
+  // 頭、髪／布／耳、小物は別のばね状態として遅れて追従させる。
+  displacement+=u_headMotion*headInfluence*1.30;
+  displacement+=u_materialMotion*materialInfluence*1.18;
+  displacement+=u_propMotion*propInfluence*1.35;
+  // 顔と胴体は単なる平行移動ではなく、局所的な開閉／伸縮を使う。
+  displacement.x+=(headPoint.y*u_live2dMotion.z*0.0048)*headInfluence;
+  displacement.y+=(headPoint.y-0.10)*eyeBand*u_live2dMotion.x*0.030;
+  displacement.y-=(headPoint.y+0.34)*mouthBand*u_live2dMotion.y*0.020;
+  displacement.x-=bodyPoint.x*bodyInfluence*u_live2dMotion.w*0.0045;
+  displacement.y-=bodyInfluence*anchorWeight*u_live2dMotion.w*0.0018;
   return uv-displacement*subjectMaskAt(uv)*enabled;
 }
 
@@ -368,13 +387,14 @@ float portalFrameAt(vec2 uv){
 }
 
 vec2 trickPortalBackgroundUV(vec2 uv,float strength){
-  vec2 point=uv-0.5;
-  // 奥へ向かう台形変形と視点連動のずれだけで、追加モデルなしの窓奥行きを作る。
+  vec2 portalPivot=vec2(0.5,u_groundAnchor);
+  vec2 point=uv-portalPivot;
+  // キャラの接地点を固定軸にし、上方の背景ほど奥行きを強くする。
   point.x*=1.0+point.y*0.24*strength;
   point.y*=1.0+0.08*strength;
   float farDepth=1.0-depthAt(uv);
-  point+=u_view*vec2(0.050,0.036)*(0.45+0.55*farDepth)*strength;
-  return point+0.5;
+  point+=u_view*vec2(0.050,0.036)*(0.45+0.55*farDepth)*strength*anchoredMotionWeight(uv);
+  return point+portalPivot;
 }
 
 float portalFrameLightAt(vec2 uv){
@@ -454,14 +474,20 @@ void main(){
   float depthDisparity=depthDisparityAt(parallaxDepth);
   vec2 backgroundUV=base;
   vec2 foregroundUV=base-u_view*u_depth*depthDisparity*depthScale;
+  if(u_hasLayeredDemo>0.5){
+    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*depthDisparity*0.28);
+    vec2 foregroundOffset=constrainMotionOffset(u_view*u_depth*depthDisparity*depthScale);
+    backgroundUV=base-backgroundOffset;
+    foregroundUV=base-mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base));
+  }
   if(u_enableDepthLayers>0.5){
     vec2 layeredView=mix(u_viewFar,u_viewMid,smoothstep(0.22,0.58,d));
     layeredView=mix(layeredView,u_viewNear,smoothstep(0.58,0.86,d));
     float layeredDisparity=depthDisparityAt(d);
-    vec2 backgroundOffset=u_viewFar*u_depth*layeredDisparity*0.34*depthLayerStrength;
-    vec2 foregroundOffset=layeredView*u_depth*layeredDisparity*(1.0+0.95*depthLayerStrength)*depthLayerStrength;
+    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredDisparity*0.34*depthLayerStrength);
+    vec2 foregroundOffset=constrainMotionOffset(layeredView*u_depth*layeredDisparity*(1.0+0.95*depthLayerStrength)*depthLayerStrength);
     backgroundUV=base-backgroundOffset;
-    foregroundUV=base-foregroundOffset;
+    foregroundUV=base-mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base)*u_hasLayeredDemo+(1.0-u_hasLayeredDemo));
   }
 
   if(u_enableVibration>0.5){
@@ -470,12 +496,14 @@ void main(){
     vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
     vibration*=vec2(0.0035,0.0016)*vibrationStrength*u_motionScale;
     if(u_enableDepthLayers<0.5)foregroundUV=base-(base-foregroundUV)*vibrationStrength;
-    foregroundUV-=vibration*foregroundMask;
-    if(u_enableDepthLayers<0.5)backgroundUV=base;
+    foregroundUV-=vibration*foregroundMask*mix(1.0,anchoredMotionWeight(base),u_hasLayeredDemo);
+    if(u_enableDepthLayers<0.5&&u_hasLayeredDemo<0.5)backgroundUV=base;
   }
 
   if(u_enableTrickPortal>0.5){
-    backgroundUV=trickPortalBackgroundUV(backgroundUV,trickPortalStrength);
+    vec2 portalBackgroundUV=trickPortalBackgroundUV(backgroundUV,trickPortalStrength);
+    // 2層素材は接地点で変形量を0にし、背景の台座と足元を一致させる。
+    backgroundUV=mix(portalBackgroundUV,backgroundUV,(1.0-anchoredMotionWeight(base))*u_hasLayeredDemo);
   }
 
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
@@ -628,7 +656,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_materialRegion","u_standeeMode","u_live2dMotion"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -639,6 +667,7 @@ let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let hasLayeredDemo=false,demoLoadSerial=0;
 let activeRigProfile=null,activeStandee=false;
+let activeMotionRange=[0.018,0.012];
 const rigSprings={
   body:{x:0,y:0,vx:0,vy:0},
   head:{x:0,y:0,vx:0,vy:0},
@@ -749,21 +778,52 @@ function loadURL(url,label,revoke=false){
 function alphaBounds(source){
   const sample=document.createElement("canvas");
   const width=192;
-  const height=Math.max(1,Math.round(width*source.naturalHeight/source.naturalWidth));
+  const sourceWidth=source.naturalWidth||source.width;
+  const sourceHeight=source.naturalHeight||source.height;
+  const height=Math.max(1,Math.round(width*sourceHeight/sourceWidth));
   sample.width=width;sample.height=height;
   const context=sample.getContext("2d",{willReadFrequently:true});
   context.drawImage(source,0,0,width,height);
   const pixels=context.getImageData(0,0,width,height).data;
-  let minX=width,minY=height,maxX=-1,maxY=-1,weightedX=0,weight=0;
+  let minX=width,minY=height,maxX=-1,maxY=-1,weightedX=0,weightedY=0,weight=0;
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const alpha=pixels[(y*width+x)*4+3];
     if(alpha<28)continue;
     minX=Math.min(minX,x);maxX=Math.max(maxX,x);
     minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-    weightedX+=x*alpha;weight+=alpha;
+    weightedX+=x*alpha;weightedY+=y*alpha;weight+=alpha;
   }
-  if(maxX<minX||maxY<minY)return {x:0,y:0,width,height,centerX:width/2};
-  return {x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1,centerX:weight ? weightedX/weight : (minX+maxX)/2};
+  if(maxX<minX||maxY<minY)return {x:0,y:0,width,height,centerX:width/2,centerY:height/2,sampleWidth:width,sampleHeight:height};
+  return {x:minX,y:minY,width:maxX-minX+1,height:maxY-minY+1,centerX:weight ? weightedX/weight : (minX+maxX)/2,centerY:weight ? weightedY/weight : (minY+maxY)/2,sampleWidth:width,sampleHeight:height};
+}
+
+function inferRigProfile(source){
+  const bounds=alphaBounds(source);
+  const left=bounds.x/bounds.sampleWidth;
+  const top=bounds.y/bounds.sampleHeight;
+  const width=bounds.width/bounds.sampleWidth;
+  const height=bounds.height/bounds.sampleHeight;
+  const bottom=Math.min(0.995,top+height);
+  const centerX=bounds.centerX/bounds.sampleWidth;
+  const silhouetteRatio=width/Math.max(height,0.001);
+  const isWide=silhouetteRatio>0.72;
+  const headY=top+height*(isWide?0.27:0.17);
+  const headRadiusX=Math.min(width*(isWide?0.36:0.28),0.25);
+  const headRadiusY=Math.min(height*(isWide?0.25:0.17),0.19);
+  const bodyY=top+height*(isWide?0.60:0.52);
+  const bodyRadiusX=Math.min(width*(isWide?0.46:0.34),0.34);
+  const bodyRadiusY=Math.min(height*(isWide?0.36:0.40),0.34);
+  // 重心が左へ偏る場合は右側、右へ偏る場合は左側を小物／尻尾候補にする。
+  const propSide=centerX<left+width*0.5 ? 1 : -1;
+  return {
+    kind:isWide?"wide":"upright",
+    head:[centerX,headY,headRadiusX,headRadiusY],
+    body:[centerX,bodyY,bodyRadiusX,bodyRadiusY],
+    material:[centerX,top+height*(isWide?0.46:0.39),width*(isWide?0.50:0.46),height*(isWide?0.36:0.40)],
+    prop:[centerX+propSide*width*(isWide?0.29:0.31),top+height*(isWide?0.48:0.50),width*0.22,height*0.24],
+    groundY:bottom,
+    motionRange:isWide?[0.021,0.014]:[0.018,0.012]
+  };
 }
 
 // 共通背景の回転台中央上面。足先最下端を前縁ではなく、この接地線へ合わせる。
@@ -773,9 +833,11 @@ function prepareStandeeForStage(source,demo){
   const canvas=document.createElement("canvas");
   canvas.width=768;canvas.height=1152;
   const bounds=alphaBounds(source);
-  const sourceScaleX=source.naturalWidth/192;
-  const sampledHeight=Math.max(1,Math.round(192*source.naturalHeight/source.naturalWidth));
-  const sourceScaleY=source.naturalHeight/sampledHeight;
+  const sourceWidth=source.naturalWidth||source.width;
+  const sourceHeight=source.naturalHeight||source.height;
+  const sourceScaleX=sourceWidth/192;
+  const sampledHeight=Math.max(1,Math.round(192*sourceHeight/sourceWidth));
+  const sourceScaleY=sourceHeight/sampledHeight;
   const sourceRect={
     x:bounds.x*sourceScaleX,y:bounds.y*sourceScaleY,
     width:bounds.width*sourceScaleX,height:bounds.height*sourceScaleY
@@ -793,20 +855,9 @@ function prepareStandeeForStage(source,demo){
 
   const left=drawX/canvas.width,top=drawY/canvas.height;
   const width=drawWidth/canvas.width,height=drawHeight/canvas.height;
-  const centerX=left+width*0.5;
-  // alpha外接矩形から人型／マスコット共通の骨格領域を推定する。固定座標より素材余白に強い。
-  const headY=top+height*0.18;
-  const isWide=width/height>0.72;
-  const headRadiusX=Math.min(width*(isWide?0.34:0.27),0.24);
-  const headRadiusY=Math.min(height*(isWide?0.22:0.16),0.17);
-  const propSide=bounds.centerX<192*0.5 ? 1 : -1;
   return {
     canvas,
-    rig:{
-      head:[centerX,headY,headRadiusX,headRadiusY],
-      material:[centerX,top+height*0.38,width*0.48,height*0.38],
-      prop:[centerX+propSide*width*0.30,top+height*0.48,width*0.20,height*0.22]
-    },
+    rig:inferRigProfile(canvas),
     placement:{left,top,width,height,bottom:targetBottom}
   };
 }
@@ -858,18 +909,20 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     uploadMapImage(foregroundTex,gl.TEXTURE4,displayedForeground);
     hasLayeredDemo=true;
     hasSubjectMask=true;
-    activeRigProfile=prepared?.rig||demo.rig||null;
+    activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
+    activeMotionRange=demo.motionRange||activeRigProfile.motionRange;
     activeStandee=Boolean(demo.standee);
     resetRigSprings();
     maskSource="透過立ち絵";
     updateRecognitionGuide(displayedForeground,{useAlpha:true});
-    updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ" : "背景＋立ち絵の2層");
+    updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ＋接地保持" : "背景＋立ち絵＋輪郭自動リグ＋接地保持");
     syncContourCropAvailability();
-    statusEl.textContent="表示中: デモ: "+demo.label+(demo.standee ? "（Live2D風自動リグ）" : "（2層）");
+    statusEl.textContent="表示中: デモ: "+demo.label+"（Live2D風自動リグ＋接地保持）";
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
     hasLayeredDemo=false;
     activeRigProfile=null;
+    activeMotionRange=[0.018,0.012];
     activeStandee=false;
     loadURL(demo.src,"デモ: "+demo.label+"（単一画像）");
     errEl.textContent="2層素材を読み込めないため単一画像で表示します。";
@@ -889,6 +942,7 @@ $("#file").addEventListener("change",e=>{
   demoLoadSerial++;
   activeDemoIndex=-1;
   activeRigProfile=null;
+  activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
   updateDemoSelection();
@@ -1638,30 +1692,30 @@ function stepRigSpring(spring,targetX,targetY,stiffness,damping,gravity,deltaSec
   const accelerationY=(targetY+gravity-spring.y)*stiffness-spring.vy*damping;
   spring.vx+=accelerationX*deltaSeconds;
   spring.vy+=accelerationY*deltaSeconds;
-  spring.x=Math.max(-0.010,Math.min(0.010,spring.x+spring.vx*deltaSeconds));
-  spring.y=Math.max(-0.010,Math.min(0.010,spring.y+spring.vy*deltaSeconds));
+  spring.x=Math.max(-0.016,Math.min(0.016,spring.x+spring.vx*deltaSeconds));
+  spring.y=Math.max(-0.016,Math.min(0.016,spring.y+spring.vy*deltaSeconds));
 }
 
 function updateRigMotion(now,deltaSeconds){
-  const enabled=Boolean(activeRigProfile&&activeStandee&&hasLayeredDemo&&$("#autoMotion").checked&&!reduceMotion.matches);
+  const enabled=Boolean(activeRigProfile&&hasLayeredDemo&&$("#autoMotion").checked&&!reduceMotion.matches);
   if(!enabled){
     resetRigSprings();
     return false;
   }
   const seconds=now*0.001;
   const strength=parseFloat($("#motionStrength").value);
-  const bodyTargetX=Math.sin(seconds*0.83)*0.00045*strength;
-  const bodyTargetY=Math.sin(seconds*1.66)*0.00070*strength;
-  const headTargetX=(-viewX*0.00070+Math.sin(seconds*1.13)*0.00080)*strength;
-  const headTargetY=(Math.cos(seconds*1.41)*0.00055-viewY*0.00022)*strength;
-  const materialTargetX=(-viewX*0.00110+Math.sin(seconds*1.76+0.8)*0.00165)*strength;
-  const materialTargetY=Math.cos(seconds*1.24+0.4)*0.00055*strength;
-  const propTargetX=(-viewX*0.00155+Math.sin(seconds*1.29+1.7)*0.00220)*strength;
-  const propTargetY=Math.cos(seconds*0.91+1.2)*0.00075*strength;
-  stepRigSpring(rigSprings.body,bodyTargetX,bodyTargetY,34.0,10.5,-0.00004*strength,deltaSeconds);
-  stepRigSpring(rigSprings.head,headTargetX,headTargetY,25.0,8.2,-0.00014*strength,deltaSeconds);
-  stepRigSpring(rigSprings.material,materialTargetX,materialTargetY,14.0,5.8,-0.00082*strength,deltaSeconds);
-  stepRigSpring(rigSprings.prop,propTargetX,propTargetY,8.5,4.2,-0.00135*strength,deltaSeconds);
+  const bodyTargetX=Math.sin(seconds*0.83)*0.00180*strength;
+  const bodyTargetY=Math.sin(seconds*1.66)*0.00115*strength;
+  const headTargetX=(-viewX*0.00350+Math.sin(seconds*1.13)*0.00280)*strength;
+  const headTargetY=(Math.cos(seconds*1.41)*0.00185-viewY*0.00120)*strength;
+  const materialTargetX=(-viewX*0.00450+Math.sin(seconds*1.76+0.8)*0.00440)*strength;
+  const materialTargetY=Math.cos(seconds*1.24+0.4)*0.00230*strength;
+  const propTargetX=(-viewX*0.00580+Math.sin(seconds*1.29+1.7)*0.00620)*strength;
+  const propTargetY=Math.cos(seconds*0.91+1.2)*0.00310*strength;
+  stepRigSpring(rigSprings.body,bodyTargetX,bodyTargetY,32.0,9.8,-0.00006*strength,deltaSeconds);
+  stepRigSpring(rigSprings.head,headTargetX,headTargetY,23.0,7.7,-0.00022*strength,deltaSeconds);
+  stepRigSpring(rigSprings.material,materialTargetX,materialTargetY,13.0,5.5,-0.00100*strength,deltaSeconds);
+  stepRigSpring(rigSprings.prop,propTargetX,propTargetY,8.0,4.0,-0.00155*strength,deltaSeconds);
   return true;
 }
 
@@ -1708,10 +1762,13 @@ function render(now){
   gl.uniform2f(U.u_headMotion,rigSprings.head.x,rigSprings.head.y);
   gl.uniform2f(U.u_materialMotion,rigSprings.material.x,rigSprings.material.y);
   gl.uniform2f(U.u_propMotion,rigSprings.prop.x,rigSprings.prop.y);
-  const rig=activeRigProfile||{head:[0.5,0.2,0.18,0.16],material:[0.5,0.38,0.42,0.38],prop:[0.62,0.46,0.16,0.18]};
+  const rig=activeRigProfile||{head:[0.5,0.2,0.18,0.16],body:[0.5,0.52,0.22,0.34],material:[0.5,0.38,0.42,0.38],prop:[0.62,0.46,0.16,0.18],groundY:0.86};
   gl.uniform4f(U.u_rigCenters,rig.head[0],1-rig.head[1],rig.prop[0],1-rig.prop[1]);
   gl.uniform4f(U.u_rigRadii,rig.head[2],rig.head[3],rig.prop[2],rig.prop[3]);
+  gl.uniform4f(U.u_bodyRegion,rig.body[0],1-rig.body[1],rig.body[2],rig.body[3]);
   gl.uniform4f(U.u_materialRegion,rig.material[0],1-rig.material[1],rig.material[2],rig.material[3]);
+  gl.uniform1f(U.u_groundAnchor,1-rig.groundY);
+  gl.uniform2f(U.u_motionRange,activeMotionRange[0],activeMotionRange[1]);
   gl.uniform1f(U.u_standeeMode,activeStandee&&hasLayeredDemo ? 1 : 0);
   const liveSeconds=now*0.001;
   const blinkPulse=Math.pow(Math.max(0,Math.sin(liveSeconds*1.73+0.35)),24);
