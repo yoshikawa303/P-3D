@@ -26,6 +26,7 @@ input[type=file]{display:none}
 .row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:12px}
 input[type=range]{width:100%}
 select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
+input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:7px 9px;background:#303038;color:#fff;font:inherit}
 .settingsTabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .settingsTabs::-webkit-scrollbar{display:none}
 .settingsTabs button{flex:0 0 auto;min-height:38px;padding:7px 12px;border:1px solid rgba(255,255,255,.14);background:#303038;color:#ddd;font-size:12px}
@@ -41,10 +42,13 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 .debugLayerGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 7px}
 .debugLayerGrid .check{min-height:27px;padding:1px 3px;border-radius:8px;background:rgba(255,255,255,.035)}
 .rigEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(121,231,255,.18);border-radius:12px;background:rgba(8,20,28,.36)}
-.rigEditor select[size]{min-height:132px;padding:4px}
-.rigEditor select[size] option{padding:7px 8px;border-radius:7px}
+.rigEditor select[size],.boneEditor select[size]{min-height:132px;padding:4px}
+.rigEditor select[size] option,.boneEditor select[size] option{padding:7px 8px;border-radius:7px}
+.boneEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(255,223,110,.22);border-radius:12px;background:rgba(28,24,8,.32)}
 .compactButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .compactButtons button{padding:9px 7px;font-size:12px}
+.tripleButtons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.tripleButtons button{padding:9px 5px;font-size:11px}
 .motionFields{display:grid;gap:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08)}
 #rigDirectEditHint{padding:7px;border-radius:9px;background:rgba(121,231,255,.08);color:#c7f5ff}
 #rigDebugStatus{font-size:10px;color:#bfefff;line-height:1.5}
@@ -165,9 +169,42 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
         <label class="check"><input id="partInheritMotion" type="checkbox">親モーションを継承</label>
         <div class="row"><label for="partInheritAmount">継承量</label><input id="partInheritAmount" type="range" min="0" max="1.5" step="0.01" value="0.65"></div>
       </div>
-      <button id="resetRigPart" class="secondary" type="button">選択部位を自動推定へ戻す</button>
+      <div class="compactButtons">
+        <button id="duplicateRigPart" class="secondary" type="button">選択部位を複製</button>
+        <button id="resetRigPart" class="secondary" type="button">選択部位を復元</button>
+      </div>
     </div>
     <div class="hint">親子関係ON時は親の実モーションを子へ加算します。例: 胴体→胸部。ボーン・ワイヤー・タグは合成後の動作へ追随します。</div>
+    <div class="sectionTitle">ボーン構造編集</div>
+    <div class="boneEditor">
+      <label for="bonePointList">ボーンポイント（一覧選択）</label>
+      <select id="bonePointList" size="6" aria-label="ボーンポイント一覧"></select>
+      <div class="tripleButtons">
+        <button id="addBoneRoot" type="button">起点を追加</button>
+        <button id="addBoneChild" type="button">子を追加</button>
+        <button id="deleteBonePoint" class="secondary" type="button">削除</button>
+      </div>
+      <div class="row"><label for="bonePointName">ポイント名</label><input id="bonePointName" type="text" maxlength="24" value=""></div>
+      <div class="row"><label for="bonePointType">種類</label><select id="bonePointType">
+        <option value="root">起点</option>
+        <option value="joint">関節</option>
+        <option value="branch">分岐</option>
+        <option value="end">終点</option>
+      </select></div>
+      <div class="row"><label for="bonePointParent">親ポイント</label><select id="bonePointParent"></select></div>
+      <div class="row"><label for="bonePointPart">追随部位</label><select id="bonePointPart"></select></div>
+      <div class="row"><label for="boneFollowAmount">追随率</label><input id="boneFollowAmount" type="range" min="0" max="1.5" step="0.01" value="1"></div>
+      <div class="hint">ポイントはプレビュー上で直接ドラッグできます。子追加は選択ポイントから分岐し、追随部位の合成後モーションへ連動します。</div>
+      <div id="boneRigStatus" aria-live="polite">ボーン構造: 未解析</div>
+    </div>
+    <div class="sectionTitle">リグプロジェクト</div>
+    <div class="compactButtons">
+      <button id="exportRig" type="button">JSONを保存</button>
+      <label class="filelabel">JSONを読込<input id="rigProjectFile" type="file" accept="application/json,.json"></label>
+    </div>
+    <button id="importRig" class="secondary" type="button">選択したJSONを読込</button>
+    <button id="resetRig" class="secondary" type="button">リグ全体を自動推定へ戻す</button>
+    <div class="hint">保存対象は部位、物理設定、親子関係、ボーン構造です。画像そのものはJSONへ含めません。</div>
     </section>
 
     <section id="panel-effects" class="tabPanel" role="tabpanel" aria-labelledby="tab-effects" data-tab-panel="effects" hidden>
@@ -782,11 +819,11 @@ gl.uniform1i(U.u_foregroundTex,4);
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let hasLayeredDemo=false,demoLoadSerial=0;
-let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeStandee=false;
+let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeBonePoints=[],inferredBonePoints=[],activeStandee=false;
 let activeMotionRange=[0.018,0.012];
 const rigSprings={};
 let recognitionBounds=null,recognitionGuideCanvas=null;
-let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr:1},guideDragTarget=null;
+let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},bones:{},rayLength:0,dpr:1},guideDragTarget=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 let faceScaleBaseline=0,lastRenderTime=performance.now();
@@ -965,7 +1002,10 @@ const RIG_PARTS={
   prop:{tag:"04",label:"小物・尻尾",color:"#ff86c8"}
 };
 const MAX_RIG_PARTS=8;
+const MAX_BONE_POINTS=24;
+const RIG_PROJECT_VERSION=1;
 const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];
+const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};
 const MOTION_PRESETS={
   body:{strength:1,gravity:-0.00006,stiffness:32,damping:9.8},
   soft:{strength:1,gravity:-0.00045,stiffness:18,damping:6.5},
@@ -990,6 +1030,10 @@ function cloneRigParts(parts){
   return parts.map(part=>({...part,region:[...part.region],originalRegion:[...(part.originalRegion||part.region)]}));
 }
 
+function cloneBonePoints(points){
+  return points.map(point=>({...point,original:[...(point.original||[point.x,point.y])]}));
+}
+
 function buildRigPartsFromProfile(profile){
   if(!profile)return [];
   const specs=[
@@ -1006,7 +1050,22 @@ function buildRigPartsFromProfile(profile){
   return parts;
 }
 
+function buildBoneRigFromParts(parts,profile){
+  if(!parts.length||!profile)return [];
+  const byRole=role=>parts.find(part=>part.role===role);
+  const body=byRole("body"),head=byRole("head"),material=byRole("material"),prop=byRole("prop");
+  const specs=[
+    ["bone-root","B01","接地点","root",body?.region[0]||.5,profile.groundY,null,body?.id||null,0],
+    ["bone-body","B02","胴体軸","joint",body?.region[0]||.5,body?.region[1]||.55,"bone-root",body?.id||null,1],
+    ["bone-head","B03","頭部軸","joint",head?.region[0]||.5,head?.region[1]||.22,"bone-body",head?.id||null,1],
+    ["bone-material","B04","髪・布分岐","branch",material?.region[0]||.5,material?.region[1]||.38,"bone-head",material?.id||null,1],
+    ["bone-prop","B05","小物終点","end",prop?.region[0]||.65,prop?.region[1]||.48,"bone-body",prop?.id||null,1]
+  ];
+  return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
+}
+
 function rigPartById(id){return activeRigParts.find(part=>part.id===id)||null}
+function bonePointById(id){return activeBonePoints.find(point=>point.id===id)||null}
 
 function syncProfileFromParts(){
   if(!activeRigProfile)return;
@@ -1020,9 +1079,13 @@ function selectedRigPart(){
   return $("#rigPartList").value;
 }
 
+function selectedBonePoint(){
+  return $("#bonePointList").value;
+}
+
 function rigProfileWasEdited(){
   if(!activeRigProfile||!inferredRigProfile)return false;
-  return JSON.stringify(cloneRigParts(activeRigParts))!==JSON.stringify(cloneRigParts(inferredRigParts));
+  return JSON.stringify(cloneRigParts(activeRigParts))!==JSON.stringify(cloneRigParts(inferredRigParts))||JSON.stringify(cloneBonePoints(activeBonePoints))!==JSON.stringify(cloneBonePoints(inferredBonePoints));
 }
 
 function syncRigPartList(preferredId=selectedRigPart()){
@@ -1052,10 +1115,11 @@ function wouldCreateRigCycle(partId,parentId){
 function syncRigEditor(){
   const part=rigPartById(selectedRigPart());
   const available=Boolean(part&&$("#rigDebug").checked);
-  for(const id of ["rigPartList","rigPartName","deleteRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
+  for(const id of ["rigPartList","rigPartName","deleteRigPart","duplicateRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
     $("#"+id).disabled=!available;
   }
   $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4||!$("#rigDebug").checked;
+  $("#duplicateRigPart").disabled=!available||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4;
   if(!part)return;
   $("#rigPartName").value=part.label;
   $("#partMotionEnabled").checked=part.motionEnabled;
@@ -1089,6 +1153,7 @@ function applyRigPartControls(){
   const option=$("#rigPartList").selectedOptions[0];
   if(option)option.textContent=`TAG ${part.tag} ${part.label}`;
   $("#partInheritAmount").disabled=!part.inheritMotion;
+  updateRigValidation();
 }
 
 function applyMotionPreset(){
@@ -1111,7 +1176,19 @@ function addRigPart(){
   const part={id,role:"custom",tag:String(serial).padStart(2,"0"),label:`追加部位 ${serial}`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],motionEnabled:true,preset:"soft",parentId:parent?.id||null,inheritMotion:Boolean(parent),inheritAmount:.65,...motion};
   activeRigParts.push(part);
   rigSprings[id]=newRigSpring();
-  syncRigPartList(id);pushEditHistory();
+  syncRigPartList(id);syncBoneEditor();pushEditHistory();
+}
+
+function duplicateSelectedRigPart(){
+  const source=rigPartById(selectedRigPart());
+  if(!source||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4)return;
+  const serial=activeRigParts.reduce((max,part)=>Math.max(max,parseInt(part.tag,10)||0),0)+1;
+  const id=`custom-${Date.now().toString(36)}-${serial}`;
+  const region=[Math.min(.96,source.region[0]+.035),Math.min(.96,source.region[1]+.035),source.region[2],source.region[3]];
+  const part={...source,id,role:"custom",tag:String(serial).padStart(2,"0"),label:`${source.label} コピー`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],parentId:source.id,inheritMotion:true};
+  activeRigParts.push(part);
+  rigSprings[id]=newRigSpring();
+  syncRigPartList(id);syncBonePointList();pushEditHistory();
 }
 
 function deleteSelectedRigPart(){
@@ -1120,8 +1197,9 @@ function deleteSelectedRigPart(){
   if(index<0)return;
   activeRigParts.splice(index,1);
   for(const part of activeRigParts)if(part.parentId===id){part.parentId=null;part.inheritMotion=false}
+  for(const point of activeBonePoints)if(point.partId===id)point.partId=null;
   delete rigSprings[id];
-  syncProfileFromParts();syncRigPartList(activeRigParts[Math.min(index,activeRigParts.length-1)]?.id||"");pushEditHistory();
+  syncProfileFromParts();syncRigPartList(activeRigParts[Math.min(index,activeRigParts.length-1)]?.id||"");syncBonePointList();pushEditHistory();
 }
 
 function resetSelectedRigPart(){
@@ -1131,7 +1209,206 @@ function resetSelectedRigPart(){
   part.region=[...(inferred?.region||part.originalRegion)];
   if(inferred)Object.assign(part,{motionEnabled:inferred.motionEnabled,preset:inferred.preset,strength:inferred.strength,gravity:inferred.gravity,stiffness:inferred.stiffness,damping:inferred.damping,parentId:inferred.parentId,inheritMotion:inferred.inheritMotion,inheritAmount:inferred.inheritAmount});
   syncProfileFromParts();syncRigEditor();
+  updateRigValidation();
   pushEditHistory();
+}
+
+function wouldCreateBoneCycle(pointId,parentId,points=activeBonePoints){
+  let current=parentId;
+  const visited=new Set();
+  while(current){
+    if(current===pointId||visited.has(current))return true;
+    visited.add(current);
+    current=points.find(point=>point.id===current)?.parentId||null;
+  }
+  return false;
+}
+
+function syncBonePointList(preferredId=selectedBonePoint()){
+  const list=$("#bonePointList");
+  list.replaceChildren(...activeBonePoints.map(point=>{
+    const option=document.createElement("option");
+    option.value=point.id;
+    option.textContent=`${point.tag} ${BONE_TYPE_LABELS[point.type]} ${point.label}`;
+    return option;
+  }));
+  list.value=activeBonePoints.some(point=>point.id===preferredId)?preferredId:(activeBonePoints[0]?.id||"");
+  syncBoneEditor();
+  updateRigValidation();
+}
+
+function syncBoneEditor(){
+  const point=bonePointById(selectedBonePoint());
+  const available=Boolean(point&&$("#rigDebug").checked);
+  for(const id of ["bonePointList","bonePointName","bonePointType","bonePointParent","bonePointPart","boneFollowAmount","deleteBonePoint"]){$("#"+id).disabled=!available}
+  $("#addBoneRoot").disabled=!activeRigProfile||!$("#rigDebug").checked||activeBonePoints.length>=MAX_BONE_POINTS;
+  $("#addBoneChild").disabled=!available||activeBonePoints.length>=MAX_BONE_POINTS;
+  if(!point)return;
+  $("#bonePointName").value=point.label;
+  $("#bonePointType").value=point.type;
+  const parent=$("#bonePointParent");
+  parent.replaceChildren(new Option("なし（起点）",""),...activeBonePoints.filter(candidate=>candidate.id!==point.id&&!wouldCreateBoneCycle(point.id,candidate.id)).map(candidate=>new Option(`${candidate.tag} ${candidate.label}`,candidate.id)));
+  parent.value=point.parentId||"";
+  const part=$("#bonePointPart");
+  part.replaceChildren(new Option("なし（固定）",""),...activeRigParts.map(candidate=>new Option(`TAG ${candidate.tag} ${candidate.label}`,candidate.id)));
+  part.value=point.partId||"";
+  $("#boneFollowAmount").value=point.followAmount;
+}
+
+function applyBonePointControls(){
+  const point=bonePointById(selectedBonePoint());
+  if(!point)return;
+  point.label=$("#bonePointName").value.trim()||point.label;
+  const requestedType=$("#bonePointType").value;
+  const parentId=$("#bonePointParent").value||null;
+  point.parentId=wouldCreateBoneCycle(point.id,parentId)?null:parentId;
+  point.type=point.parentId&&requestedType==="root"?"joint":requestedType;
+  point.partId=$("#bonePointPart").value||null;
+  point.followAmount=parseFloat($("#boneFollowAmount").value);
+  $("#bonePointType").value=point.type;
+  const option=$("#bonePointList").selectedOptions[0];
+  if(option)option.textContent=`${point.tag} ${BONE_TYPE_LABELS[point.type]} ${point.label}`;
+  updateRigValidation();
+}
+
+function addBonePoint(kind="child"){
+  if(!activeRigProfile||activeBonePoints.length>=MAX_BONE_POINTS)return;
+  const selected=bonePointById(selectedBonePoint());
+  const parent=kind==="child"?selected:null;
+  if(kind==="child"&&!parent)return;
+  const serial=activeBonePoints.reduce((max,point)=>Math.max(max,parseInt(point.tag.replace(/\D/g,""),10)||0),0)+1;
+  const id=`bone-${Date.now().toString(36)}-${serial}`;
+  let x=.5,y=activeRigProfile.groundY,partId=null,type="root",label=`起点 ${serial}`;
+  if(parent){
+    const siblingCount=activeBonePoints.filter(point=>point.parentId===parent.id).length;
+    x=Math.max(.02,Math.min(.98,parent.x+(siblingCount%2===0?.065:-.065)));
+    y=Math.max(.02,Math.min(.98,parent.y-.075));
+    partId=parent.partId;type="end";label=`ポイント ${serial}`;
+    if(parent.type==="end")parent.type="joint";
+    if(siblingCount>=1&&parent.type!=="root")parent.type="branch";
+  }
+  const point={id,tag:`B${String(serial).padStart(2,"0")}`,label,type,x,y,parentId:parent?.id||null,partId,followAmount:partId?1:0,original:[x,y]};
+  activeBonePoints.push(point);
+  syncBonePointList(id);pushEditHistory();
+}
+
+function deleteSelectedBonePoint(){
+  const id=selectedBonePoint();
+  const index=activeBonePoints.findIndex(point=>point.id===id);
+  if(index<0)return;
+  const removed=activeBonePoints[index];
+  activeBonePoints.splice(index,1);
+  for(const point of activeBonePoints){
+    if(point.parentId!==id)continue;
+    point.parentId=removed.parentId||null;
+    if(!point.parentId)point.type="root";
+  }
+  syncBonePointList(activeBonePoints[Math.min(index,activeBonePoints.length-1)]?.id||"");pushEditHistory();
+}
+
+function parentChainHasCycle(items,item){
+  let current=item.parentId;
+  const visited=new Set([item.id]);
+  while(current){
+    if(visited.has(current))return true;
+    visited.add(current);
+    current=items.find(candidate=>candidate.id===current)?.parentId||null;
+  }
+  return false;
+}
+
+function validateRigDefinition(parts=activeRigParts,bones=activeBonePoints){
+  const issues=[];
+  const partIds=new Set(parts.map(part=>part.id));
+  const boneIds=new Set(bones.map(point=>point.id));
+  if(parts.length<1)issues.push("部位がありません");
+  if(parts.length>MAX_RIG_PARTS)issues.push(`部位は${MAX_RIG_PARTS}件までです`);
+  if(partIds.size!==parts.length)issues.push("部位IDが重複しています");
+  if(parts.filter(part=>part.role==="custom").length>4)issues.push("追加部位は4件までです");
+  for(const role of Object.keys(RIG_PARTS))if(parts.filter(part=>part.role===role).length>1)issues.push(`${role}: 標準部位が重複しています`);
+  for(const part of parts){
+    if(part.parentId&&!partIds.has(part.parentId))issues.push(`${part.label}: 親部位がありません`);
+    if(parentChainHasCycle(parts,part))issues.push(`${part.label}: 部位階層が循環しています`);
+  }
+  if(bones.length<1)issues.push("ボーン起点がありません");
+  if(bones.length>MAX_BONE_POINTS)issues.push(`ボーンポイントは${MAX_BONE_POINTS}件までです`);
+  if(boneIds.size!==bones.length)issues.push("ボーンIDが重複しています");
+  if(!bones.some(point=>!point.parentId&&point.type==="root"))issues.push("起点がありません");
+  for(const point of bones){
+    if(!point.parentId&&point.type!=="root")issues.push(`${point.label}: 親なしは起点にしてください`);
+    if(point.parentId&&!boneIds.has(point.parentId))issues.push(`${point.label}: 親ポイントがありません`);
+    if(point.partId&&!partIds.has(point.partId))issues.push(`${point.label}: 追随部位がありません`);
+    if(parentChainHasCycle(bones,point))issues.push(`${point.label}: ボーン階層が循環しています`);
+    if(point.x<0||point.x>1||point.y<0||point.y>1)issues.push(`${point.label}: 座標が画像外です`);
+  }
+  return {valid:issues.length===0,issues};
+}
+
+function updateRigValidation(){
+  const result=validateRigDefinition();
+  const text=result.valid?`ボーン構造: 正常 ／ ${activeBonePoints.length}ポイント`:`ボーン構造: 要確認 ／ ${result.issues.slice(0,2).join(" ／ ")}`;
+  $("#boneRigStatus").textContent=text;
+  $("#boneRigStatus").style.color=result.valid?"#bfffd8":"#ffd2a8";
+  return result;
+}
+
+function resetRigDefinition(){
+  if(!activeRigProfile||!inferredRigProfile)return;
+  activeRigProfile=cloneRigProfile(inferredRigProfile);
+  activeRigParts=cloneRigParts(inferredRigParts);
+  activeBonePoints=cloneBonePoints(inferredBonePoints);
+  for(const key of Object.keys(rigSprings))delete rigSprings[key];
+  for(const part of activeRigParts)rigSprings[part.id]=newRigSpring();
+  syncRigPartList("body");syncBonePointList("bone-root");resetRigSprings();pushEditHistory();
+  errEl.textContent="リグ全体を自動推定へ戻しました。";
+}
+
+function exportRigProject(){
+  const result=updateRigValidation();
+  if(!result.valid){errEl.textContent="リグ構造を修正してから保存してください。";return}
+  const project={format:"P3D-PseudoLive2D-Rig",version:RIG_PROJECT_VERSION,parts:cloneRigParts(activeRigParts),bonePoints:cloneBonePoints(activeBonePoints)};
+  const blob=new Blob([JSON.stringify(project,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),anchor=document.createElement("a");
+  anchor.href=url;anchor.download=`p3d-rig-${new Date().toISOString().slice(0,10)}.json`;anchor.hidden=true;
+  document.body.appendChild(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  errEl.textContent="リグJSONを保存しました。";
+}
+
+function boundedNumber(value,min,max,fallback){
+  const number=Number(value);
+  return Number.isFinite(number)?Math.max(min,Math.min(max,number)):fallback;
+}
+
+function normalizeRigProject(raw){
+  if(!raw||raw.format!=="P3D-PseudoLive2D-Rig"||raw.version!==RIG_PROJECT_VERSION)throw new Error("未対応のリグJSONです。");
+  if(!Array.isArray(raw.parts)||!Array.isArray(raw.bonePoints))throw new Error("部位またはボーン配列がありません。");
+  const cleanId=(value,label)=>{const id=String(value||"");if(!/^[A-Za-z0-9_-]{1,64}$/.test(id))throw new Error(`${label}のIDが不正です。`);return id};
+  const cleanLabel=value=>String(value||"").slice(0,24)||"名称未設定";
+  const parts=raw.parts.slice(0,MAX_RIG_PARTS+1).map((source,index)=>{
+    const role=["body","head","material","prop","custom"].includes(source.role)?source.role:"custom";
+    const preset=MOTION_PRESETS[source.preset]?source.preset:"soft";
+    const region=Array.isArray(source.region)?source.region:[];
+    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],motionEnabled:source.motionEnabled!==false,preset,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
+  });
+  const bones=raw.bonePoints.slice(0,MAX_BONE_POINTS+1).map((source,index)=>({id:cleanId(source.id,`ボーン${index+1}`),tag:String(source.tag||`B${index+1}`).slice(0,4),label:cleanLabel(source.label),type:BONE_TYPE_LABELS[source.type]?source.type:"joint",x:boundedNumber(source.x,0,1,.5),y:boundedNumber(source.y,0,1,.5),parentId:source.parentId?cleanId(source.parentId,"親ボーン"):null,partId:source.partId?cleanId(source.partId,"追随部位"):null,followAmount:boundedNumber(source.followAmount,0,1.5,1),original:[boundedNumber(source.x,0,1,.5),boundedNumber(source.y,0,1,.5)]}));
+  const validation=validateRigDefinition(parts,bones);
+  if(!validation.valid)throw new Error(validation.issues[0]);
+  return {parts,bones};
+}
+
+async function importRigProject(){
+  const file=$("#rigProjectFile").files&&$("#rigProjectFile").files[0];
+  if(!file){errEl.textContent="先にリグJSONを選択してください。";return}
+  if(!activeRigProfile){errEl.textContent="先に背景＋透過キャラのデモを選択してください。";return}
+  try{
+    const imported=normalizeRigProject(JSON.parse(await file.text()));
+    activeRigParts=imported.parts;activeBonePoints=imported.bones;
+    for(const key of Object.keys(rigSprings))delete rigSprings[key];
+    for(const part of activeRigParts)rigSprings[part.id]=newRigSpring();
+    syncProfileFromParts();syncRigPartList();syncBonePointList();pushEditHistory();
+    errEl.textContent=`リグJSONを読み込みました: ${file.name}`;
+  }catch(error){errEl.textContent="リグJSONを読み込めません: "+error.message}
 }
 
 function syncRigDebugControls(){
@@ -1139,7 +1416,11 @@ function syncRigDebugControls(){
   for(const input of document.querySelectorAll("#rigDebugLayers input"))input.disabled=!enabled;
   $("#debugShowBackground").disabled=!enabled||!hasLayeredDemo;
   $("#debugShowCharacter").disabled=!enabled||!hasLayeredDemo;
+  $("#exportRig").disabled=!activeRigProfile;
+  $("#importRig").disabled=!activeRigProfile;
+  $("#resetRig").disabled=!activeRigProfile;
   syncRigEditor();
+  syncBoneEditor();
 }
 
 function updateRigDebugStatus(autoRigActive=false){
@@ -1151,7 +1432,7 @@ function updateRigDebugStatus(autoRigActive=false){
     const shape=activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（人物・キャラ候補）";
     const source=rigProfileWasEdited() ? "手動補正あり" : "自動推定";
     const following=autoRigActive ? "モーション追随中" : "静止";
-    text=`解析: ${shape} ／ ${activeRigParts.length}部位 ／ ${source} ／ ${following}`;
+    text=`解析: ${shape} ／ ${activeRigParts.length}部位・${activeBonePoints.length}ボーン点 ／ ${source} ／ ${following}`;
   }
   if($("#rigDebugStatus").textContent!==text)$("#rigDebugStatus").textContent=text;
 }
@@ -1243,6 +1524,8 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     inferredRigProfile=cloneRigProfile(activeRigProfile);
     activeRigParts=buildRigPartsFromProfile(activeRigProfile);
     inferredRigParts=cloneRigParts(activeRigParts);
+    activeBonePoints=buildBoneRigFromParts(activeRigParts,activeRigProfile);
+    inferredBonePoints=cloneBonePoints(activeBonePoints);
     activeMotionRange=demo.motionRange||activeRigProfile.motionRange;
     activeStandee=Boolean(demo.standee);
     resetRigSprings();
@@ -1252,6 +1535,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     syncContourCropAvailability();
     syncRigDebugControls();
     syncRigPartList("body");
+    syncBonePointList("bone-root");
     statusEl.textContent="表示中: デモ: "+demo.label+"（Live2D風自動リグ＋接地保持）";
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
@@ -1260,6 +1544,8 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     inferredRigProfile=null;
     activeRigParts=[];
     inferredRigParts=[];
+    activeBonePoints=[];
+    inferredBonePoints=[];
     activeMotionRange=[0.018,0.012];
     activeStandee=false;
     syncRigDebugControls();
@@ -1285,6 +1571,8 @@ $("#file").addEventListener("change",e=>{
     inferredRigProfile=null;
     activeRigParts=[];
     inferredRigParts=[];
+    activeBonePoints=[];
+    inferredBonePoints=[];
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
@@ -1319,6 +1607,8 @@ function clearMaps({announce=true}={}){
   inferredRigProfile=null;
   activeRigParts=[];
   inferredRigParts=[];
+  activeBonePoints=[];
+  inferredBonePoints=[];
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
@@ -1330,6 +1620,7 @@ function clearMaps({announce=true}={}){
   syncContourCropAvailability();
   syncRigDebugControls();
   syncRigPartList("");
+  syncBonePointList("");
 }
 
 function uploadMapImage(texture,unit,img){
@@ -1672,7 +1963,8 @@ const EDIT_CONTROL_IDS=[
 function captureEditState(){
   const state={
     rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,profile:cloneRigProfile(activeRigProfile)} : null,
-    rigParts:activeRigProfile ? {demoIndex:activeDemoIndex,parts:cloneRigParts(activeRigParts)} : null
+    rigParts:activeRigProfile ? {demoIndex:activeDemoIndex,parts:cloneRigParts(activeRigParts)} : null,
+    bonePoints:activeRigProfile ? {demoIndex:activeDemoIndex,points:cloneBonePoints(activeBonePoints)} : null
   };
   for(const id of EDIT_CONTROL_IDS){
     const control=$("#"+id);
@@ -1698,8 +1990,10 @@ function applyEditState(state){
     for(const part of activeRigParts)if(!rigSprings[part.id])rigSprings[part.id]=newRigSpring();
     syncProfileFromParts();
   }
+  if(state.bonePoints&&state.bonePoints.demoIndex===activeDemoIndex)activeBonePoints=cloneBonePoints(state.bonePoints.points);
   syncRigDebugControls();
   syncRigPartList();
+  syncBonePointList();
 }
 
 const DEFAULT_EDIT_STATE=captureEditState();
@@ -1753,12 +2047,24 @@ $("#rigDebug").addEventListener("input",()=>{
 $("#rigPartList").addEventListener("change",syncRigEditor);
 $("#addRigPart").addEventListener("click",addRigPart);
 $("#deleteRigPart").addEventListener("click",deleteSelectedRigPart);
+$("#duplicateRigPart").addEventListener("click",duplicateSelectedRigPart);
 $("#partMotionPreset").addEventListener("change",()=>{applyMotionPreset();pushEditHistory()});
 for(const id of ["rigPartName","partMotionEnabled","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount"]){
   $("#"+id).addEventListener("input",applyRigPartControls);
   $("#"+id).addEventListener("change",pushEditHistory);
 }
 $("#resetRigPart").addEventListener("click",resetSelectedRigPart);
+$("#bonePointList").addEventListener("change",syncBoneEditor);
+$("#addBoneRoot").addEventListener("click",()=>addBonePoint("root"));
+$("#addBoneChild").addEventListener("click",()=>addBonePoint("child"));
+$("#deleteBonePoint").addEventListener("click",deleteSelectedBonePoint);
+for(const id of ["bonePointName","bonePointType","bonePointParent","bonePointPart","boneFollowAmount"]){
+  $("#"+id).addEventListener("input",applyBonePointControls);
+  $("#"+id).addEventListener("change",pushEditHistory);
+}
+$("#exportRig").addEventListener("click",exportRigProject);
+$("#importRig").addEventListener("click",importRigProject);
+$("#resetRig").addEventListener("click",resetRigDefinition);
 syncEffectControls();
 syncSpatialControls();
 syncContourCropAvailability();
@@ -1841,6 +2147,19 @@ function rigPartDisplayState(partId,nowSeconds){
   return {x,y,radiusX,radiusY};
 }
 
+function bonePointDisplayState(pointId,nowSeconds){
+  const point=bonePointById(pointId);
+  if(!point)return {x:.5,y:.5};
+  let x=point.x,y=point.y;
+  const part=rigPartById(point.partId);
+  if(part){
+    const state=rigPartDisplayState(part.id,nowSeconds);
+    x+=(state.x-part.region[0])*point.followAmount;
+    y+=(state.y-part.region[1])*point.followAmount;
+  }
+  return {x,y};
+}
+
 function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
   if(!$("#rigDebug").checked)return;
   guideContext.save();
@@ -1867,23 +2186,35 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
   if(!activeRigProfile){guideContext.restore();return;}
   const states={};
   for(const part of activeRigParts)states[part.id]=rigPartDisplayState(part.id,nowSeconds);
+  guideHandles.bones={};
   if($("#debugShowBones").checked){
-    const body=activeRigParts.find(part=>part.role==="body")||activeRigParts[0];
-    const ground=mapPoint(states[body?.id]?.x||.5,activeRigProfile.groundY);
-    const points=Object.fromEntries(Object.entries(states).map(([key,state])=>[key,mapPoint(state.x,state.y)]));
+    const boneStates=Object.fromEntries(activeBonePoints.map(point=>[point.id,bonePointDisplayState(point.id,nowSeconds)]));
+    const points=Object.fromEntries(Object.entries(boneStates).map(([key,state])=>[key,mapPoint(state.x,state.y)]));
     guideContext.setLineDash([]);
     guideContext.lineWidth=Math.max(2,2*dpr);
     guideContext.strokeStyle="rgba(255,255,255,.82)";
     guideContext.beginPath();
-    if(body&&points[body.id]){guideContext.moveTo(ground.x,ground.y);guideContext.lineTo(points[body.id].x,points[body.id].y)}
-    for(const part of activeRigParts){
-      const parent=part.inheritMotion&&part.parentId?points[part.parentId]:null;
-      const child=points[part.id];
+    for(const bone of activeBonePoints){
+      const parent=bone.parentId?points[bone.parentId]:null;
+      const child=points[bone.id];
       if(parent&&child){guideContext.moveTo(parent.x,parent.y);guideContext.lineTo(child.x,child.y)}
     }
     guideContext.stroke();
-    for(const point of [ground,...Object.values(points)]){
-      guideContext.beginPath();guideContext.arc(point.x,point.y,3.5*dpr,0,Math.PI*2);guideContext.fillStyle="rgba(255,255,255,.92)";guideContext.fill();
+    const boneColors={root:"#ffb45f",joint:"#ffffff",branch:"#c49cff",end:"#74e8ff"};
+    for(const bone of activeBonePoints){
+      const point=points[bone.id];
+      if(!point)continue;
+      guideHandles.bones[bone.id]=point;
+      const selected=selectedBonePoint()===bone.id;
+      guideContext.beginPath();guideContext.arc(point.x,point.y,(selected?7:4)*dpr,0,Math.PI*2);guideContext.fillStyle=boneColors[bone.type];guideContext.fill();
+      if(selected){guideContext.lineWidth=2*dpr;guideContext.strokeStyle="#111";guideContext.stroke()}
+      if($("#debugShowTags").checked||selected){
+        const label=`${bone.tag} ${bone.label}`;
+        guideContext.font=`700 ${Math.max(9,9*dpr)}px -apple-system,sans-serif`;
+        const width=guideContext.measureText(label).width+8*dpr;
+        guideContext.fillStyle="rgba(0,0,0,.76)";guideContext.fillRect(point.x+6*dpr,point.y+5*dpr,width,14*dpr);
+        guideContext.fillStyle=boneColors[bone.type];guideContext.fillText(label,point.x+10*dpr,point.y+15*dpr);
+      }
     }
   }
   guideHandles.parts={};guideHandles.sizes={};
@@ -1931,13 +2262,13 @@ function drawGuides(){
   const rigDebug=$("#rigDebug").checked;
   const standardGuides=panelVisible&&$("#showGuides").checked;
   if(!hasImage||(!$("#showGuides").checked&&!rigDebug)||(!standardGuides&&!rigDebug)){
-    guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr:1};
+    guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},bones:{},rayLength:0,dpr:1};
     return;
   }
   const rect=guideImageRect();
   const dpr=guideCanvas.width/Math.max(innerWidth,1);
   const mapPoint=(x,y)=>({x:rect.x+x*rect.width,y:rect.y+y*rect.height});
-  guideHandles={imageRect:rect,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr};
+  guideHandles={imageRect:rect,center:null,light:null,parts:{},sizes:{},bones:{},rayLength:0,dpr};
 
   if(recognitionGuideCanvas&&(standardGuides||(rigDebug&&$("#debugShowMask").checked))){
     guideContext.save();
@@ -1997,6 +2328,17 @@ function guideDragTargetAt(event){
     for(const [edge,handle] of Object.entries(sizeHandles)){
       if(Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return `resize:${selected}:${edge}`;
     }
+    if($("#debugShowBones").checked){
+      const selectedBone=selectedBonePoint();
+      const selectedHandle=guideHandles.bones[selectedBone];
+      if(selectedHandle&&Math.hypot(point.x-selectedHandle.x,point.y-selectedHandle.y)<=hitRadius)return "bone:"+selectedBone;
+    }
+    const selectedPartHandle=guideHandles.parts[selected];
+    if(selectedPartHandle&&Math.hypot(point.x-selectedPartHandle.x,point.y-selectedPartHandle.y)<=hitRadius)return "rig:"+selected;
+    if($("#debugShowBones").checked)for(const bone of activeBonePoints){
+      const handle=guideHandles.bones[bone.id];
+      if(bone.id!==selectedBonePoint()&&handle&&Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return "bone:"+bone.id;
+    }
     const ordered=[selected,...activeRigParts.map(part=>part.id).filter(key=>key!==selected)];
     for(const partKey of ordered){
       const handle=guideHandles.parts[partKey];
@@ -2017,6 +2359,14 @@ function updateGuideDrag(event){
     const imageY=Math.max(0,Math.min(1,(point.y-rect.y)/rect.height));
     $("#cx").value=imageX.toFixed(2);
     $("#cy").value=imageY.toFixed(2);
+  }else if(guideDragTarget.startsWith("bone:")){
+    const boneId=guideDragTarget.slice(5),definition=bonePointById(boneId);
+    if(!definition)return;
+    const rect=guideHandles.imageRect,displayed=bonePointDisplayState(boneId,lastRenderTime*0.001);
+    const requestedX=(point.x-rect.x)/rect.width,requestedY=(point.y-rect.y)/rect.height;
+    definition.x=Math.max(0,Math.min(1,definition.x+requestedX-displayed.x));
+    definition.y=Math.max(0,Math.min(1,definition.y+requestedY-displayed.y));
+    $("#bonePointList").value=boneId;
   }else if(guideDragTarget.startsWith("resize:")){
     const [,partId,edge]=guideDragTarget.split(":");
     const definition=rigPartById(partId);
@@ -2055,6 +2405,9 @@ function beginGuideDrag(event){
   if(target.startsWith("rig:")||target.startsWith("resize:")){
     $("#rigPartList").value=target.split(":")[1];
     syncRigEditor();
+  }else if(target.startsWith("bone:")){
+    $("#bonePointList").value=target.slice(5);
+    syncBoneEditor();
   }
   event.preventDefault();
   event.stopPropagation();

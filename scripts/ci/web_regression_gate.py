@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -26,6 +27,16 @@ def displayed_aspect_after_contain_uv(screen_aspect: float, image_aspect: float)
     else:
         normalized_width, normalized_height = 1.0, ratio
     return screen_aspect * normalized_width / normalized_height
+
+
+def extract_js_function(html: str, name: str) -> str:
+    match = re.search(
+        rf"^function {re.escape(name)}\(.*?^\}}",
+        html,
+        re.DOTALL | re.MULTILINE,
+    )
+    require(match is not None, f"JavaScript関数を取得できません: {name}")
+    return match.group(0)
 
 
 def main() -> int:
@@ -180,6 +191,21 @@ def main() -> int:
         ("partInheritMotion", "親モーション継承ON/OFF"),
         ("partInheritAmount", "親モーション継承量"),
         ("resetRigPart", "部位自動推定復元"),
+        ("duplicateRigPart", "部位複製"),
+        ("bonePointList", "ボーンポイント一覧"),
+        ("addBoneRoot", "ボーン起点追加"),
+        ("addBoneChild", "ボーン子ポイント追加"),
+        ("deleteBonePoint", "ボーンポイント削除"),
+        ("bonePointName", "ボーンポイント名編集"),
+        ("bonePointType", "ボーンポイント種別"),
+        ("bonePointParent", "ボーン親ポイント"),
+        ("bonePointPart", "ボーン追随部位"),
+        ("boneFollowAmount", "ボーン追随率"),
+        ("boneRigStatus", "ボーン構造検証表示"),
+        ("exportRig", "リグJSON保存"),
+        ("importRig", "リグJSON読込"),
+        ("rigProjectFile", "リグJSON入力"),
+        ("resetRig", "リグ全体リセット"),
         ("rigDebugStatus", "解析状態表示"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}のUIがありません")
@@ -206,9 +232,25 @@ def main() -> int:
         require(f"uniform vec2 u_extraMotion{index};" in html, f"追加部位{index + 1}のshaderモーションがありません")
     require("function applyRigPartControls(" in html, "部位ごとのモーション編集処理がありません")
     require("function resetSelectedRigPart(" in html, "編集部位を自動推定へ戻せません")
+    require("const MAX_BONE_POINTS=24;" in html, "ボーンポイント数の安全上限がありません")
+    for bone_type, label in [("root", "起点"), ("joint", "関節"), ("branch", "分岐"), ("end", "終点")]:
+        require(f'<option value="{bone_type}">{label}</option>' in html, f"ボーン種別がありません: {label}")
+    require("function buildBoneRigFromParts(" in html, "初期ボーン構造を生成できません")
+    require("function addBonePoint(" in html, "ボーンポイントを追加できません")
+    require("function deleteSelectedBonePoint(" in html, "ボーンポイントを削除できません")
+    require("function applyBonePointControls(" in html, "ボーンポイントを編集できません")
+    require("function bonePointDisplayState(" in html, "ボーンポイントが実モーションへ追随しません")
+    require("function wouldCreateBoneCycle(" in html, "ボーンの循環参照を防止していません")
+    require("function validateRigDefinition(" in html, "リグ構造の検証処理がありません")
+    require("function duplicateSelectedRigPart(" in html, "部位を複製できません")
+    require("function exportRigProject(" in html, "リグJSONを保存できません")
+    require("async function importRigProject(" in html, "リグJSONを読み込めません")
+    require("function resetRigDefinition(" in html, "リグ全体を自動推定へ戻せません")
     require("rigParts:" in html[html.index("function captureEditState()") :], "部位編集がUndo／Redo状態へ含まれていません")
+    require("bonePoints:" in html[html.index("function captureEditState()") :], "ボーン編集がUndo／Redo状態へ含まれていません")
     require('guideDragTarget.startsWith("rig:")' in html, "ワイヤーフレーム中心を直接ドラッグ編集できません")
     require('guideDragTarget.startsWith("resize:")' in html, "ワイヤーフレーム範囲を直接リサイズできません")
+    require('guideDragTarget.startsWith("bone:")' in html, "ボーンポイントをプレビュー上で直接移動できません")
     require('id="stopCamera"' in html and "function stopCamera(" in html, "デバイスタブからカメラを停止できません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
@@ -481,6 +523,94 @@ def main() -> int:
             script.flush()
             subprocess.run([node, "--check", script.name], check=True)
         print("PASS: JavaScript syntax")
+
+        rig_fixture = {
+            "format": "P3D-PseudoLive2D-Rig",
+            "version": 1,
+            "parts": [
+                {
+                    "id": "body",
+                    "role": "body",
+                    "tag": "01",
+                    "label": "読込胴体",
+                    "color": "#69f0ae",
+                    "region": [0.5, 0.55, 0.22, 0.32],
+                    "motionEnabled": True,
+                    "preset": "body",
+                    "strength": 1,
+                    "gravity": -0.00006,
+                    "stiffness": 32,
+                    "damping": 9.8,
+                    "parentId": None,
+                    "inheritMotion": False,
+                    "inheritAmount": 0,
+                },
+                {
+                    "id": "custom-chest",
+                    "role": "custom",
+                    "tag": "05",
+                    "label": "読込胸部",
+                    "color": "#b79cff",
+                    "region": [0.5, 0.43, 0.13, 0.1],
+                    "motionEnabled": True,
+                    "preset": "chest",
+                    "strength": 1.1,
+                    "gravity": -0.00032,
+                    "stiffness": 15,
+                    "damping": 6.2,
+                    "parentId": "body",
+                    "inheritMotion": True,
+                    "inheritAmount": 0.72,
+                },
+            ],
+            "bonePoints": [
+                {
+                    "id": "import-root",
+                    "tag": "B01",
+                    "label": "読込起点",
+                    "type": "root",
+                    "x": 0.5,
+                    "y": 0.82,
+                    "parentId": None,
+                    "partId": "body",
+                    "followAmount": 0,
+                },
+                {
+                    "id": "import-chest",
+                    "tag": "B02",
+                    "label": "読込胸部点",
+                    "type": "end",
+                    "x": 0.5,
+                    "y": 0.43,
+                    "parentId": "import-root",
+                    "partId": "custom-chest",
+                    "followAmount": 1,
+                },
+            ],
+        }
+        rig_test = "\n".join(
+            [
+                "const MAX_RIG_PARTS=8,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
+                'const RIG_PARTS={body:{},head:{},material:{},prop:{}};',
+                'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
+                'const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};',
+                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},chest:{strength:1.1,gravity:-.00032,stiffness:15,damping:6.2}};",
+                extract_js_function(html, "parentChainHasCycle"),
+                extract_js_function(html, "validateRigDefinition"),
+                extract_js_function(html, "boundedNumber"),
+                extract_js_function(html, "normalizeRigProject"),
+                f"const fixture={json.dumps(rig_fixture, ensure_ascii=False)};",
+                "const normalized=normalizeRigProject(fixture);",
+                'if(normalized.parts.length!==2||normalized.bones.length!==2||normalized.parts[1].parentId!=="body"||normalized.bones[1].parentId!=="import-root")throw new Error("有効なリグJSONを正規化できません");',
+                "const cyclic=JSON.parse(JSON.stringify(fixture));",
+                'cyclic.bonePoints.push({id:"safety-root",tag:"B03",label:"独立起点",type:"root",x:.2,y:.8,parentId:null,partId:"body",followAmount:0});',
+                'cyclic.bonePoints[0].parentId="import-chest";',
+                "let rejected=false;try{normalizeRigProject(cyclic)}catch(error){rejected=/循環/.test(error.message)}",
+                'if(!rejected)throw new Error("循環するボーンJSONを拒否できません");',
+            ]
+        )
+        subprocess.run([node, "-e", rig_test], check=True)
+        print("PASS: rig JSON normalization and cycle rejection")
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
