@@ -16,7 +16,7 @@ html,body{margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-
 #topActions{display:flex;gap:6px;align-items:center;pointer-events:auto}
 #panelToggle,#demoNext{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
 #demoNext{background:linear-gradient(135deg,rgba(255,112,180,.94),rgba(116,97,255,.94));border-color:rgba(255,255,255,.34)}
-#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;max-height:46dvh;overflow-y:auto;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;gap:9px;opacity:1;transform:translateY(0);visibility:visible;transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
+#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;height:min(54dvh,620px);overflow:hidden;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:9px;opacity:1;transform:translateY(0);visibility:visible;transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
 #panel.is-hidden{opacity:0;transform:translateY(calc(100% + 24px));visibility:hidden;pointer-events:none;transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s}
 .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 button,.filelabel{border:0;border-radius:12px;padding:11px 8px;font-size:14px;font-weight:700;text-align:center;background:#fff;color:#111}
@@ -26,6 +26,14 @@ input[type=file]{display:none}
 .row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:12px}
 input[type=range]{width:100%}
 select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
+.settingsTabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.settingsTabs::-webkit-scrollbar{display:none}
+.settingsTabs button{flex:0 0 auto;min-height:38px;padding:7px 12px;border:1px solid rgba(255,255,255,.14);background:#303038;color:#ddd;font-size:12px}
+.settingsTabs button[aria-selected="true"]{background:#d9f8ff;color:#102128;border-color:#79e7ff}
+#settingsTabContent{min-height:0;overflow-y:auto;padding-right:2px}
+.tabPanel{display:grid;gap:9px}
+.tabPanel[hidden]{display:none}
+.panelFooter{display:grid;gap:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.12)}
 .sectionTitle{margin-top:3px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;font-weight:800;color:#c7f5ff;letter-spacing:.04em}
 .checks{display:grid;gap:6px;font-size:12px}
 .check{display:flex;min-height:30px;align-items:center;gap:7px;padding:2px 4px}
@@ -33,6 +41,12 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 .debugLayerGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 7px}
 .debugLayerGrid .check{min-height:27px;padding:1px 3px;border-radius:8px;background:rgba(255,255,255,.035)}
 .rigEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(121,231,255,.18);border-radius:12px;background:rgba(8,20,28,.36)}
+.rigEditor select[size]{min-height:132px;padding:4px}
+.rigEditor select[size] option{padding:7px 8px;border-radius:7px}
+.compactButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.compactButtons button{padding:9px 7px;font-size:12px}
+.motionFields{display:grid;gap:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08)}
+#rigDirectEditHint{padding:7px;border-radius:9px;background:rgba(121,231,255,.08);color:#c7f5ff}
 #rigDebugStatus{font-size:10px;color:#bfefff;line-height:1.5}
 .effectControl{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:8px}
 .effectControl .check{min-width:0}
@@ -47,7 +61,7 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 #help b{font-size:17px}
 #err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
 #mapStatus{font-size:11px;color:#d4d4dc;line-height:1.45}
-@media (min-width:720px){#panel{left:auto;width:min(390px,calc(100vw - 32px));max-height:calc(100dvh - 86px)}}
+@media (min-width:720px){#panel{left:auto;width:min(420px,calc(100vw - 32px));height:min(720px,calc(100dvh - 86px))}}
 @media (max-width:480px){#status{max-width:28vw}#panelToggle,#demoNext{padding:8px 9px;font-size:11px}}
 @media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
 </style>
@@ -73,6 +87,16 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
   </div>
 
   <div id="panel" class="is-hidden" aria-hidden="true">
+    <div id="settingsTabs" class="settingsTabs" role="tablist" aria-label="設定カテゴリ">
+      <button id="tab-image" type="button" role="tab" aria-selected="true" aria-controls="panel-image" data-tab="image">画像</button>
+      <button id="tab-live2d" type="button" role="tab" aria-selected="false" aria-controls="panel-live2d" data-tab="live2d">Live2D</button>
+      <button id="tab-lighting" type="button" role="tab" aria-selected="false" aria-controls="panel-lighting" data-tab="lighting">照明</button>
+      <button id="tab-crop" type="button" role="tab" aria-selected="false" aria-controls="panel-crop" data-tab="crop">トリミング</button>
+      <button id="tab-effects" type="button" role="tab" aria-selected="false" aria-controls="panel-effects" data-tab="effects">立体表示</button>
+      <button id="tab-device" type="button" role="tab" aria-selected="false" aria-controls="panel-device" data-tab="device">デバイス</button>
+    </div>
+    <div id="settingsTabContent">
+    <section id="panel-image" class="tabPanel" role="tabpanel" aria-labelledby="tab-image" data-tab-panel="image">
     <div class="sectionTitle">デモ画像</div>
     <div class="demoGrid" id="demoGallery" aria-label="オリジナルデモ画像">
       <button class="demoCard" type="button" data-demo-index="0" aria-pressed="false"><img src="assets/demos/demo-mascot.jpg" alt="" loading="lazy"><span>激烈ゆるキャラ</span></button>
@@ -86,6 +110,19 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
       <button class="demoCard standee" type="button" data-demo-index="8" aria-pressed="false"><img src="assets/demos/demo-standee-man-street-thumb.png" alt="" loading="lazy"><span>ストリートイケメン</span></button>
     </div>
     <div class="hint">完全オリジナルの背景＋透過立ち絵です。画像を押すと2層で立体表示し、右上の「愛でる」で順番に切り替えられます。</div>
+    <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
+    <div class="buttons">
+      <label class="filelabel">Depth Map<input id="depthFile" type="file" accept="image/*"></label>
+      <label class="filelabel">人物／物体マスク<input id="subjectMaskFile" type="file" accept="image/*"></label>
+    </div>
+    <div class="buttons">
+      <button id="autoPerson" class="secondary">人物を自動分離</button>
+      <button id="clearMaps" class="secondary">マップを解除</button>
+    </div>
+    <div id="mapStatus">Depth: 中心近似 ／ マスク: 中心近似</div>
+    </section>
+
+    <section id="panel-live2d" class="tabPanel" role="tabpanel" aria-labelledby="tab-live2d" data-tab-panel="live2d" hidden>
     <div class="sectionTitle">Live2D風モーション</div>
     <label class="check"><input id="autoMotion" type="checkbox" checked>Live2D風自動認識モーション</label>
     <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"></div>
@@ -103,33 +140,38 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     </div>
     <div id="rigDebugStatus" aria-live="polite">解析デバッグ: OFF</div>
     <div class="rigEditor">
-      <div class="row"><label for="rigPartSelect">編集部位</label><select id="rigPartSelect">
-        <option value="body">TAG 01 胴体</option>
-        <option value="head">TAG 02 頭部・顔</option>
-        <option value="material">TAG 03 髪・耳・布</option>
-        <option value="prop">TAG 04 小物・尻尾</option>
-      </select></div>
-      <div class="row"><label for="rigPartX">中心X</label><input id="rigPartX" type="range" min="0" max="1" step="0.005" value="0.5"></div>
-      <div class="row"><label for="rigPartY">中心Y</label><input id="rigPartY" type="range" min="0" max="1" step="0.005" value="0.5"></div>
-      <div class="row"><label for="rigPartRadiusX">範囲幅</label><input id="rigPartRadiusX" type="range" min="0.02" max="0.5" step="0.005" value="0.2"></div>
-      <div class="row"><label for="rigPartRadiusY">範囲高さ</label><input id="rigPartRadiusY" type="range" min="0.02" max="0.5" step="0.005" value="0.2"></div>
+      <label for="rigPartList">編集部位（一覧選択）</label>
+      <select id="rigPartList" size="6" aria-label="編集部位リスト"></select>
+      <div class="compactButtons">
+        <button id="addRigPart" type="button">部位を追加</button>
+        <button id="deleteRigPart" class="secondary" type="button">選択部位を削除</button>
+      </div>
+      <div class="row"><label for="rigPartName">部位名</label><input id="rigPartName" type="text" maxlength="24" value=""></div>
+      <div id="rigDirectEditHint" class="hint">範囲の中心は円内をドラッグ、幅と高さは円周の4ハンドルを直接ドラッグして編集します。</div>
+      <div class="motionFields">
+        <label class="check"><input id="partMotionEnabled" type="checkbox" checked>この部位のモーション ON</label>
+        <div class="row"><label for="partMotionPreset">アルゴリズム</label><select id="partMotionPreset">
+          <option value="body">体幹・呼吸</option>
+          <option value="soft">柔らかい揺れ</option>
+          <option value="hair">髪・布・耳</option>
+          <option value="prop">小物・尻尾</option>
+          <option value="chest">胸部弾性（2軸遅延）</option>
+        </select></div>
+        <div class="row"><label for="partMotionStrength">個別強度</label><input id="partMotionStrength" type="range" min="0" max="2" step="0.01" value="1"></div>
+        <div class="row"><label for="partGravity">重力</label><input id="partGravity" type="range" min="-0.003" max="0.003" step="0.00005" value="-0.0002"></div>
+        <div class="row"><label for="partStiffness">ばね</label><input id="partStiffness" type="range" min="4" max="44" step="0.5" value="20"></div>
+        <div class="row"><label for="partDamping">減衰</label><input id="partDamping" type="range" min="2" max="14" step="0.1" value="7"></div>
+        <div class="row"><label for="partParent">親部位</label><select id="partParent"></select></div>
+        <label class="check"><input id="partInheritMotion" type="checkbox">親モーションを継承</label>
+        <div class="row"><label for="partInheritAmount">継承量</label><input id="partInheritAmount" type="range" min="0" max="1.5" step="0.01" value="0.65"></div>
+      </div>
       <button id="resetRigPart" class="secondary" type="button">選択部位を自動推定へ戻す</button>
     </div>
-    <div class="hint">TAG 01〜04は同じ推定領域とばね状態を参照します。中心は画像上のタグを直接ドラッグ、範囲はスライダで補正できます。ワイヤーとボーンはLive2D風モーション中も実際の部位変位へ追随します。</div>
-    <div class="sectionTitle">自分の画像</div>
-    <div class="buttons">
-      <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
-      <button id="camera" class="secondary">フロントカメラ開始</button>
-    </div>
-    <div class="buttons">
-      <label class="filelabel">Depth Map<input id="depthFile" type="file" accept="image/*"></label>
-      <label class="filelabel">人物／物体マスク<input id="subjectMaskFile" type="file" accept="image/*"></label>
-    </div>
-    <div class="buttons">
-      <button id="autoPerson" class="secondary">人物を自動分離</button>
-      <button id="clearMaps" class="secondary">マップを解除</button>
-    </div>
-    <div id="mapStatus">Depth: 中心近似 ／ マスク: 中心近似</div>
+    <div class="hint">親子関係ON時は親の実モーションを子へ加算します。例: 胴体→胸部。ボーン・ワイヤー・タグは合成後の動作へ追随します。</div>
+    </section>
+
+    <section id="panel-effects" class="tabPanel" role="tabpanel" aria-labelledby="tab-effects" data-tab-panel="effects" hidden>
+    <div class="sectionTitle">立体表示</div>
     <div class="row"><label for="effectMode">立体表現</label><select id="effectMode">
       <option value="0">標準</option>
       <option value="1">ホログラム</option>
@@ -157,7 +199,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="row"><label for="zeroParallax">画面面Depth</label><input id="zeroParallax" type="range" min="0.15" max="0.80" step="0.01" value="0.45"></div>
     <div class="row"><label for="viewDepth">前後視点</label><input id="viewDepth" type="range" min="-1" max="1" step="0.01" value="0"></div>
     <div class="hint">画面面を基準に手前／奥を逆方向へ動かし、遮蔽・背後影・近接ズームを同期します。通常画面の1人向け視点追従で、左右眼別のステレオ映像ではありません。</div>
-    <div class="sectionTitle">立体・照明ガイド</div>
+    </section>
+
+    <section id="panel-lighting" class="tabPanel" role="tabpanel" aria-labelledby="tab-lighting" data-tab-panel="lighting" hidden>
+    <div class="sectionTitle">照明</div>
     <label class="check"><input id="showGuides" type="checkbox">編集ガイドを表示</label>
     <div class="hint">ON時だけ認識マスク、中心、範囲、光源を画像へ重ねます。ガイドは処理結果には含まれません。</div>
     <div class="row"><label for="lightX">光源X</label><input id="lightX" type="range" min="-1" max="1" step="0.01" value="-0.42"></div>
@@ -167,16 +212,33 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <div class="row"><label for="cx">キャラ中心X</label><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
     <div class="row"><label for="cy">キャラ中心Y</label><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
     <div class="row"><label for="radius">キャラ範囲</label><input id="radius" type="range" min="0.10" max="0.70" step="0.01" value="0.33"></div>
+    </section>
+
+    <section id="panel-crop" class="tabPanel" role="tabpanel" aria-labelledby="tab-crop" data-tab-panel="crop" hidden>
     <div class="sectionTitle">人物／物体の輪郭トリミング</div>
     <label class="check"><input id="contourCrop" type="checkbox" disabled>認識マスクの輪郭で切り抜く</label>
     <div class="row"><label for="cropFeather">輪郭ぼかし</label><input id="cropFeather" type="range" min="0" max="0.08" step="0.002" value="0.012" disabled></div>
     <div class="hint">人物自動分離または人物／物体マスク読込後に利用できます。元画像とマスクは変更しません。</div>
+    </section>
+
+    <section id="panel-device" class="tabPanel" role="tabpanel" aria-labelledby="tab-device" data-tab-panel="device" hidden>
+    <div class="sectionTitle">デバイス</div>
+    <div class="buttons">
+      <button id="camera" type="button">フロントカメラ開始</button>
+      <button id="stopCamera" class="secondary" type="button" disabled>カメラ停止</button>
+    </div>
+    <div class="hint">カメラON/OFFと顔追跡をここで管理します。停止後も画像と手動ドラッグ操作は利用できます。</div>
+    </section>
+    </div>
+
+    <div class="panelFooter">
     <div class="buttons">
       <button id="undoEdit" class="secondary" type="button" disabled>アンドゥ</button>
       <button id="redoEdit" class="secondary" type="button" disabled>リドゥ</button>
     </div>
     <button id="resetDefaults" class="secondary" type="button">スライダを初期値へ戻す</button>
     <div id="err"></div>
+    </div>
   </div>
 </div>
 
@@ -256,10 +318,19 @@ uniform vec2 u_bodyMotion;
 uniform vec2 u_headMotion;
 uniform vec2 u_materialMotion;
 uniform vec2 u_propMotion;
+uniform vec4 u_corePartEnabled;
 uniform vec4 u_rigCenters;
 uniform vec4 u_rigRadii;
 uniform vec4 u_bodyRegion;
 uniform vec4 u_materialRegion;
+uniform vec4 u_extraRegion0;
+uniform vec4 u_extraRegion1;
+uniform vec4 u_extraRegion2;
+uniform vec4 u_extraRegion3;
+uniform vec2 u_extraMotion0;
+uniform vec2 u_extraMotion1;
+uniform vec2 u_extraMotion2;
+uniform vec2 u_extraMotion3;
 uniform float u_groundAnchor;
 uniform vec2 u_motionRange;
 uniform float u_standeeMode;
@@ -347,10 +418,10 @@ vec2 constrainMotionOffset(vec2 offset){
 vec2 riggedForegroundUV(vec2 uv){
   float enabled=u_autoRigEnabled*u_hasLayeredDemo*u_motionScale;
   if(enabled<0.001)return uv;
-  float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy);
-  float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw);
-  float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw);
-  float bodyInfluence=rigEllipseAt(uv,u_bodyRegion.xy,u_bodyRegion.zw);
+  float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy)*u_corePartEnabled.y;
+  float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw)*u_corePartEnabled.z;
+  float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw)*u_corePartEnabled.w;
+  float bodyInfluence=rigEllipseAt(uv,u_bodyRegion.xy,u_bodyRegion.zw)*u_corePartEnabled.x;
   float anchorWeight=anchoredMotionWeight(uv);
   vec2 headPoint=(uv-u_rigCenters.xy)/max(u_rigRadii.xy,vec2(0.001));
   vec2 bodyPoint=(uv-u_bodyRegion.xy)/max(u_bodyRegion.zw,vec2(0.001));
@@ -364,6 +435,10 @@ vec2 riggedForegroundUV(vec2 uv){
   displacement+=u_headMotion*headInfluence*1.30;
   displacement+=u_materialMotion*materialInfluence*1.18;
   displacement+=u_propMotion*propInfluence*1.35;
+  displacement+=u_extraMotion0*rigEllipseAt(uv,u_extraRegion0.xy,u_extraRegion0.zw);
+  displacement+=u_extraMotion1*rigEllipseAt(uv,u_extraRegion1.xy,u_extraRegion1.zw);
+  displacement+=u_extraMotion2*rigEllipseAt(uv,u_extraRegion2.xy,u_extraRegion2.zw);
+  displacement+=u_extraMotion3*rigEllipseAt(uv,u_extraRegion3.xy,u_extraRegion3.zw);
   // 顔と胴体は単なる平行移動ではなく、局所的な開閉／伸縮を使う。
   displacement.x+=(headPoint.y*u_live2dMotion.z*0.0048)*headInfluence;
   displacement.y+=(headPoint.y-0.10)*eyeBand*u_live2dMotion.x*0.030;
@@ -697,7 +772,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -707,16 +782,11 @@ gl.uniform1i(U.u_foregroundTex,4);
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let hasLayeredDemo=false,demoLoadSerial=0;
-let activeRigProfile=null,inferredRigProfile=null,activeStandee=false;
+let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeStandee=false;
 let activeMotionRange=[0.018,0.012];
-const rigSprings={
-  body:{x:0,y:0,vx:0,vy:0},
-  head:{x:0,y:0,vx:0,vy:0},
-  material:{x:0,y:0,vx:0,vy:0},
-  prop:{x:0,y:0,vx:0,vy:0}
-};
+const rigSprings={};
 let recognitionBounds=null,recognitionGuideCanvas=null;
-let guideHandles={imageRect:null,center:null,light:null,parts:{},rayLength:0,dpr:1},guideDragTarget=null;
+let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr:1},guideDragTarget=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 let faceScaleBaseline=0,lastRenderTime=performance.now();
@@ -729,12 +799,32 @@ let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,strea
 let imageSegmenter=null,startingSegmentation=false;
 let fpsN=0,fpsT=performance.now();
 const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
+const SETTINGS_TAB_KEY="p3d.settingsTab.v1";
 const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
 let panelVisible=false;
 
+function switchSettingsTab(tabName,{persist=true}={}){
+  const target=document.querySelector(`[data-tab-panel="${tabName}"]`) ? tabName : "image";
+  for(const button of document.querySelectorAll("#settingsTabs [role=tab]")){
+    const selected=button.dataset.tab===target;
+    button.setAttribute("aria-selected",String(selected));
+    button.tabIndex=selected?0:-1;
+  }
+  for(const section of document.querySelectorAll("[data-tab-panel]"))section.hidden=section.dataset.tabPanel!==target;
+  $("#settingsTabContent").scrollTop=0;
+  if(persist){try{localStorage.setItem(SETTINGS_TAB_KEY,target)}catch(error){}}
+}
+
+for(const button of document.querySelectorAll("#settingsTabs [role=tab]")){
+  button.addEventListener("click",()=>switchSettingsTab(button.dataset.tab));
+}
+let savedSettingsTab="image";
+try{savedSettingsTab=localStorage.getItem(SETTINGS_TAB_KEY)||"image"}catch(error){}
+switchSettingsTab(savedSettingsTab,{persist:false});
+
 function resetRigSprings(){
   for(const spring of Object.values(rigSprings)){
-    spring.x=0;spring.y=0;spring.vx=0;spring.vy=0;
+    spring.x=0;spring.y=0;spring.vx=0;spring.vy=0;spring.effectiveX=0;spring.effectiveY=0;
   }
 }
 
@@ -874,6 +964,15 @@ const RIG_PARTS={
   material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},
   prop:{tag:"04",label:"小物・尻尾",color:"#ff86c8"}
 };
+const MAX_RIG_PARTS=8;
+const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];
+const MOTION_PRESETS={
+  body:{strength:1,gravity:-0.00006,stiffness:32,damping:9.8},
+  soft:{strength:1,gravity:-0.00045,stiffness:18,damping:6.5},
+  hair:{strength:1,gravity:-0.00100,stiffness:13,damping:5.5},
+  prop:{strength:1,gravity:-0.00155,stiffness:8,damping:4},
+  chest:{strength:1.15,gravity:-0.00032,stiffness:15,damping:6.2}
+};
 
 function cloneRigProfile(profile){
   if(!profile)return null;
@@ -885,45 +984,153 @@ function cloneRigProfile(profile){
   };
 }
 
+function newRigSpring(){return {x:0,y:0,vx:0,vy:0,effectiveX:0,effectiveY:0}}
+
+function cloneRigParts(parts){
+  return parts.map(part=>({...part,region:[...part.region],originalRegion:[...(part.originalRegion||part.region)]}));
+}
+
+function buildRigPartsFromProfile(profile){
+  if(!profile)return [];
+  const specs=[
+    ["body","body",null,false,0,"body"],
+    ["head","head","body",true,.58,"soft"],
+    ["material","material","head",true,.68,"hair"],
+    ["prop","prop","body",true,.46,"prop"]
+  ];
+  const parts=specs.map(([id,role,parentId,inheritMotion,inheritAmount,preset])=>{
+    const meta=RIG_PARTS[role],motion=MOTION_PRESETS[preset];
+    return {id,role,tag:meta.tag,label:meta.label,color:meta.color,region:[...profile[role]],originalRegion:[...profile[role]],motionEnabled:true,preset,parentId,inheritMotion,inheritAmount,...motion};
+  });
+  for(const part of parts)rigSprings[part.id]=newRigSpring();
+  return parts;
+}
+
+function rigPartById(id){return activeRigParts.find(part=>part.id===id)||null}
+
+function syncProfileFromParts(){
+  if(!activeRigProfile)return;
+  for(const role of Object.keys(RIG_PARTS)){
+    const part=activeRigParts.find(candidate=>candidate.role===role);
+    if(part)activeRigProfile[role]=[...part.region];
+  }
+}
+
 function selectedRigPart(){
-  return $("#rigPartSelect").value;
+  return $("#rigPartList").value;
 }
 
 function rigProfileWasEdited(){
   if(!activeRigProfile||!inferredRigProfile)return false;
-  return Object.keys(RIG_PARTS).some(key=>activeRigProfile[key].some((value,index)=>Math.abs(value-inferredRigProfile[key][index])>0.0001));
+  return JSON.stringify(cloneRigParts(activeRigParts))!==JSON.stringify(cloneRigParts(inferredRigParts));
+}
+
+function syncRigPartList(preferredId=selectedRigPart()){
+  const list=$("#rigPartList");
+  list.replaceChildren(...activeRigParts.map(part=>{
+    const option=document.createElement("option");
+    option.value=part.id;
+    option.textContent=`TAG ${part.tag} ${part.label}`;
+    return option;
+  }));
+  list.value=activeRigParts.some(part=>part.id===preferredId)?preferredId:(activeRigParts[0]?.id||"");
+  $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4;
+  syncRigEditor();
+}
+
+function wouldCreateRigCycle(partId,parentId){
+  let current=parentId;
+  const visited=new Set();
+  while(current){
+    if(current===partId||visited.has(current))return true;
+    visited.add(current);
+    current=rigPartById(current)?.parentId||null;
+  }
+  return false;
 }
 
 function syncRigEditor(){
-  const partKey=selectedRigPart();
-  const part=activeRigProfile&&activeRigProfile[partKey];
+  const part=rigPartById(selectedRigPart());
   const available=Boolean(part&&$("#rigDebug").checked);
-  for(const id of ["rigPartSelect","rigPartX","rigPartY","rigPartRadiusX","rigPartRadiusY","resetRigPart"]){
+  for(const id of ["rigPartList","rigPartName","deleteRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
     $("#"+id).disabled=!available;
   }
+  $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4||!$("#rigDebug").checked;
   if(!part)return;
-  $("#rigPartX").value=part[0].toFixed(3);
-  $("#rigPartY").value=part[1].toFixed(3);
-  $("#rigPartRadiusX").value=part[2].toFixed(3);
-  $("#rigPartRadiusY").value=part[3].toFixed(3);
+  $("#rigPartName").value=part.label;
+  $("#partMotionEnabled").checked=part.motionEnabled;
+  $("#partMotionPreset").value=part.preset;
+  $("#partMotionStrength").value=part.strength;
+  $("#partGravity").value=part.gravity;
+  $("#partStiffness").value=part.stiffness;
+  $("#partDamping").value=part.damping;
+  const parent=$("#partParent");
+  parent.replaceChildren(new Option("なし",""),...activeRigParts.filter(candidate=>candidate.id!==part.id&&!wouldCreateRigCycle(part.id,candidate.id)).map(candidate=>new Option(`TAG ${candidate.tag} ${candidate.label}`,candidate.id)));
+  parent.value=part.parentId||"";
+  $("#partInheritMotion").checked=part.inheritMotion;
+  $("#partInheritAmount").value=part.inheritAmount;
+  $("#partInheritAmount").disabled=!available||!part.inheritMotion;
 }
 
-function applyRigEditor(){
-  if(!activeRigProfile)return;
-  const partKey=selectedRigPart();
-  activeRigProfile[partKey]=[
-    parseFloat($("#rigPartX").value),
-    parseFloat($("#rigPartY").value),
-    parseFloat($("#rigPartRadiusX").value),
-    parseFloat($("#rigPartRadiusY").value)
-  ];
+function applyRigPartControls(){
+  const part=rigPartById(selectedRigPart());
+  if(!part)return;
+  part.label=$("#rigPartName").value.trim()||part.label;
+  part.motionEnabled=$("#partMotionEnabled").checked;
+  part.preset=$("#partMotionPreset").value;
+  part.strength=parseFloat($("#partMotionStrength").value);
+  part.gravity=parseFloat($("#partGravity").value);
+  part.stiffness=parseFloat($("#partStiffness").value);
+  part.damping=parseFloat($("#partDamping").value);
+  const requestedParent=$("#partParent").value||null;
+  part.parentId=wouldCreateRigCycle(part.id,requestedParent)?null:requestedParent;
+  part.inheritMotion=$("#partInheritMotion").checked;
+  part.inheritAmount=parseFloat($("#partInheritAmount").value);
+  const option=$("#rigPartList").selectedOptions[0];
+  if(option)option.textContent=`TAG ${part.tag} ${part.label}`;
+  $("#partInheritAmount").disabled=!part.inheritMotion;
+}
+
+function applyMotionPreset(){
+  const preset=MOTION_PRESETS[$("#partMotionPreset").value];
+  if(!preset)return;
+  $("#partMotionStrength").value=preset.strength;
+  $("#partGravity").value=preset.gravity;
+  $("#partStiffness").value=preset.stiffness;
+  $("#partDamping").value=preset.damping;
+  applyRigPartControls();
+}
+
+function addRigPart(){
+  if(!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS||activeRigParts.filter(part=>part.role==="custom").length>=4)return;
+  const serial=activeRigParts.reduce((max,part)=>Math.max(max,parseInt(part.tag,10)||0),0)+1;
+  const parent=rigPartById(selectedRigPart())||activeRigParts.find(part=>part.role==="body")||null;
+  const id=`custom-${Date.now().toString(36)}-${serial}`;
+  const region=parent?[parent.region[0],parent.region[1],Math.max(.06,parent.region[2]*.45),Math.max(.06,parent.region[3]*.35)]:[.5,.5,.12,.12];
+  const motion=MOTION_PRESETS.soft;
+  const part={id,role:"custom",tag:String(serial).padStart(2,"0"),label:`追加部位 ${serial}`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],motionEnabled:true,preset:"soft",parentId:parent?.id||null,inheritMotion:Boolean(parent),inheritAmount:.65,...motion};
+  activeRigParts.push(part);
+  rigSprings[id]=newRigSpring();
+  syncRigPartList(id);pushEditHistory();
+}
+
+function deleteSelectedRigPart(){
+  const id=selectedRigPart();
+  const index=activeRigParts.findIndex(part=>part.id===id);
+  if(index<0)return;
+  activeRigParts.splice(index,1);
+  for(const part of activeRigParts)if(part.parentId===id){part.parentId=null;part.inheritMotion=false}
+  delete rigSprings[id];
+  syncProfileFromParts();syncRigPartList(activeRigParts[Math.min(index,activeRigParts.length-1)]?.id||"");pushEditHistory();
 }
 
 function resetSelectedRigPart(){
-  if(!activeRigProfile||!inferredRigProfile)return;
-  const partKey=selectedRigPart();
-  activeRigProfile[partKey]=[...inferredRigProfile[partKey]];
-  syncRigEditor();
+  const part=rigPartById(selectedRigPart());
+  if(!part)return;
+  const inferred=inferredRigParts.find(candidate=>candidate.id===part.id);
+  part.region=[...(inferred?.region||part.originalRegion)];
+  if(inferred)Object.assign(part,{motionEnabled:inferred.motionEnabled,preset:inferred.preset,strength:inferred.strength,gravity:inferred.gravity,stiffness:inferred.stiffness,damping:inferred.damping,parentId:inferred.parentId,inheritMotion:inferred.inheritMotion,inheritAmount:inferred.inheritAmount});
+  syncProfileFromParts();syncRigEditor();
   pushEditHistory();
 }
 
@@ -944,7 +1151,7 @@ function updateRigDebugStatus(autoRigActive=false){
     const shape=activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（人物・キャラ候補）";
     const source=rigProfileWasEdited() ? "手動補正あり" : "自動推定";
     const following=autoRigActive ? "モーション追随中" : "静止";
-    text=`解析: ${shape} ／ 4部位 ／ ${source} ／ ${following}`;
+    text=`解析: ${shape} ／ ${activeRigParts.length}部位 ／ ${source} ／ ${following}`;
   }
   if($("#rigDebugStatus").textContent!==text)$("#rigDebugStatus").textContent=text;
 }
@@ -1034,6 +1241,8 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     hasSubjectMask=true;
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
     inferredRigProfile=cloneRigProfile(activeRigProfile);
+    activeRigParts=buildRigPartsFromProfile(activeRigProfile);
+    inferredRigParts=cloneRigParts(activeRigParts);
     activeMotionRange=demo.motionRange||activeRigProfile.motionRange;
     activeStandee=Boolean(demo.standee);
     resetRigSprings();
@@ -1042,13 +1251,15 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ＋接地保持" : "背景＋立ち絵＋輪郭自動リグ＋接地保持");
     syncContourCropAvailability();
     syncRigDebugControls();
-    syncRigEditor();
+    syncRigPartList("body");
     statusEl.textContent="表示中: デモ: "+demo.label+"（Live2D風自動リグ＋接地保持）";
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
     hasLayeredDemo=false;
     activeRigProfile=null;
     inferredRigProfile=null;
+    activeRigParts=[];
+    inferredRigParts=[];
     activeMotionRange=[0.018,0.012];
     activeStandee=false;
     syncRigDebugControls();
@@ -1070,8 +1281,10 @@ $("#file").addEventListener("change",e=>{
   if(!f)return;
   demoLoadSerial++;
   activeDemoIndex=-1;
-  activeRigProfile=null;
-  inferredRigProfile=null;
+    activeRigProfile=null;
+    inferredRigProfile=null;
+    activeRigParts=[];
+    inferredRigParts=[];
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
@@ -1104,6 +1317,8 @@ function clearMaps({announce=true}={}){
   hasLayeredDemo=false;
   activeRigProfile=null;
   inferredRigProfile=null;
+  activeRigParts=[];
+  inferredRigParts=[];
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
@@ -1114,6 +1329,7 @@ function clearMaps({announce=true}={}){
   updateMapStatus(announce ? "解除しました" : "");
   syncContourCropAvailability();
   syncRigDebugControls();
+  syncRigPartList("");
 }
 
 function uploadMapImage(texture,unit,img){
@@ -1455,7 +1671,8 @@ const EDIT_CONTROL_IDS=[
 
 function captureEditState(){
   const state={
-    rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,profile:cloneRigProfile(activeRigProfile)} : null
+    rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,profile:cloneRigProfile(activeRigProfile)} : null,
+    rigParts:activeRigProfile ? {demoIndex:activeDemoIndex,parts:cloneRigParts(activeRigParts)} : null
   };
   for(const id of EDIT_CONTROL_IDS){
     const control=$("#"+id);
@@ -1476,8 +1693,13 @@ function applyEditState(state){
   if(state.rigProfile&&state.rigProfile.demoIndex===activeDemoIndex){
     activeRigProfile=cloneRigProfile(state.rigProfile.profile);
   }
+  if(state.rigParts&&state.rigParts.demoIndex===activeDemoIndex){
+    activeRigParts=cloneRigParts(state.rigParts.parts);
+    for(const part of activeRigParts)if(!rigSprings[part.id])rigSprings[part.id]=newRigSpring();
+    syncProfileFromParts();
+  }
   syncRigDebugControls();
-  syncRigEditor();
+  syncRigPartList();
 }
 
 const DEFAULT_EDIT_STATE=captureEditState();
@@ -1528,9 +1750,12 @@ $("#rigDebug").addEventListener("input",()=>{
   syncRigDebugControls();
   updateRigDebugStatus(false);
 });
-$("#rigPartSelect").addEventListener("change",syncRigEditor);
-for(const id of ["rigPartX","rigPartY","rigPartRadiusX","rigPartRadiusY"]){
-  $("#"+id).addEventListener("input",applyRigEditor);
+$("#rigPartList").addEventListener("change",syncRigEditor);
+$("#addRigPart").addEventListener("click",addRigPart);
+$("#deleteRigPart").addEventListener("click",deleteSelectedRigPart);
+$("#partMotionPreset").addEventListener("change",()=>{applyMotionPreset();pushEditHistory()});
+for(const id of ["rigPartName","partMotionEnabled","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount"]){
+  $("#"+id).addEventListener("input",applyRigPartControls);
   $("#"+id).addEventListener("change",pushEditHistory);
 }
 $("#resetRigPart").addEventListener("click",resetSelectedRigPart);
@@ -1568,9 +1793,11 @@ function smoothStep01(value){
   return x*x*(3-2*x);
 }
 
-function rigPartDisplayState(partKey,nowSeconds){
-  const part=activeRigProfile[partKey];
-  const spring=rigSprings[partKey];
+function rigPartDisplayState(partId,nowSeconds){
+  const definition=rigPartById(partId);
+  if(!definition)return {x:.5,y:.5,radiusX:.01,radiusY:.01};
+  const part=definition.region;
+  const spring=rigSprings[partId]||newRigSpring();
   const strength=parseFloat($("#depth").value);
   const dx=(part[0]-parseFloat($("#cx").value))*imgAspect;
   const dy=part[1]-parseFloat($("#cy").value);
@@ -1584,7 +1811,8 @@ function rigPartDisplayState(partKey,nowSeconds){
     depth=depth*(1-strengths.relief)+card*strengths.relief;
     disparity=depth*(1-spatial)+(depth-parseFloat($("#zeroParallax").value))*1.45*spatial;
   }
-  const anchorSpan=Math.max(activeRigProfile.body[3]*1.15,0.12);
+  const body=activeRigParts.find(candidate=>candidate.role==="body");
+  const anchorSpan=Math.max((body?.region[3]||.2)*1.15,0.12);
   const anchorWeight=smoothStep01((activeRigProfile.groundY-part[1])/anchorSpan);
   let sourceX=viewX,sourceY=viewY,depthScale=effects.relief ? 1+0.85*strengths.relief : 1;
   if(effects.depthLayers){
@@ -1602,11 +1830,11 @@ function rigPartDisplayState(partKey,nowSeconds){
     commonX+=Math.sin(nowSeconds*50)*0.0035*strengths.vibration*anchorWeight;
     commonY+=Math.cos(nowSeconds*50*0.79)*0.0016*strengths.vibration*anchorWeight;
   }
-  const factor={body:[0.55,1],head:[1.30,1.30],material:[1.18,1.18],prop:[1.35,1.35]}[partKey];
-  let x=part[0]+commonX+spring.x*factor[0];
-  let y=part[1]-commonY-spring.y*factor[1];
+  const factor={body:[0.55,1],head:[1.30,1.30],material:[1.18,1.18],prop:[1.35,1.35],custom:[1.25,1.25]}[definition.role];
+  let x=part[0]+commonX+(spring.effectiveX||0)*factor[0];
+  let y=part[1]-commonY-(spring.effectiveY||0)*factor[1];
   let radiusX=part[2],radiusY=part[3];
-  if(partKey==="body"){
+  if(definition.role==="body"){
     radiusX*=1+live2dVisualState.breath*0.0045;
     y+=anchorWeight*live2dVisualState.breath*0.0018;
   }
@@ -1638,29 +1866,34 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
   }
   if(!activeRigProfile){guideContext.restore();return;}
   const states={};
-  for(const partKey of Object.keys(RIG_PARTS))states[partKey]=rigPartDisplayState(partKey,nowSeconds);
+  for(const part of activeRigParts)states[part.id]=rigPartDisplayState(part.id,nowSeconds);
   if($("#debugShowBones").checked){
-    const ground=mapPoint(states.body.x,activeRigProfile.groundY);
+    const body=activeRigParts.find(part=>part.role==="body")||activeRigParts[0];
+    const ground=mapPoint(states[body?.id]?.x||.5,activeRigProfile.groundY);
     const points=Object.fromEntries(Object.entries(states).map(([key,state])=>[key,mapPoint(state.x,state.y)]));
     guideContext.setLineDash([]);
     guideContext.lineWidth=Math.max(2,2*dpr);
     guideContext.strokeStyle="rgba(255,255,255,.82)";
     guideContext.beginPath();
-    guideContext.moveTo(ground.x,ground.y);guideContext.lineTo(points.body.x,points.body.y);guideContext.lineTo(points.head.x,points.head.y);
-    guideContext.moveTo(points.head.x,points.head.y);guideContext.lineTo(points.material.x,points.material.y);
-    guideContext.moveTo(points.body.x,points.body.y);guideContext.lineTo(points.prop.x,points.prop.y);
+    if(body&&points[body.id]){guideContext.moveTo(ground.x,ground.y);guideContext.lineTo(points[body.id].x,points[body.id].y)}
+    for(const part of activeRigParts){
+      const parent=part.inheritMotion&&part.parentId?points[part.parentId]:null;
+      const child=points[part.id];
+      if(parent&&child){guideContext.moveTo(parent.x,parent.y);guideContext.lineTo(child.x,child.y)}
+    }
     guideContext.stroke();
     for(const point of [ground,...Object.values(points)]){
       guideContext.beginPath();guideContext.arc(point.x,point.y,3.5*dpr,0,Math.PI*2);guideContext.fillStyle="rgba(255,255,255,.92)";guideContext.fill();
     }
   }
-  guideHandles.parts={};
-  for(const [partKey,meta] of Object.entries(RIG_PARTS)){
+  guideHandles.parts={};guideHandles.sizes={};
+  for(const meta of activeRigParts){
+    const partKey=meta.id;
     const state=states[partKey];
     const point=mapPoint(state.x,state.y);
     guideHandles.parts[partKey]=point;
     const selected=selectedRigPart()===partKey;
-    if($("#debugShowWireframe").checked){
+    if($("#debugShowWireframe").checked||selected){
       guideContext.setLineDash(selected ? [] : [5*dpr,3*dpr]);
       guideContext.lineWidth=Math.max(selected?2.5:1.4,(selected?2.5:1.4)*dpr);
       guideContext.strokeStyle=meta.color;
@@ -1672,6 +1905,13 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
       guideContext.moveTo(point.x-state.radiusX*rect.width,point.y);guideContext.lineTo(point.x+state.radiusX*rect.width,point.y);
       guideContext.moveTo(point.x,point.y-state.radiusY*rect.height);guideContext.lineTo(point.x,point.y+state.radiusY*rect.height);
       guideContext.stroke();
+      if(selected){
+        const size=Math.max(5,5*dpr);
+        const handles={left:{x:point.x-state.radiusX*rect.width,y:point.y},right:{x:point.x+state.radiusX*rect.width,y:point.y},top:{x:point.x,y:point.y-state.radiusY*rect.height},bottom:{x:point.x,y:point.y+state.radiusY*rect.height}};
+        guideHandles.sizes[partKey]=handles;
+        guideContext.setLineDash([]);guideContext.fillStyle="#fff";guideContext.strokeStyle=meta.color;
+        for(const handle of Object.values(handles)){guideContext.beginPath();guideContext.rect(handle.x-size,handle.y-size,size*2,size*2);guideContext.fill();guideContext.stroke()}
+      }
     }
     if($("#debugShowTags").checked){
       const label=`${meta.tag} ${meta.label}`;
@@ -1691,13 +1931,13 @@ function drawGuides(){
   const rigDebug=$("#rigDebug").checked;
   const standardGuides=panelVisible&&$("#showGuides").checked;
   if(!hasImage||(!$("#showGuides").checked&&!rigDebug)||(!standardGuides&&!rigDebug)){
-    guideHandles={imageRect:null,center:null,light:null,parts:{},rayLength:0,dpr:1};
+    guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr:1};
     return;
   }
   const rect=guideImageRect();
   const dpr=guideCanvas.width/Math.max(innerWidth,1);
   const mapPoint=(x,y)=>({x:rect.x+x*rect.width,y:rect.y+y*rect.height});
-  guideHandles={imageRect:rect,center:null,light:null,parts:{},rayLength:0,dpr};
+  guideHandles={imageRect:rect,center:null,light:null,parts:{},sizes:{},rayLength:0,dpr};
 
   if(recognitionGuideCanvas&&(standardGuides||(rigDebug&&$("#debugShowMask").checked))){
     guideContext.save();
@@ -1753,7 +1993,11 @@ function guideDragTargetAt(event){
   const hitRadius=24*guideHandles.dpr;
   if($("#rigDebug").checked&&activeRigProfile){
     const selected=selectedRigPart();
-    const ordered=[selected,...Object.keys(RIG_PARTS).filter(key=>key!==selected)];
+    const sizeHandles=guideHandles.sizes[selected]||{};
+    for(const [edge,handle] of Object.entries(sizeHandles)){
+      if(Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return `resize:${selected}:${edge}`;
+    }
+    const ordered=[selected,...activeRigParts.map(part=>part.id).filter(key=>key!==selected)];
     for(const partKey of ordered){
       const handle=guideHandles.parts[partKey];
       if(handle&&Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return "rig:"+partKey;
@@ -1773,16 +2017,27 @@ function updateGuideDrag(event){
     const imageY=Math.max(0,Math.min(1,(point.y-rect.y)/rect.height));
     $("#cx").value=imageX.toFixed(2);
     $("#cy").value=imageY.toFixed(2);
+  }else if(guideDragTarget.startsWith("resize:")){
+    const [,partId,edge]=guideDragTarget.split(":");
+    const definition=rigPartById(partId);
+    const displayed=rigPartDisplayState(partId,lastRenderTime*0.001);
+    const rect=guideHandles.imageRect;
+    if(!definition)return;
+    if(edge==="left"||edge==="right")definition.region[2]=Math.max(.02,Math.min(.5,Math.abs((point.x-rect.x)/rect.width-displayed.x)));
+    else definition.region[3]=Math.max(.02,Math.min(.5,Math.abs((point.y-rect.y)/rect.height-displayed.y)));
+    syncProfileFromParts();
   }else if(guideDragTarget.startsWith("rig:")){
     const partKey=guideDragTarget.slice(4);
+    const definition=rigPartById(partKey);
+    if(!definition)return;
     const rect=guideHandles.imageRect;
     const displayed=rigPartDisplayState(partKey,lastRenderTime*0.001);
     const requestedX=(point.x-rect.x)/rect.width;
     const requestedY=(point.y-rect.y)/rect.height;
-    activeRigProfile[partKey][0]=Math.max(0,Math.min(1,activeRigProfile[partKey][0]+requestedX-displayed.x));
-    activeRigProfile[partKey][1]=Math.max(0,Math.min(1,activeRigProfile[partKey][1]+requestedY-displayed.y));
-    $("#rigPartSelect").value=partKey;
-    syncRigEditor();
+    definition.region[0]=Math.max(0,Math.min(1,definition.region[0]+requestedX-displayed.x));
+    definition.region[1]=Math.max(0,Math.min(1,definition.region[1]+requestedY-displayed.y));
+    syncProfileFromParts();
+    $("#rigPartList").value=partKey;
   }else{
     const center=guideHandles.center;
     const dx=point.x-center.x;
@@ -1797,8 +2052,8 @@ function beginGuideDrag(event){
   const target=guideDragTargetAt(event);
   if(!target)return;
   guideDragTarget=target;
-  if(target.startsWith("rig:")){
-    $("#rigPartSelect").value=target.slice(4);
+  if(target.startsWith("rig:")||target.startsWith("resize:")){
+    $("#rigPartList").value=target.split(":")[1];
     syncRigEditor();
   }
   event.preventDefault();
@@ -1855,6 +2110,7 @@ async function startCamera(){
     await video.play();
     stream=nextStream;
     cameraOn=true;
+    $("#stopCamera").disabled=false;
     $("#camera").textContent="カメラ動作中・顔検出準備中";
     statusEl.textContent="カメラ起動済み・顔検出準備中…";
   }catch(error){
@@ -1932,6 +2188,24 @@ async function startFace(){
 }
 $("#camera").addEventListener("click",startFace);
 
+function stopCamera(){
+  trackingOn=false;
+  cameraOn=false;
+  startingFace=false;
+  if(faceLandmarker&&typeof faceLandmarker.close==="function")faceLandmarker.close();
+  faceLandmarker=null;
+  if(stream)stream.getTracks().forEach(track=>track.stop());
+  stream=null;
+  video.pause();
+  video.srcObject=null;
+  faceScaleBaseline=0;targetZ=0;
+  $("#camera").disabled=false;
+  $("#camera").textContent="フロントカメラ開始";
+  $("#stopCamera").disabled=true;
+  statusEl.textContent=hasImage?"カメラ停止・手動ドラッグ操作":"画像未選択";
+}
+$("#stopCamera").addEventListener("click",stopCamera);
+
 function detect(now){
   if(!trackingOn||!faceLandmarker||video.readyState<2||now-lastDetect<35)return;
   lastDetect=now;
@@ -1988,6 +2262,35 @@ function stepRigSpring(spring,targetX,targetY,stiffness,damping,gravity,deltaSec
   spring.y=Math.max(-0.016,Math.min(0.016,spring.y+spring.vy*deltaSeconds));
 }
 
+function rigMotionTarget(part,seconds,strength){
+  const scale=strength*part.strength;
+  if(part.preset==="body")return [Math.sin(seconds*0.83)*0.00180*strength*part.strength,Math.sin(seconds*1.66)*0.00115*scale];
+  if(part.preset==="hair")return [(-viewX*0.00450+Math.sin(seconds*1.76+0.8)*0.00440)*scale,Math.cos(seconds*1.24+0.4)*0.00230*scale];
+  if(part.preset==="prop")return [(-viewX*0.00580+Math.sin(seconds*1.29+1.7)*0.00620)*scale,Math.cos(seconds*0.91+1.2)*0.00310*scale];
+  if(part.preset==="chest"){
+    const parentSpring=rigSprings[part.parentId]||newRigSpring();
+    const delayedX=-viewX*0.0022+Math.sin(seconds*1.18+0.55)*0.0024-parentSpring.vx*0.12;
+    const elasticY=Math.sin(seconds*2.36+0.22)*0.0017+Math.cos(seconds*1.12)*0.00075-Math.abs(parentSpring.vy)*0.08;
+    return [delayedX*scale,elasticY*scale];
+  }
+  return [(-viewX*0.00350+Math.sin(seconds*1.13)*0.00280)*scale,(Math.cos(seconds*1.41)*0.00185-viewY*0.00120)*scale];
+}
+
+function effectiveRigMotion(partId,visiting=new Set()){
+  const part=rigPartById(partId),spring=rigSprings[partId];
+  if(!part||!spring||!part.motionEnabled)return {x:0,y:0};
+  if(visiting.has(partId))return {x:spring.x,y:spring.y};
+  visiting.add(partId);
+  let x=spring.x,y=spring.y;
+  if(part.inheritMotion&&part.parentId){
+    const parent=effectiveRigMotion(part.parentId,visiting);
+    x+=parent.x*part.inheritAmount;y+=parent.y*part.inheritAmount;
+  }
+  visiting.delete(partId);
+  spring.effectiveX=x;spring.effectiveY=y;
+  return {x,y};
+}
+
 function updateRigMotion(now,deltaSeconds){
   const enabled=Boolean(activeRigProfile&&hasLayeredDemo&&$("#autoMotion").checked&&!reduceMotion.matches);
   if(!enabled){
@@ -1996,18 +2299,13 @@ function updateRigMotion(now,deltaSeconds){
   }
   const seconds=now*0.001;
   const strength=parseFloat($("#motionStrength").value);
-  const bodyTargetX=Math.sin(seconds*0.83)*0.00180*strength;
-  const bodyTargetY=Math.sin(seconds*1.66)*0.00115*strength;
-  const headTargetX=(-viewX*0.00350+Math.sin(seconds*1.13)*0.00280)*strength;
-  const headTargetY=(Math.cos(seconds*1.41)*0.00185-viewY*0.00120)*strength;
-  const materialTargetX=(-viewX*0.00450+Math.sin(seconds*1.76+0.8)*0.00440)*strength;
-  const materialTargetY=Math.cos(seconds*1.24+0.4)*0.00230*strength;
-  const propTargetX=(-viewX*0.00580+Math.sin(seconds*1.29+1.7)*0.00620)*strength;
-  const propTargetY=Math.cos(seconds*0.91+1.2)*0.00310*strength;
-  stepRigSpring(rigSprings.body,bodyTargetX,bodyTargetY,32.0,9.8,-0.00006*strength,deltaSeconds);
-  stepRigSpring(rigSprings.head,headTargetX,headTargetY,23.0,7.7,-0.00022*strength,deltaSeconds);
-  stepRigSpring(rigSprings.material,materialTargetX,materialTargetY,13.0,5.5,-0.00100*strength,deltaSeconds);
-  stepRigSpring(rigSprings.prop,propTargetX,propTargetY,8.0,4.0,-0.00155*strength,deltaSeconds);
+  for(const part of activeRigParts){
+    if(!rigSprings[part.id])rigSprings[part.id]=newRigSpring();
+    if(!part.motionEnabled){Object.assign(rigSprings[part.id],newRigSpring());continue}
+    const target=rigMotionTarget(part,seconds,strength);
+    stepRigSpring(rigSprings[part.id],target[0],target[1],part.stiffness,part.damping,part.gravity*strength,deltaSeconds);
+  }
+  for(const part of activeRigParts)effectiveRigMotion(part.id);
   return true;
 }
 
@@ -2050,15 +2348,26 @@ function render(now){
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
   gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
   gl.uniform1f(U.u_autoRigEnabled,autoRigActive ? 1 : 0);
-  gl.uniform2f(U.u_bodyMotion,rigSprings.body.x,rigSprings.body.y);
-  gl.uniform2f(U.u_headMotion,rigSprings.head.x,rigSprings.head.y);
-  gl.uniform2f(U.u_materialMotion,rigSprings.material.x,rigSprings.material.y);
-  gl.uniform2f(U.u_propMotion,rigSprings.prop.x,rigSprings.prop.y);
+  const core=Object.fromEntries(Object.keys(RIG_PARTS).map(role=>[role,activeRigParts.find(part=>part.role===role)]));
+  const coreMotion=role=>core[role]&&rigSprings[core[role].id]?rigSprings[core[role].id]:newRigSpring();
+  gl.uniform2f(U.u_bodyMotion,coreMotion("body").effectiveX,coreMotion("body").effectiveY);
+  gl.uniform2f(U.u_headMotion,coreMotion("head").effectiveX,coreMotion("head").effectiveY);
+  gl.uniform2f(U.u_materialMotion,coreMotion("material").effectiveX,coreMotion("material").effectiveY);
+  gl.uniform2f(U.u_propMotion,coreMotion("prop").effectiveX,coreMotion("prop").effectiveY);
+  gl.uniform4f(U.u_corePartEnabled,core.body?1:0,core.head?1:0,core.material?1:0,core.prop?1:0);
   const rig=activeRigProfile||{head:[0.5,0.2,0.18,0.16],body:[0.5,0.52,0.22,0.34],material:[0.5,0.38,0.42,0.38],prop:[0.62,0.46,0.16,0.18],groundY:0.86};
-  gl.uniform4f(U.u_rigCenters,rig.head[0],1-rig.head[1],rig.prop[0],1-rig.prop[1]);
-  gl.uniform4f(U.u_rigRadii,rig.head[2],rig.head[3],rig.prop[2],rig.prop[3]);
-  gl.uniform4f(U.u_bodyRegion,rig.body[0],1-rig.body[1],rig.body[2],rig.body[3]);
-  gl.uniform4f(U.u_materialRegion,rig.material[0],1-rig.material[1],rig.material[2],rig.material[3]);
+  const regionFor=role=>core[role]?.region||rig[role];
+  const headRegion=regionFor("head"),propRegion=regionFor("prop"),bodyRegion=regionFor("body"),materialRegion=regionFor("material");
+  gl.uniform4f(U.u_rigCenters,headRegion[0],1-headRegion[1],propRegion[0],1-propRegion[1]);
+  gl.uniform4f(U.u_rigRadii,headRegion[2],headRegion[3],propRegion[2],propRegion[3]);
+  gl.uniform4f(U.u_bodyRegion,bodyRegion[0],1-bodyRegion[1],bodyRegion[2],bodyRegion[3]);
+  gl.uniform4f(U.u_materialRegion,materialRegion[0],1-materialRegion[1],materialRegion[2],materialRegion[3]);
+  const extras=activeRigParts.filter(part=>part.role==="custom").slice(0,4);
+  for(let index=0;index<4;index++){
+    const part=extras[index],region=part?.region||[.5,.5,.001,.001],spring=part?rigSprings[part.id]:null;
+    gl.uniform4f(U[`u_extraRegion${index}`],region[0],1-region[1],region[2],region[3]);
+    gl.uniform2f(U[`u_extraMotion${index}`],spring?.effectiveX||0,spring?.effectiveY||0);
+  }
   gl.uniform1f(U.u_groundAnchor,1-rig.groundY);
   gl.uniform2f(U.u_motionRange,activeMotionRange[0],activeMotionRange[1]);
   gl.uniform1f(U.u_standeeMode,activeStandee&&hasLayeredDemo ? 1 : 0);

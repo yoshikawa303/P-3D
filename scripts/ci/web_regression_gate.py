@@ -109,10 +109,8 @@ def main() -> int:
         require(uniform in html, f"アクスタ疑似リグのshader uniformがありません: {uniform}")
     require("function stepRigSpring(" in html, "簡易重力ばねの更新処理がありません")
     require("const rigSprings=" in html, "部位別の独立ばね状態がありません")
-    require("stepRigSpring(rigSprings.body" in html, "胴体の独立ばねがありません")
-    require("stepRigSpring(rigSprings.head" in html, "頭部の独立ばねがありません")
-    require("stepRigSpring(rigSprings.material" in html, "髪／布の独立ばねがありません")
-    require("stepRigSpring(rigSprings.prop" in html, "小物の独立ばねがありません")
+    require("for(const part of activeRigParts)" in html, "追加部位を含む独立ばね更新がありません")
+    require("rigMotionTarget(part,seconds,strength)" in html, "部位別アルゴリズムをばねへ反映していません")
     require("vec2 riggedForegroundUV(vec2 uv)" in html, "部位別の微小UV変形がありません")
     require("float acrylicSweep=" in html, "アクスタ内側の透明素材表現がありません")
     require("acrylicRim" not in html, "アクスタへ常時着色する輪郭反射が残っています")
@@ -143,6 +141,22 @@ def main() -> int:
     require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
     require("*0.00180*strength" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
     require("足元は背景の接地点へ保持します" in html, "接地保持のUI説明がありません")
+    for tab_id, label in [
+        ("image", "画像"),
+        ("live2d", "Live2D"),
+        ("lighting", "照明"),
+        ("crop", "トリミング"),
+        ("effects", "立体表示"),
+        ("device", "デバイス"),
+    ]:
+        require(f'id="tab-{tab_id}"' in html, f"設定タブがありません: {label}")
+        require(f'data-tab-panel="{tab_id}"' in html, f"設定タブ画面がありません: {label}")
+    require('id="settingsTabs"' in html, "設定タブのタブリストがありません")
+    require("function switchSettingsTab(" in html, "設定タブの切替処理がありません")
+    require(
+        html.index('id="file"') > html.index('id="demoGallery"'),
+        "画像選択ボタンをデモ画像の下へ配置してください",
+    )
     for element_id, label in [
         ("rigDebug", "Live2D解析デバッグ切替"),
         ("debugShowBackground", "背景素材レイヤ切替"),
@@ -152,11 +166,19 @@ def main() -> int:
         ("debugShowWireframe", "部位ワイヤーフレーム切替"),
         ("debugShowBones", "ボーン切替"),
         ("debugShowTags", "認識タグ番号切替"),
-        ("rigPartSelect", "編集対象部位選択"),
-        ("rigPartX", "部位中心X編集"),
-        ("rigPartY", "部位中心Y編集"),
-        ("rigPartRadiusX", "部位幅編集"),
-        ("rigPartRadiusY", "部位高さ編集"),
+        ("rigPartList", "常時表示の編集対象部位リスト"),
+        ("rigPartName", "部位名編集"),
+        ("addRigPart", "部位追加"),
+        ("deleteRigPart", "部位削除"),
+        ("partMotionEnabled", "部位モーションON/OFF"),
+        ("partMotionPreset", "部位モーションアルゴリズム"),
+        ("partMotionStrength", "部位モーション強度"),
+        ("partGravity", "部位重力"),
+        ("partStiffness", "部位ばね"),
+        ("partDamping", "部位減衰"),
+        ("partParent", "親部位選択"),
+        ("partInheritMotion", "親モーション継承ON/OFF"),
+        ("partInheritAmount", "親モーション継承量"),
         ("resetRigPart", "部位自動推定復元"),
         ("rigDebugStatus", "解析状態表示"),
     ]:
@@ -169,11 +191,25 @@ def main() -> int:
         require(uniform in html, f"元素材レイヤ分離表示のshader uniformがありません: {uniform}")
     require("function drawRigDebug(" in html, "Live2D解析結果のoverlay描画がありません")
     require("function rigPartDisplayState(" in html, "部位ガイドを実モーションへ追随させる座標処理がありません")
-    require("rigSprings[partKey]" in html, "部位ガイドが各ばね状態を参照していません")
-    require("function applyRigEditor(" in html, "自動認識部位の編集処理がありません")
+    require('id="rigPartList" size="6"' in html, "編集部位はドロップダウンでなく一覧選択にしてください")
+    for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
+        require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
+    require("const MAX_RIG_PARTS=8;" in html, "WebGL上限を管理する部位数定義がありません")
+    require("function addRigPart(" in html, "部位追加処理がありません")
+    require("function deleteSelectedRigPart(" in html, "部位削除処理がありません")
+    require("function effectiveRigMotion(" in html, "親子モーションの合成処理がありません")
+    require("function wouldCreateRigCycle(" in html, "循環する親子関係を防止していません")
+    require('value="chest">胸部弾性（2軸遅延）' in html, "胸部向けの個別重力モーションがありません")
+    require("uniform vec4 u_corePartEnabled;" in html, "削除／無効化した標準部位をshaderへ反映できません")
+    for index in range(4):
+        require(f"uniform vec4 u_extraRegion{index};" in html, f"追加部位{index + 1}のshader領域がありません")
+        require(f"uniform vec2 u_extraMotion{index};" in html, f"追加部位{index + 1}のshaderモーションがありません")
+    require("function applyRigPartControls(" in html, "部位ごとのモーション編集処理がありません")
     require("function resetSelectedRigPart(" in html, "編集部位を自動推定へ戻せません")
-    require("rigProfile:" in html[html.index("function captureEditState()") :], "部位編集がUndo／Redo状態へ含まれていません")
+    require("rigParts:" in html[html.index("function captureEditState()") :], "部位編集がUndo／Redo状態へ含まれていません")
     require('guideDragTarget.startsWith("rig:")' in html, "ワイヤーフレーム中心を直接ドラッグ編集できません")
+    require('guideDragTarget.startsWith("resize:")' in html, "ワイヤーフレーム範囲を直接リサイズできません")
+    require('id="stopCamera"' in html and "function stopCamera(" in html, "デバイスタブからカメラを停止できません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
     require("foregroundMask=displacedForegroundMask;" in html, "移動前マスクが最終合成へ残る可能性があります")
