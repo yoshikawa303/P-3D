@@ -125,3 +125,11 @@
   Bundled Node.jsをPATHへ指定した`python3 scripts/ci/web_regression_gate.py`はJavaScript構文、正常な2部位・2ボーンJSONの正規化、循環ボーンJSON拒否を含め全項目PASS。ローカルChromeの390x844相当表示で59〜60fps、部位4→5複製、全体復元で4部位・5ボーン、起点追加で6ボーン、Undoで5、Redoで6、JSON保存完了表示、最終の`ボーン構造: 正常 ／ 5ポイント`、warning／error 0件を確認した。ファイル選択によるJSON読込の実ブラウザ自動操作はChrome拡張のローカルファイルアクセス権限が無効なため未実施だが、同じ正規化／検証関数へ有効・循環fixtureを渡すNode回帰検査はPASSしている。
 
   これは単一透過立ち絵の領域変形を扱うP-3D独自の疑似リグ編集であり、CubismのArtMesh、デフォーマ、パラメータ、キーフォーム、PSDパーツ分割を作成・編集する機能ではない。物理iPhone Safariのタッチ操作、ファイル選択、カメラ追跡、GPU性能は未検証。使用モデルはCodex GPT-5、動的切替なし。
+
+### 2026-10-07 08:30 JST - Codex GPT-5 - 種別: 検証・Git - ボーン編集公開確認
+
+- 内容:
+
+  機能本体と文書を`76a95d3 feat: add editable bone rig projects`として`origin/main`へpushした。品質Run 37546696081とPages Run 37546694560はいずれもsuccess。PagesのNode.js 20非推奨とUbuntu 26移行予定はRunner注記であり、ジョブ失敗ではない。
+
+  公開`https://yoshikawa303.github.io/P-3D/?build=76a95d3`で、ローカル／公開`index.html`のSHA-256が`e458057daa8fddd657f6561d5150140d770fbf9a47bdd7316d2be481c0f42adb`で一致した。公開画面で設定6タブ中1パネルだけ表示、初期4部位・5ボーン、起点／関節／分岐／終点の一覧、`ボーン構造: 正常 ／ 5ポイント`、`モーション追随中`を確認した。子ポイント追加で6ポイント、Undoで5ポイントへ戻り、60fps、browser warning／error 0件だった。物理iPhone Safariは未検証のまま区別する。使用モデルはCodex GPT-5、動的切替なし。
