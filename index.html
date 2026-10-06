@@ -30,6 +30,10 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
 .checks{display:grid;gap:6px;font-size:12px}
 .check{display:flex;min-height:30px;align-items:center;gap:7px;padding:2px 4px}
 .check input{width:18px;height:18px}
+.debugLayerGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 7px}
+.debugLayerGrid .check{min-height:27px;padding:1px 3px;border-radius:8px;background:rgba(255,255,255,.035)}
+.rigEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(121,231,255,.18);border-radius:12px;background:rgba(8,20,28,.36)}
+#rigDebugStatus{font-size:10px;color:#bfefff;line-height:1.5}
 .effectControl{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:8px}
 .effectControl .check{min-width:0}
 .demoGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
@@ -86,6 +90,32 @@ select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-
     <label class="check"><input id="autoMotion" type="checkbox" checked>Live2D風自動認識モーション</label>
     <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"></div>
     <div class="hint">背景付きデモ全てで透過輪郭から頭・顔・胴体・髪／耳／布・小物を自動推定し、瞬き・呼吸と部位別の減衰ばねを動かします。足元は背景の接地点へ保持します。視差低減設定では停止します。</div>
+    <div class="sectionTitle">Live2D解析デバッグ</div>
+    <label class="check"><input id="rigDebug" type="checkbox">解析レイヤを表示・編集</label>
+    <div class="debugLayerGrid" id="rigDebugLayers">
+      <label class="check"><input id="debugShowBackground" type="checkbox" checked>元素材: 背景</label>
+      <label class="check"><input id="debugShowCharacter" type="checkbox" checked>元素材: キャラ</label>
+      <label class="check"><input id="debugShowMask" type="checkbox" checked>認識マスク</label>
+      <label class="check"><input id="debugShowDepth" type="checkbox" checked>奥行き範囲</label>
+      <label class="check"><input id="debugShowWireframe" type="checkbox" checked>部位ワイヤー</label>
+      <label class="check"><input id="debugShowBones" type="checkbox" checked>推定ボーン</label>
+      <label class="check"><input id="debugShowTags" type="checkbox" checked>認識タグ番号</label>
+    </div>
+    <div id="rigDebugStatus" aria-live="polite">解析デバッグ: OFF</div>
+    <div class="rigEditor">
+      <div class="row"><label for="rigPartSelect">編集部位</label><select id="rigPartSelect">
+        <option value="body">TAG 01 胴体</option>
+        <option value="head">TAG 02 頭部・顔</option>
+        <option value="material">TAG 03 髪・耳・布</option>
+        <option value="prop">TAG 04 小物・尻尾</option>
+      </select></div>
+      <div class="row"><label for="rigPartX">中心X</label><input id="rigPartX" type="range" min="0" max="1" step="0.005" value="0.5"></div>
+      <div class="row"><label for="rigPartY">中心Y</label><input id="rigPartY" type="range" min="0" max="1" step="0.005" value="0.5"></div>
+      <div class="row"><label for="rigPartRadiusX">範囲幅</label><input id="rigPartRadiusX" type="range" min="0.02" max="0.5" step="0.005" value="0.2"></div>
+      <div class="row"><label for="rigPartRadiusY">範囲高さ</label><input id="rigPartRadiusY" type="range" min="0.02" max="0.5" step="0.005" value="0.2"></div>
+      <button id="resetRigPart" class="secondary" type="button">選択部位を自動推定へ戻す</button>
+    </div>
+    <div class="hint">TAG 01〜04は同じ推定領域とばね状態を参照します。中心は画像上のタグを直接ドラッグ、範囲はスライダで補正できます。ワイヤーとボーンはLive2D風モーション中も実際の部位変位へ追随します。</div>
     <div class="sectionTitle">自分の画像</div>
     <div class="buttons">
       <label class="filelabel">画像を選択<input id="file" type="file" accept="image/*"></label>
@@ -234,6 +264,9 @@ uniform float u_groundAnchor;
 uniform vec2 u_motionRange;
 uniform float u_standeeMode;
 uniform vec4 u_live2dMotion;
+uniform float u_debugLayerMode;
+uniform float u_debugShowBackground;
+uniform float u_debugShowCharacter;
 varying vec2 v_uv;
 
 float cleanLayerAlphaAt(vec2 uv){
@@ -600,16 +633,24 @@ void main(){
     c.rgb+=vec3(0.07,0.055,0.035)*pow(d,4.0)*reliefStrength;
   }
 
+  // 解析デバッグ中は処理後の見た目ではなく、移動後UVの背景／キャラ元素材を独立表示する。
+  if(u_debugLayerMode>0.5){
+    vec3 debugScene=vec3(0.0);
+    if(u_debugShowBackground>0.5)debugScene=backgroundColor.rgb;
+    if(u_debugShowCharacter>0.5)debugScene=mix(debugScene,foregroundColor.rgb,foregroundMask);
+    c.rgb=debugScene;
+  }
+
   // アクリル表現は輪郭を着色せず、被写体内側を横切る弱い反射だけにする。
   float acrylicSweep=pow(max(0.0,1.0-abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13),3.0);
-  acrylicSweep*=smoothstep(0.25,0.75,foregroundMask)*u_standeeMode*u_motionScale;
+  acrylicSweep*=smoothstep(0.25,0.75,foregroundMask)*u_standeeMode*u_motionScale*(1.0-u_debugLayerMode);
   c.rgb+=vec3(0.26,0.54,0.66)*acrylicSweep*0.10;
 
   // 2層素材では影も移動後の輪郭へ追従させ、元位置へ人物形状を残さない。
   vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);
-  c.rgb*=1.0-contactShadowAt(shadowUV)*0.42;
-  c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20;
-  c.rgb*=contourCropMaskAt(foregroundUV);
+  c.rgb*=1.0-contactShadowAt(shadowUV)*0.42*(1.0-u_debugLayerMode);
+  c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20*(1.0-u_debugLayerMode);
+  if(u_debugLayerMode<0.5)c.rgb*=contourCropMaskAt(foregroundUV);
   gl_FragColor=vec4(c.rgb,1.0);
 }`;
 
@@ -656,7 +697,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -666,7 +707,7 @@ gl.uniform1i(U.u_foregroundTex,4);
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
 let hasLayeredDemo=false,demoLoadSerial=0;
-let activeRigProfile=null,activeStandee=false;
+let activeRigProfile=null,inferredRigProfile=null,activeStandee=false;
 let activeMotionRange=[0.018,0.012];
 const rigSprings={
   body:{x:0,y:0,vx:0,vy:0},
@@ -675,7 +716,8 @@ const rigSprings={
   prop:{x:0,y:0,vx:0,vy:0}
 };
 let recognitionBounds=null,recognitionGuideCanvas=null;
-let guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1},guideDragTarget=null;
+let guideHandles={imageRect:null,center:null,light:null,parts:{},rayLength:0,dpr:1},guideDragTarget=null;
+let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 let faceScaleBaseline=0,lastRenderTime=performance.now();
 const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
@@ -826,6 +868,87 @@ function inferRigProfile(source){
   };
 }
 
+const RIG_PARTS={
+  body:{tag:"01",label:"胴体",color:"#69f0ae"},
+  head:{tag:"02",label:"頭部・顔",color:"#ffdf6e"},
+  material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},
+  prop:{tag:"04",label:"小物・尻尾",color:"#ff86c8"}
+};
+
+function cloneRigProfile(profile){
+  if(!profile)return null;
+  return {
+    kind:profile.kind,
+    head:[...profile.head],body:[...profile.body],material:[...profile.material],prop:[...profile.prop],
+    groundY:profile.groundY,
+    motionRange:[...(profile.motionRange||activeMotionRange)]
+  };
+}
+
+function selectedRigPart(){
+  return $("#rigPartSelect").value;
+}
+
+function rigProfileWasEdited(){
+  if(!activeRigProfile||!inferredRigProfile)return false;
+  return Object.keys(RIG_PARTS).some(key=>activeRigProfile[key].some((value,index)=>Math.abs(value-inferredRigProfile[key][index])>0.0001));
+}
+
+function syncRigEditor(){
+  const partKey=selectedRigPart();
+  const part=activeRigProfile&&activeRigProfile[partKey];
+  const available=Boolean(part&&$("#rigDebug").checked);
+  for(const id of ["rigPartSelect","rigPartX","rigPartY","rigPartRadiusX","rigPartRadiusY","resetRigPart"]){
+    $("#"+id).disabled=!available;
+  }
+  if(!part)return;
+  $("#rigPartX").value=part[0].toFixed(3);
+  $("#rigPartY").value=part[1].toFixed(3);
+  $("#rigPartRadiusX").value=part[2].toFixed(3);
+  $("#rigPartRadiusY").value=part[3].toFixed(3);
+}
+
+function applyRigEditor(){
+  if(!activeRigProfile)return;
+  const partKey=selectedRigPart();
+  activeRigProfile[partKey]=[
+    parseFloat($("#rigPartX").value),
+    parseFloat($("#rigPartY").value),
+    parseFloat($("#rigPartRadiusX").value),
+    parseFloat($("#rigPartRadiusY").value)
+  ];
+}
+
+function resetSelectedRigPart(){
+  if(!activeRigProfile||!inferredRigProfile)return;
+  const partKey=selectedRigPart();
+  activeRigProfile[partKey]=[...inferredRigProfile[partKey]];
+  syncRigEditor();
+  pushEditHistory();
+}
+
+function syncRigDebugControls(){
+  const enabled=$("#rigDebug").checked;
+  for(const input of document.querySelectorAll("#rigDebugLayers input"))input.disabled=!enabled;
+  $("#debugShowBackground").disabled=!enabled||!hasLayeredDemo;
+  $("#debugShowCharacter").disabled=!enabled||!hasLayeredDemo;
+  syncRigEditor();
+}
+
+function updateRigDebugStatus(autoRigActive=false){
+  const debug=$("#rigDebug").checked;
+  let text="解析デバッグ: OFF";
+  if(debug&&!activeRigProfile){
+    text="解析対象なし: 背景＋透過キャラのデモを選択してください";
+  }else if(debug){
+    const shape=activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（人物・キャラ候補）";
+    const source=rigProfileWasEdited() ? "手動補正あり" : "自動推定";
+    const following=autoRigActive ? "モーション追随中" : "静止";
+    text=`解析: ${shape} ／ 4部位 ／ ${source} ／ ${following}`;
+  }
+  if($("#rigDebugStatus").textContent!==text)$("#rigDebugStatus").textContent=text;
+}
+
 // 共通背景の回転台中央上面。足先最下端を前縁ではなく、この接地線へ合わせる。
 const STANDEE_STAGE_CONTACT_Y=0.795;
 
@@ -910,6 +1033,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     hasLayeredDemo=true;
     hasSubjectMask=true;
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
+    inferredRigProfile=cloneRigProfile(activeRigProfile);
     activeMotionRange=demo.motionRange||activeRigProfile.motionRange;
     activeStandee=Boolean(demo.standee);
     resetRigSprings();
@@ -917,18 +1041,23 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     updateRecognitionGuide(displayedForeground,{useAlpha:true});
     updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ＋接地保持" : "背景＋立ち絵＋輪郭自動リグ＋接地保持");
     syncContourCropAvailability();
+    syncRigDebugControls();
+    syncRigEditor();
     statusEl.textContent="表示中: デモ: "+demo.label+"（Live2D風自動リグ＋接地保持）";
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
     hasLayeredDemo=false;
     activeRigProfile=null;
+    inferredRigProfile=null;
     activeMotionRange=[0.018,0.012];
     activeStandee=false;
+    syncRigDebugControls();
     loadURL(demo.src,"デモ: "+demo.label+"（単一画像）");
     errEl.textContent="2層素材を読み込めないため単一画像で表示します。";
   }
   if(hidePanel)setPanelVisible(false);
   if(recordHistory)pushEditHistory();
+  else replaceCurrentHistoryState();
 }
 
 for(const card of document.querySelectorAll("[data-demo-index]")){
@@ -942,9 +1071,11 @@ $("#file").addEventListener("change",e=>{
   demoLoadSerial++;
   activeDemoIndex=-1;
   activeRigProfile=null;
+  inferredRigProfile=null;
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
   resetRigSprings();
+  syncRigDebugControls();
   updateDemoSelection();
   statusEl.textContent="画像読込中…";
   const url=URL.createObjectURL(f);
@@ -971,12 +1102,18 @@ function clearMaps({announce=true}={}){
   hasDepthMap=false;
   hasSubjectMask=false;
   hasLayeredDemo=false;
+  activeRigProfile=null;
+  inferredRigProfile=null;
+  activeMotionRange=[0.018,0.012];
+  activeStandee=false;
+  resetRigSprings();
   recognitionBounds=null;
   recognitionGuideCanvas=null;
   depthSource="中心近似";
   maskSource="中心近似";
   updateMapStatus(announce ? "解除しました" : "");
   syncContourCropAvailability();
+  syncRigDebugControls();
 }
 
 function uploadMapImage(texture,unit,img){
@@ -1309,6 +1446,7 @@ $("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
 const EDIT_CONTROL_IDS=[
   "autoMotion","motionStrength",
+  "rigDebug","debugShowBackground","debugShowCharacter","debugShowMask","debugShowDepth","debugShowWireframe","debugShowBones","debugShowTags",
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal",
   "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
@@ -1316,7 +1454,9 @@ const EDIT_CONTROL_IDS=[
 ];
 
 function captureEditState(){
-  const state={};
+  const state={
+    rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,profile:cloneRigProfile(activeRigProfile)} : null
+  };
   for(const id of EDIT_CONTROL_IDS){
     const control=$("#"+id);
     state[id]=control.type==="checkbox" ? control.checked : control.value;
@@ -1333,6 +1473,11 @@ function applyEditState(state){
   syncEffectControls();
   syncSpatialControls();
   syncContourCropAvailability();
+  if(state.rigProfile&&state.rigProfile.demoIndex===activeDemoIndex){
+    activeRigProfile=cloneRigProfile(state.rigProfile.profile);
+  }
+  syncRigDebugControls();
+  syncRigEditor();
 }
 
 const DEFAULT_EDIT_STATE=captureEditState();
@@ -1349,6 +1494,13 @@ function pushEditHistory(){
   if(JSON.stringify(undoStack[undoStack.length-1])===JSON.stringify(state))return;
   undoStack.push(state);
   if(undoStack.length>60)undoStack.shift();
+  redoStack.length=0;
+  updateHistoryButtons();
+}
+
+function replaceCurrentHistoryState(){
+  if(!undoStack.length)return;
+  undoStack[undoStack.length-1]=captureEditState();
   redoStack.length=0;
   updateHistoryButtons();
 }
@@ -1372,9 +1524,20 @@ $("#resetDefaults").addEventListener("click",()=>{
   pushEditHistory();
   errEl.textContent="設定値を初期化しました。";
 });
+$("#rigDebug").addEventListener("input",()=>{
+  syncRigDebugControls();
+  updateRigDebugStatus(false);
+});
+$("#rigPartSelect").addEventListener("change",syncRigEditor);
+for(const id of ["rigPartX","rigPartY","rigPartRadiusX","rigPartRadiusY"]){
+  $("#"+id).addEventListener("input",applyRigEditor);
+  $("#"+id).addEventListener("change",pushEditHistory);
+}
+$("#resetRigPart").addEventListener("click",resetSelectedRigPart);
 syncEffectControls();
 syncSpatialControls();
 syncContourCropAvailability();
+syncRigDebugControls();
 updateHistoryButtons();
 loadDemo(0,{hidePanel:false,recordHistory:false});
 
@@ -1400,73 +1563,180 @@ function drawArrowHead(context,fromX,fromY,toX,toY,size){
   context.stroke();
 }
 
-function drawGuides(){
-  guideContext.clearRect(0,0,guideCanvas.width,guideCanvas.height);
-  if(!panelVisible||!hasImage||!$("#showGuides").checked){
-    guideHandles={imageRect:null,center:null,light:null,rayLength:0,dpr:1};
-    return;
-  }
-  const rect=guideImageRect();
-  const dpr=guideCanvas.width/Math.max(innerWidth,1);
-  const mapPoint=(x,y)=>({
-    x:rect.x+x*rect.width,
-    y:rect.y+y*rect.height
-  });
-  const center=mapPoint(parseFloat($("#cx").value),parseFloat($("#cy").value));
+function smoothStep01(value){
+  const x=Math.max(0,Math.min(1,value));
+  return x*x*(3-2*x);
+}
 
+function rigPartDisplayState(partKey,nowSeconds){
+  const part=activeRigProfile[partKey];
+  const spring=rigSprings[partKey];
+  const strength=parseFloat($("#depth").value);
+  const dx=(part[0]-parseFloat($("#cx").value))*imgAspect;
+  const dy=part[1]-parseFloat($("#cy").value);
+  let depth=0.10+0.90*Math.exp(-(dx*dx+dy*dy)/(2*Math.max(0.001,parseFloat($("#radius").value))**2));
+  const spatial=$("#enableSpatial").checked ? parseFloat($("#spatialStrength").value) : 0;
+  let disparity=depth*(1-spatial)+(depth-parseFloat($("#zeroParallax").value))*1.45*spatial;
+  const effects=effectFlags();
+  const strengths=effectStrengths();
+  if(effects.relief){
+    const card=smoothStep01((depth-0.30)/(0.82-0.30));
+    depth=depth*(1-strengths.relief)+card*strengths.relief;
+    disparity=depth*(1-spatial)+(depth-parseFloat($("#zeroParallax").value))*1.45*spatial;
+  }
+  const anchorSpan=Math.max(activeRigProfile.body[3]*1.15,0.12);
+  const anchorWeight=smoothStep01((activeRigProfile.groundY-part[1])/anchorSpan);
+  let sourceX=viewX,sourceY=viewY,depthScale=effects.relief ? 1+0.85*strengths.relief : 1;
+  if(effects.depthLayers){
+    const nearMix=smoothStep01((depth-0.58)/(0.86-0.58));
+    const midMix=smoothStep01((depth-0.22)/(0.58-0.22));
+    sourceX=(farViewX*(1-midMix)+midViewX*midMix)*(1-nearMix)+nearViewX*nearMix;
+    sourceY=(farViewY*(1-midMix)+midViewY*midMix)*(1-nearMix)+nearViewY*nearMix;
+    depthScale=(1+0.95*strengths.depthLayers)*strengths.depthLayers;
+  }
+  let commonX=sourceX*strength*disparity*depthScale*anchorWeight;
+  let commonY=sourceY*strength*disparity*depthScale*anchorWeight;
+  commonX=Math.max(-activeMotionRange[0],Math.min(activeMotionRange[0],commonX));
+  commonY=Math.max(-activeMotionRange[1],Math.min(activeMotionRange[1],commonY));
+  if(effects.vibration){
+    commonX+=Math.sin(nowSeconds*50)*0.0035*strengths.vibration*anchorWeight;
+    commonY+=Math.cos(nowSeconds*50*0.79)*0.0016*strengths.vibration*anchorWeight;
+  }
+  const factor={body:[0.55,1],head:[1.30,1.30],material:[1.18,1.18],prop:[1.35,1.35]}[partKey];
+  let x=part[0]+commonX+spring.x*factor[0];
+  let y=part[1]-commonY-spring.y*factor[1];
+  let radiusX=part[2],radiusY=part[3];
+  if(partKey==="body"){
+    radiusX*=1+live2dVisualState.breath*0.0045;
+    y+=anchorWeight*live2dVisualState.breath*0.0018;
+  }
+  return {x,y,radiusX,radiusY};
+}
+
+function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
+  if(!$("#rigDebug").checked)return;
   guideContext.save();
   guideContext.beginPath();
   guideContext.rect(rect.x,rect.y,rect.width,rect.height);
   guideContext.clip();
-  if(recognitionGuideCanvas){
+  if($("#debugShowDepth").checked){
+    const center=mapPoint(parseFloat($("#cx").value),parseFloat($("#cy").value));
+    const radius=parseFloat($("#radius").value);
+    guideContext.setLineDash([8*dpr,5*dpr]);
+    guideContext.lineWidth=Math.max(1.5,1.5*dpr);
+    guideContext.strokeStyle="rgba(255,225,116,.96)";
+    guideContext.strokeRect(rect.x+2*dpr,rect.y+2*dpr,rect.width-4*dpr,rect.height-4*dpr);
+    guideContext.beginPath();
+    guideContext.ellipse(center.x,center.y,radius/imgAspect*rect.width,radius*rect.height,0,0,Math.PI*2);
+    guideContext.stroke();
+    if(recognitionBounds){
+      const start=mapPoint(recognitionBounds.minX,recognitionBounds.minY);
+      const end=mapPoint(recognitionBounds.maxX,recognitionBounds.maxY);
+      guideContext.strokeStyle="rgba(94,226,255,.94)";
+      guideContext.strokeRect(start.x,start.y,end.x-start.x,end.y-start.y);
+    }
+  }
+  if(!activeRigProfile){guideContext.restore();return;}
+  const states={};
+  for(const partKey of Object.keys(RIG_PARTS))states[partKey]=rigPartDisplayState(partKey,nowSeconds);
+  if($("#debugShowBones").checked){
+    const ground=mapPoint(states.body.x,activeRigProfile.groundY);
+    const points=Object.fromEntries(Object.entries(states).map(([key,state])=>[key,mapPoint(state.x,state.y)]));
+    guideContext.setLineDash([]);
+    guideContext.lineWidth=Math.max(2,2*dpr);
+    guideContext.strokeStyle="rgba(255,255,255,.82)";
+    guideContext.beginPath();
+    guideContext.moveTo(ground.x,ground.y);guideContext.lineTo(points.body.x,points.body.y);guideContext.lineTo(points.head.x,points.head.y);
+    guideContext.moveTo(points.head.x,points.head.y);guideContext.lineTo(points.material.x,points.material.y);
+    guideContext.moveTo(points.body.x,points.body.y);guideContext.lineTo(points.prop.x,points.prop.y);
+    guideContext.stroke();
+    for(const point of [ground,...Object.values(points)]){
+      guideContext.beginPath();guideContext.arc(point.x,point.y,3.5*dpr,0,Math.PI*2);guideContext.fillStyle="rgba(255,255,255,.92)";guideContext.fill();
+    }
+  }
+  guideHandles.parts={};
+  for(const [partKey,meta] of Object.entries(RIG_PARTS)){
+    const state=states[partKey];
+    const point=mapPoint(state.x,state.y);
+    guideHandles.parts[partKey]=point;
+    const selected=selectedRigPart()===partKey;
+    if($("#debugShowWireframe").checked){
+      guideContext.setLineDash(selected ? [] : [5*dpr,3*dpr]);
+      guideContext.lineWidth=Math.max(selected?2.5:1.4,(selected?2.5:1.4)*dpr);
+      guideContext.strokeStyle=meta.color;
+      guideContext.fillStyle=meta.color+"18";
+      guideContext.beginPath();
+      guideContext.ellipse(point.x,point.y,state.radiusX*rect.width,state.radiusY*rect.height,0,0,Math.PI*2);
+      guideContext.fill();guideContext.stroke();
+      guideContext.beginPath();
+      guideContext.moveTo(point.x-state.radiusX*rect.width,point.y);guideContext.lineTo(point.x+state.radiusX*rect.width,point.y);
+      guideContext.moveTo(point.x,point.y-state.radiusY*rect.height);guideContext.lineTo(point.x,point.y+state.radiusY*rect.height);
+      guideContext.stroke();
+    }
+    if($("#debugShowTags").checked){
+      const label=`${meta.tag} ${meta.label}`;
+      guideContext.setLineDash([]);
+      guideContext.font=`700 ${Math.max(10,10*dpr)}px -apple-system,sans-serif`;
+      const width=guideContext.measureText(label).width+10*dpr;
+      const x=point.x+7*dpr,y=point.y-18*dpr;
+      guideContext.fillStyle="rgba(0,0,0,.78)";guideContext.fillRect(x,y,width,16*dpr);
+      guideContext.fillStyle=meta.color;guideContext.fillText(label,x+5*dpr,y+11.5*dpr);
+    }
+  }
+  guideContext.restore();
+}
+
+function drawGuides(){
+  guideContext.clearRect(0,0,guideCanvas.width,guideCanvas.height);
+  const rigDebug=$("#rigDebug").checked;
+  const standardGuides=panelVisible&&$("#showGuides").checked;
+  if(!hasImage||(!$("#showGuides").checked&&!rigDebug)||(!standardGuides&&!rigDebug)){
+    guideHandles={imageRect:null,center:null,light:null,parts:{},rayLength:0,dpr:1};
+    return;
+  }
+  const rect=guideImageRect();
+  const dpr=guideCanvas.width/Math.max(innerWidth,1);
+  const mapPoint=(x,y)=>({x:rect.x+x*rect.width,y:rect.y+y*rect.height});
+  guideHandles={imageRect:rect,center:null,light:null,parts:{},rayLength:0,dpr};
+
+  if(recognitionGuideCanvas&&(standardGuides||(rigDebug&&$("#debugShowMask").checked))){
+    guideContext.save();
+    guideContext.beginPath();guideContext.rect(rect.x,rect.y,rect.width,rect.height);guideContext.clip();
     guideContext.drawImage(recognitionGuideCanvas,rect.x,rect.y,rect.width,rect.height);
-  }
-  guideContext.restore();
-
-  guideContext.save();
-  guideContext.lineWidth=Math.max(1,1.25*dpr);
-  guideContext.font=`${Math.max(10,10*dpr)}px -apple-system,sans-serif`;
-  if(recognitionBounds){
-    const start=mapPoint(recognitionBounds.minX,recognitionBounds.minY);
-    const end=mapPoint(recognitionBounds.maxX,recognitionBounds.maxY);
-    guideContext.strokeStyle="rgba(94,226,255,.86)";
-    guideContext.strokeRect(start.x,start.y,end.x-start.x,end.y-start.y);
-    guideContext.fillStyle="rgba(94,226,255,.94)";
-    guideContext.fillText("認識マスク",start.x+5*dpr,start.y+13*dpr);
+    guideContext.restore();
   }
 
-  guideContext.setLineDash([]);
-  guideContext.strokeStyle="rgba(255,225,116,.90)";
-  guideContext.fillStyle="rgba(255,225,116,.96)";
-  const radius=parseFloat($("#radius").value);
-  const radiusX=radius/imgAspect*rect.width;
-  const radiusY=radius*rect.height;
-  guideContext.beginPath();
-  guideContext.ellipse(center.x,center.y,radiusX,radiusY,0,0,Math.PI*2);
-  guideContext.stroke();
-  guideContext.beginPath();
-  guideContext.moveTo(center.x-8*dpr,center.y);guideContext.lineTo(center.x+8*dpr,center.y);
-  guideContext.moveTo(center.x,center.y-8*dpr);guideContext.lineTo(center.x,center.y+8*dpr);
-  guideContext.stroke();
-  guideContext.beginPath();guideContext.arc(center.x,center.y,7*dpr,0,Math.PI*2);guideContext.fill();
-  guideContext.fillText("キャラ中心／範囲",center.x+9*dpr,center.y-9*dpr);
-
-  const lightX=parseFloat($("#lightX").value);
-  const lightY=parseFloat($("#lightY").value);
-  const magnitude=Math.max(0.001,Math.hypot(lightX,lightY));
-  const rayLength=Math.min(rect.width,rect.height)*0.25;
-  const sourceX=center.x+lightX/magnitude*rayLength;
-  const sourceY=center.y-lightY/magnitude*rayLength;
-  guideContext.strokeStyle="rgba(255,141,199,.92)";
-  guideContext.fillStyle="rgba(255,141,199,.96)";
-  guideContext.beginPath();
-  guideContext.moveTo(sourceX,sourceY);guideContext.lineTo(center.x,center.y);
-  guideContext.stroke();
-  drawArrowHead(guideContext,sourceX,sourceY,center.x,center.y,8*dpr);
-  guideContext.beginPath();guideContext.arc(sourceX,sourceY,7*dpr,0,Math.PI*2);guideContext.fill();
-  guideContext.fillText("Light / Ray",sourceX+6*dpr,sourceY-6*dpr);
-  guideHandles={imageRect:rect,center,light:{x:sourceX,y:sourceY},rayLength,dpr};
-  guideContext.restore();
+  if(standardGuides){
+    const center=mapPoint(parseFloat($("#cx").value),parseFloat($("#cy").value));
+    guideContext.save();
+    guideContext.lineWidth=Math.max(1,1.25*dpr);
+    guideContext.font=`${Math.max(10,10*dpr)}px -apple-system,sans-serif`;
+    if(recognitionBounds){
+      const start=mapPoint(recognitionBounds.minX,recognitionBounds.minY);
+      const end=mapPoint(recognitionBounds.maxX,recognitionBounds.maxY);
+      guideContext.strokeStyle="rgba(94,226,255,.86)";guideContext.strokeRect(start.x,start.y,end.x-start.x,end.y-start.y);
+      guideContext.fillStyle="rgba(94,226,255,.94)";guideContext.fillText("認識マスク",start.x+5*dpr,start.y+13*dpr);
+    }
+    guideContext.setLineDash([]);
+    guideContext.strokeStyle="rgba(255,225,116,.90)";guideContext.fillStyle="rgba(255,225,116,.96)";
+    const radius=parseFloat($("#radius").value);
+    guideContext.beginPath();guideContext.ellipse(center.x,center.y,radius/imgAspect*rect.width,radius*rect.height,0,0,Math.PI*2);guideContext.stroke();
+    guideContext.beginPath();guideContext.moveTo(center.x-8*dpr,center.y);guideContext.lineTo(center.x+8*dpr,center.y);guideContext.moveTo(center.x,center.y-8*dpr);guideContext.lineTo(center.x,center.y+8*dpr);guideContext.stroke();
+    guideContext.beginPath();guideContext.arc(center.x,center.y,7*dpr,0,Math.PI*2);guideContext.fill();
+    guideContext.fillText("キャラ中心／範囲",center.x+9*dpr,center.y-9*dpr);
+    const lightX=parseFloat($("#lightX").value),lightY=parseFloat($("#lightY").value);
+    const magnitude=Math.max(0.001,Math.hypot(lightX,lightY));
+    const rayLength=Math.min(rect.width,rect.height)*0.25;
+    const sourceX=center.x+lightX/magnitude*rayLength,sourceY=center.y-lightY/magnitude*rayLength;
+    guideContext.strokeStyle="rgba(255,141,199,.92)";guideContext.fillStyle="rgba(255,141,199,.96)";
+    guideContext.beginPath();guideContext.moveTo(sourceX,sourceY);guideContext.lineTo(center.x,center.y);guideContext.stroke();
+    drawArrowHead(guideContext,sourceX,sourceY,center.x,center.y,8*dpr);
+    guideContext.beginPath();guideContext.arc(sourceX,sourceY,7*dpr,0,Math.PI*2);guideContext.fill();
+    guideContext.fillText("Light / Ray",sourceX+6*dpr,sourceY-6*dpr);
+    guideHandles.center=center;guideHandles.light={x:sourceX,y:sourceY};guideHandles.rayLength=rayLength;
+    guideContext.restore();
+  }
+  drawRigDebug(rect,mapPoint,dpr,lastRenderTime*0.001);
 }
 
 function guideEventPoint(event){
@@ -1478,11 +1748,19 @@ function guideEventPoint(event){
 }
 
 function guideDragTargetAt(event){
-  if(event.target!==canvas||!panelVisible||!hasImage||!guideHandles.center||!guideHandles.light)return null;
+  if(event.target!==canvas||!panelVisible||!hasImage||!guideHandles.imageRect)return null;
   const point=guideEventPoint(event);
   const hitRadius=24*guideHandles.dpr;
-  if(Math.hypot(point.x-guideHandles.light.x,point.y-guideHandles.light.y)<=hitRadius)return "light";
-  if(Math.hypot(point.x-guideHandles.center.x,point.y-guideHandles.center.y)<=hitRadius)return "center";
+  if($("#rigDebug").checked&&activeRigProfile){
+    const selected=selectedRigPart();
+    const ordered=[selected,...Object.keys(RIG_PARTS).filter(key=>key!==selected)];
+    for(const partKey of ordered){
+      const handle=guideHandles.parts[partKey];
+      if(handle&&Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return "rig:"+partKey;
+    }
+  }
+  if(guideHandles.light&&Math.hypot(point.x-guideHandles.light.x,point.y-guideHandles.light.y)<=hitRadius)return "light";
+  if(guideHandles.center&&Math.hypot(point.x-guideHandles.center.x,point.y-guideHandles.center.y)<=hitRadius)return "center";
   return null;
 }
 
@@ -1495,6 +1773,16 @@ function updateGuideDrag(event){
     const imageY=Math.max(0,Math.min(1,(point.y-rect.y)/rect.height));
     $("#cx").value=imageX.toFixed(2);
     $("#cy").value=imageY.toFixed(2);
+  }else if(guideDragTarget.startsWith("rig:")){
+    const partKey=guideDragTarget.slice(4);
+    const rect=guideHandles.imageRect;
+    const displayed=rigPartDisplayState(partKey,lastRenderTime*0.001);
+    const requestedX=(point.x-rect.x)/rect.width;
+    const requestedY=(point.y-rect.y)/rect.height;
+    activeRigProfile[partKey][0]=Math.max(0,Math.min(1,activeRigProfile[partKey][0]+requestedX-displayed.x));
+    activeRigProfile[partKey][1]=Math.max(0,Math.min(1,activeRigProfile[partKey][1]+requestedY-displayed.y));
+    $("#rigPartSelect").value=partKey;
+    syncRigEditor();
   }else{
     const center=guideHandles.center;
     const dx=point.x-center.x;
@@ -1509,6 +1797,10 @@ function beginGuideDrag(event){
   const target=guideDragTargetAt(event);
   if(!target)return;
   guideDragTarget=target;
+  if(target.startsWith("rig:")){
+    $("#rigPartSelect").value=target.slice(4);
+    syncRigEditor();
+  }
   event.preventDefault();
   event.stopPropagation();
   stage.setPointerCapture(event.pointerId);
@@ -1775,7 +2067,12 @@ function render(now){
   const mouthMotion=0.5+0.5*Math.sin(liveSeconds*2.15+0.8);
   const gazeMotion=Math.sin(liveSeconds*0.71)+viewX*0.55;
   const breathMotion=0.5+0.5*Math.sin(liveSeconds*1.38);
+  live2dVisualState={blink:autoRigActive?blinkPulse:0,mouth:autoRigActive?mouthMotion:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
   gl.uniform4f(U.u_live2dMotion,autoRigActive?blinkPulse:0,autoRigActive?mouthMotion:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
+  const debugLayerMode=$("#rigDebug").checked&&hasLayeredDemo;
+  gl.uniform1f(U.u_debugLayerMode,debugLayerMode ? 1 : 0);
+  gl.uniform1f(U.u_debugShowBackground,$("#debugShowBackground").checked ? 1 : 0);
+  gl.uniform1f(U.u_debugShowCharacter,$("#debugShowCharacter").checked ? 1 : 0);
   gl.uniform2f(U.u_lightDirection,parseFloat($("#lightX").value),parseFloat($("#lightY").value));
   gl.uniform1f(U.u_lightingStrength,parseFloat($("#lightingStrength").value));
   const effects=effectFlags();
@@ -1801,7 +2098,8 @@ function render(now){
   const effectiveViewZ=Math.max(-1,Math.min(1,manualViewZ+(reduceMotion.matches ? 0 : viewZ)));
   gl.uniform1f(U.u_viewZ,effectiveViewZ);
   gl.drawArrays(gl.TRIANGLES,0,6);
-  drawGuides();
+  updateRigDebugStatus(autoRigActive);
+  drawGuides(now);
 
   fpsN++;
   if(now-fpsT>=1000){

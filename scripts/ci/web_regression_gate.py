@@ -143,6 +143,37 @@ def main() -> int:
     require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
     require("*0.00180*strength" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
     require("足元は背景の接地点へ保持します" in html, "接地保持のUI説明がありません")
+    for element_id, label in [
+        ("rigDebug", "Live2D解析デバッグ切替"),
+        ("debugShowBackground", "背景素材レイヤ切替"),
+        ("debugShowCharacter", "キャラ素材レイヤ切替"),
+        ("debugShowMask", "認識マスクレイヤ切替"),
+        ("debugShowDepth", "奥行き認識範囲レイヤ切替"),
+        ("debugShowWireframe", "部位ワイヤーフレーム切替"),
+        ("debugShowBones", "ボーン切替"),
+        ("debugShowTags", "認識タグ番号切替"),
+        ("rigPartSelect", "編集対象部位選択"),
+        ("rigPartX", "部位中心X編集"),
+        ("rigPartY", "部位中心Y編集"),
+        ("rigPartRadiusX", "部位幅編集"),
+        ("rigPartRadiusY", "部位高さ編集"),
+        ("resetRigPart", "部位自動推定復元"),
+        ("rigDebugStatus", "解析状態表示"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    for uniform in [
+        "uniform float u_debugLayerMode;",
+        "uniform float u_debugShowBackground;",
+        "uniform float u_debugShowCharacter;",
+    ]:
+        require(uniform in html, f"元素材レイヤ分離表示のshader uniformがありません: {uniform}")
+    require("function drawRigDebug(" in html, "Live2D解析結果のoverlay描画がありません")
+    require("function rigPartDisplayState(" in html, "部位ガイドを実モーションへ追随させる座標処理がありません")
+    require("rigSprings[partKey]" in html, "部位ガイドが各ばね状態を参照していません")
+    require("function applyRigEditor(" in html, "自動認識部位の編集処理がありません")
+    require("function resetSelectedRigPart(" in html, "編集部位を自動推定へ戻せません")
+    require("rigProfile:" in html[html.index("function captureEditState()") :], "部位編集がUndo／Redo状態へ含まれていません")
+    require('guideDragTarget.startsWith("rig:")' in html, "ワイヤーフレーム中心を直接ドラッグ編集できません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
     require("foregroundMask=displacedForegroundMask;" in html, "移動前マスクが最終合成へ残る可能性があります")
@@ -426,6 +457,7 @@ def main() -> int:
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     print("PASS: settings panel visibility toggle and accessibility")
     print("PASS: nine demos, stage-fit placement, silhouette auto-rig, and Live2D-style motion")
+    print("PASS: Live2D debug layers, editable tagged rig parts, and motion-following wireframe/bones")
     print("PASS: Cross-AI governance documents")
     return 0
 
