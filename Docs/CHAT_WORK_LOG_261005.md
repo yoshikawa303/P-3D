@@ -84,3 +84,11 @@
   部位の中心／幅／高さスライダを削除した。解析デバッグON時、選択楕円の内側ドラッグで中心、左右ハンドルで幅、上下ハンドルで高さを直接編集する。追加部位、親子ボーン、TAG 05〜08、ワイヤーは合成後の実モーションへ追随し、部位定義全体をUndo／Redoへ含める。
 
   修正前回帰は`設定タブがありません: 画像`で意図どおりFAILした。実装後はBundled Node.jsをPATHへ指定した`python3 scripts/ci/web_regression_gate.py`がJavaScript構文検査を含め全項目PASS。ローカル実ブラウザの390x844で60fps、6タブ中1画面だけ表示、4→5部位追加、胸部弾性＋胴体親＋継承ON、5→4部位削除、最大8部位到達後の追加無効化、ワイヤー／ボーン／リサイズハンドル表示、warning／error 0件を確認した。カメラ権限は要求せず、開始前に停止ボタンが無効であることと停止処理のソース／構文を確認した。物理iPhone Safariのタッチ、カメラON/OFF、顔追跡、GPU性能は未検証。使用モデルはCodex GPT-5、動的切替なし。
+
+### 2026-10-06 21:56 JST - Codex GPT-5 - 種別: 検証・Git - Public Pages公開確認
+
+- 内容:
+
+  機能本体と文書を`24f282f feat: add tabbed hierarchical Live2D editor`として`origin/main`へpushした。品質Run 37466724530とPages Run 37466724509はいずれもsuccess。Node.js 20非推奨とUbuntu 26移行予定のRunner注記はあるが、ジョブ失敗ではない。
+
+  公開`https://yoshikawa303.github.io/P-3D/?build=24f282f`で、ローカル／公開`index.html`のSHA-256が`e6659b153b97b0db7f76e3a1ee85a27ca42a9b91cf7ada06f37f7378e4ae654a`で一致した。公開画面の390x844で60fps、表示タブ1件、部位4→5追加、`胸部弾性（2軸遅延）`、親=`body`、継承ON、`5部位／手動補正あり／モーション追随中`、warning／error 0件を確認した。物理iPhone Safariは未検証のまま区別する。
