@@ -217,6 +217,10 @@ def main() -> int:
         require(uniform in html, f"元素材レイヤ分離表示のshader uniformがありません: {uniform}")
     require("function drawRigDebug(" in html, "Live2D解析結果のoverlay描画がありません")
     require("function rigPartDisplayState(" in html, "部位ガイドを実モーションへ追随させる座標処理がありません")
+    require(
+        "設定を閉じても、部位範囲とボーンを画像上で直接編集できます" in html,
+        "iPhone／iPadで設定画面を閉じて編集する案内がありません",
+    )
     require('id="rigPartList" size="6"' in html, "編集部位はドロップダウンでなく一覧選択にしてください")
     for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
         require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
@@ -427,6 +431,15 @@ def main() -> int:
     require("const size=384;" in html, "認識ガイドの輪郭解像度が低すぎます")
     require("function updateRecognitionGuide(source" in html, "認識マスクから編集ガイドを作成していません")
     require("function guideDragTargetAt(event)" in html, "画像上の編集ハンドル判定がありません")
+    guide_hit_test = extract_js_function(html, "guideDragTargetAt")
+    require(
+        "const rigEditing=rigOverlayEditingActive();" in guide_hit_test,
+        "設定画面を閉じた状態のLive2Dリグ編集可否を判定していません",
+    )
+    require(
+        "(!panelVisible&&!rigEditing)" in guide_hit_test,
+        "解析デバッグONでも設定画面を閉じるとリグを直接編集できません",
+    )
     require("function updateGuideDrag(event)" in html, "画像上のガイドドラッグ編集がありません")
     require('stage.addEventListener("pointerdown",beginGuideDrag,true)' in html, "ガイドの直接ドラッグ開始処理がありません")
     for element_id, label in [

@@ -143,6 +143,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
       <label class="check"><input id="debugShowTags" type="checkbox" checked>認識タグ番号</label>
     </div>
     <div id="rigDebugStatus" aria-live="polite">解析デバッグ: OFF</div>
+    <div class="hint">iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。</div>
     <div class="rigEditor">
       <label for="rigPartList">編集部位（一覧選択）</label>
       <select id="rigPartList" size="6" aria-label="編集部位リスト"></select>
@@ -2318,8 +2319,13 @@ function guideEventPoint(event){
   };
 }
 
+function rigOverlayEditingActive(){
+  return $("#rigDebug").checked&&Boolean(activeRigProfile);
+}
+
 function guideDragTargetAt(event){
-  if(event.target!==canvas||!panelVisible||!hasImage||!guideHandles.imageRect)return null;
+  const rigEditing=rigOverlayEditingActive();
+  if(event.target!==canvas||(!panelVisible&&!rigEditing)||!hasImage||!guideHandles.imageRect)return null;
   const point=guideEventPoint(event);
   const hitRadius=24*guideHandles.dpr;
   if($("#rigDebug").checked&&activeRigProfile){
