@@ -157,3 +157,11 @@
   回帰検査へパネル非表示中のリグ編集許可条件と操作案内を追加し、修正前は`設定画面を閉じた状態のLive2Dリグ編集可否を判定していません`で意図どおりFAIL、修正後はBundled Node.jsを使った`python3 scripts/ci/web_regression_gate.py`がJavaScript構文を含め全項目PASSした。
 
   ローカルChromeの390x844／768x1024相当表示で、Live2D対象を選択後に設定画面を閉じてもoverlayが全画面へ残ること、選択ボーンをドラッグすると親子線とポイントが移動すること、部位の右サイズハンドルをドラッグすると楕円幅が変わること、`手動補正あり`とUndo可能状態へ変わることを確認した。両表示とも60fps、browser warning／error 0件。物理iPhone／iPad Safariのタッチ操作、カメラ追跡、GPU性能は未検証。使用モデルはCodex GPT-5、動的切替なし、現時点の概算作業時間は約10分。
+
+### 2026-10-09 13:32 JST - Codex GPT-5 - 種別: 検証・Git - パネル非表示編集の公開確認
+
+- 内容:
+
+  修正本体、回帰検査、文書を`22d3350 fix: keep rig editing active with panel hidden`として`origin/main`へpushした。品質Run 37884260509とPages Run 37884259733はいずれもsuccess。Node.js 20非推奨とUbuntu 26移行予定はRunner注記であり、ジョブ失敗ではない。
+
+  公開`https://yoshikawa303.github.io/P-3D/?build=22d3350`でローカル／公開`index.html`のSHA-256が`35602ed8fe73e851633155726d37d27d8926377c0690cf95c6100dc7960cad9e`で一致した。390x844相当の公開画面で操作案内、設定パネル非表示、overlay継続を確認し、選択ボーン移動と部位右サイズハンドル拡大の両方が`手動補正あり`／Undo可能状態へ反映された。60fps、browser warning／error 0件。物理iPhone／iPad Safariは未検証のまま区別する。最終概算作業時間は約12分。
