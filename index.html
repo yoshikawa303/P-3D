@@ -130,7 +130,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div class="sectionTitle">Live2D風モーション</div>
     <label class="check"><input id="autoMotion" type="checkbox" checked>Live2D風自動認識モーション</label>
     <div class="row"><label for="motionStrength">重力・揺れ強度</label><input id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"></div>
-    <div class="hint">背景付きデモ全てで透過輪郭から頭・顔・胴体・髪／耳／布・小物を自動推定し、瞬き・呼吸と部位別の減衰ばねを動かします。足元は背景の接地点へ保持します。視差低減設定では停止します。</div>
+    <div class="hint">人物は頭、左右の腕・手、上半身、左右の脚へ分類し、動物・モノは従来の4領域を推定します。瞬き・呼吸と部位別の減衰ばねを動かし、足元は背景の接地点へ保持します。視差低減設定では停止します。</div>
     <div class="sectionTitle">Live2D解析デバッグ</div>
     <label class="check"><input id="rigDebug" type="checkbox">解析レイヤを表示・編集</label>
     <div class="debugLayerGrid" id="rigDebugLayers">
@@ -143,7 +143,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
       <label class="check"><input id="debugShowTags" type="checkbox" checked>認識タグ番号</label>
     </div>
     <div id="rigDebugStatus" aria-live="polite">解析デバッグ: OFF</div>
-    <div class="hint">iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。</div>
+    <div class="hint">人物の左／右はキャラクター本人基準です（正面では画面上の左右と反転）。iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。</div>
     <div class="rigEditor">
       <label for="rigPartList">編集部位（一覧選択）</label>
       <select id="rigPartList" size="6" aria-label="編集部位リスト"></select>
@@ -1018,7 +1018,7 @@ const MOTION_PRESETS={
 function cloneRigProfile(profile){
   if(!profile)return null;
   return {
-    kind:profile.kind,
+    kind:profile.kind,rigType:profile.rigType||"generic",
     head:[...profile.head],body:[...profile.body],material:[...profile.material],prop:[...profile.prop],
     groundY:profile.groundY,
     motionRange:[...(profile.motionRange||activeMotionRange)]
@@ -1035,8 +1035,43 @@ function cloneBonePoints(points){
   return points.map(point=>({...point,original:[...(point.original||[point.x,point.y])]}));
 }
 
+function buildHumanRigParts(profile){
+  const head=[...profile.head],body=[...profile.body];
+  const centerX=body[0],bodyY=body[1],bodyRadiusX=body[2],bodyRadiusY=body[3];
+  const groundY=Math.max(bodyY+bodyRadiusY,profile.groundY);
+  const shoulderY=bodyY-bodyRadiusY*.42;
+  const handY=Math.min(groundY-.13,bodyY+bodyRadiusY*.48);
+  const armCenterY=(shoulderY+handY)*.5;
+  const armOffset=Math.max(.085,bodyRadiusX*.88);
+  const handOffset=Math.max(.12,bodyRadiusX*1.18);
+  const hipY=Math.min(groundY-.18,bodyY+bodyRadiusY*.58);
+  const legCenterY=(hipY+groundY-.015)*.5;
+  const legOffset=Math.max(.045,bodyRadiusX*.34);
+  const boundedRegion=region=>[
+    Math.max(.02,Math.min(.98,region[0])),Math.max(.02,Math.min(.98,region[1])),
+    Math.max(.025,Math.min(.48,region[2])),Math.max(.025,Math.min(.48,region[3]))
+  ];
+  const specs=[
+    {id:"head",role:"head",tag:"01",label:"頭",color:"#ffdf6e",region:head,parentId:"upper-body",inheritMotion:true,inheritAmount:.62,preset:"soft"},
+    {id:"arm-left",role:"material",tag:"02",label:"腕 左",color:"#69d9ff",region:[centerX+armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"arm-right",role:"prop",tag:"03",label:"腕 右",color:"#ff86c8",region:[centerX-armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"hand-left",role:"custom",tag:"04",label:"手 左",color:EXTRA_PART_COLORS[0],region:[centerX+handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],parentId:"arm-left",inheritMotion:true,inheritAmount:.86,preset:"prop"},
+    {id:"hand-right",role:"custom",tag:"05",label:"手 右",color:EXTRA_PART_COLORS[1],region:[centerX-handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],parentId:"arm-right",inheritMotion:true,inheritAmount:.86,preset:"prop"},
+    {id:"upper-body",role:"body",tag:"06",label:"上半身",color:"#69f0ae",region:[centerX,bodyY,Math.max(.09,bodyRadiusX*.82),Math.max(.12,bodyRadiusY*.72)],parentId:null,inheritMotion:false,inheritAmount:0,preset:"body"},
+    {id:"leg-left",role:"custom",tag:"07",label:"脚 左",color:EXTRA_PART_COLORS[2],region:[centerX+legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
+    {id:"leg-right",role:"custom",tag:"08",label:"脚 右",color:EXTRA_PART_COLORS[3],region:[centerX-legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"}
+  ];
+  return specs.map(spec=>{
+    const motion=MOTION_PRESETS[spec.preset],region=boundedRegion(spec.region);
+    const part={...spec,region,originalRegion:[...region],motionEnabled:true,...motion};
+    rigSprings[part.id]=newRigSpring();
+    return part;
+  });
+}
+
 function buildRigPartsFromProfile(profile){
   if(!profile)return [];
+  if(profile.rigType==="human")return buildHumanRigParts(profile);
   const specs=[
     ["body","body",null,false,0,"body"],
     ["head","head","body",true,.58,"soft"],
@@ -1051,8 +1086,41 @@ function buildRigPartsFromProfile(profile){
   return parts;
 }
 
+function buildHumanBoneRig(parts,profile){
+  const byId=id=>parts.find(part=>part.id===id);
+  const upper=byId("upper-body"),head=byId("head"),armLeft=byId("arm-left"),armRight=byId("arm-right");
+  const handLeft=byId("hand-left"),handRight=byId("hand-right"),legLeft=byId("leg-left"),legRight=byId("leg-right");
+  if(!upper||!head||!armLeft||!armRight||!handLeft||!handRight||!legLeft||!legRight)return [];
+  const pelvisY=Math.min(profile.groundY-.16,upper.region[1]+upper.region[3]*.58);
+  const spineY=upper.region[1];
+  const neckY=Math.max(head.region[1]+head.region[3]*.72,upper.region[1]-upper.region[3]*.72);
+  const shoulderY=upper.region[1]-upper.region[3]*.42;
+  const hipY=Math.min(profile.groundY-.12,pelvisY+.025);
+  const ankleY=Math.min(.98,profile.groundY-.012);
+  const specs=[
+    ["bone-root","B01","骨盤","root",upper.region[0],pelvisY,null,upper.id,1],
+    ["bone-spine","B02","背骨","branch",upper.region[0],spineY,"bone-root",upper.id,1],
+    ["bone-neck","B03","首","joint",head.region[0],neckY,"bone-spine",head.id,1],
+    ["bone-head","B04","頭頂","end",head.region[0],Math.max(.02,head.region[1]-head.region[3]*.72),"bone-neck",head.id,1],
+    ["bone-shoulder-left","B05","肩 左","branch",upper.region[0]+upper.region[2]*.72,shoulderY,"bone-spine",armLeft.id,1],
+    ["bone-elbow-left","B06","肘 左","joint",armLeft.region[0],armLeft.region[1],"bone-shoulder-left",armLeft.id,1],
+    ["bone-wrist-left","B07","手首 左","end",handLeft.region[0],handLeft.region[1],"bone-elbow-left",handLeft.id,1],
+    ["bone-shoulder-right","B08","肩 右","branch",upper.region[0]-upper.region[2]*.72,shoulderY,"bone-spine",armRight.id,1],
+    ["bone-elbow-right","B09","肘 右","joint",armRight.region[0],armRight.region[1],"bone-shoulder-right",armRight.id,1],
+    ["bone-wrist-right","B10","手首 右","end",handRight.region[0],handRight.region[1],"bone-elbow-right",handRight.id,1],
+    ["bone-hip-left","B11","股関節 左","branch",legLeft.region[0],hipY,"bone-root",legLeft.id,1],
+    ["bone-knee-left","B12","膝 左","joint",legLeft.region[0],legLeft.region[1],"bone-hip-left",legLeft.id,1],
+    ["bone-ankle-left","B13","足首 左","end",legLeft.region[0],ankleY,"bone-knee-left",legLeft.id,1],
+    ["bone-hip-right","B14","股関節 右","branch",legRight.region[0],hipY,"bone-root",legRight.id,1],
+    ["bone-knee-right","B15","膝 右","joint",legRight.region[0],legRight.region[1],"bone-hip-right",legRight.id,1],
+    ["bone-ankle-right","B16","足首 右","end",legRight.region[0],ankleY,"bone-knee-right",legRight.id,1]
+  ];
+  return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
+}
+
 function buildBoneRigFromParts(parts,profile){
   if(!parts.length||!profile)return [];
+  if(profile.rigType==="human")return buildHumanBoneRig(parts,profile);
   const byRole=role=>parts.find(part=>part.role===role);
   const body=byRole("body"),head=byRole("head"),material=byRole("material"),prop=byRole("prop");
   const specs=[
@@ -1430,7 +1498,7 @@ function updateRigDebugStatus(autoRigActive=false){
   if(debug&&!activeRigProfile){
     text="解析対象なし: 背景＋透過キャラのデモを選択してください";
   }else if(debug){
-    const shape=activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（人物・キャラ候補）";
+    const shape=activeRigProfile.rigType==="human" ? "人物（8部位・人体ボーン）" : activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（キャラ・モノ候補）";
     const source=rigProfileWasEdited() ? "手動補正あり" : "自動推定";
     const following=autoRigActive ? "モーション追随中" : "静止";
     text=`解析: ${shape} ／ ${activeRigParts.length}部位・${activeBonePoints.length}ボーン点 ／ ${source} ／ ${following}`;
@@ -1476,14 +1544,14 @@ function prepareStandeeForStage(source,demo){
 
 const DEMO_ASSETS=[
   {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
-  {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68"},
+  {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68",rigType:"human"},
   {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
   {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,stageWidth:0.64},
   {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,stageWidth:0.66},
-  {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
-  {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
-  {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
-  {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}}
+  {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rigType:"human",rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
+  {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rigType:"human",rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
+  {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rigType:"human",rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
+  {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rigType:"human",rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}}
 ];
 let activeDemoIndex=-1;
 
@@ -1522,6 +1590,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     hasLayeredDemo=true;
     hasSubjectMask=true;
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
+    activeRigProfile.rigType=demo.rigType||"generic";
     inferredRigProfile=cloneRigProfile(activeRigProfile);
     activeRigParts=buildRigPartsFromProfile(activeRigProfile);
     inferredRigParts=cloneRigParts(activeRigParts);

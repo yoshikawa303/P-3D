@@ -225,6 +225,15 @@ def main() -> int:
     for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
         require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
     require("const MAX_RIG_PARTS=8;" in html, "WebGL上限を管理する部位数定義がありません")
+    for human_part in ["頭", "腕 左", "腕 右", "手 左", "手 右", "上半身", "脚 左", "脚 右"]:
+        require(f'label:"{human_part}"' in html, f"人物向けLive2D部位がありません: {human_part}")
+    require("function buildHumanRigParts(" in html, "人物向け8部位の初期リグ生成がありません")
+    require("function buildHumanBoneRig(" in html, "人物向け人体ボーン生成がありません")
+    require(html.count('rigType:"human"') >= 5, "人物デモが人物向けリグ種別へ分類されていません")
+    require(
+        "左／右はキャラクター本人基準" in html,
+        "人物部位の左右基準が画面へ明記されていません",
+    )
     require("function addRigPart(" in html, "部位追加処理がありません")
     require("function deleteSelectedRigPart(" in html, "部位削除処理がありません")
     require("function effectiveRigMotion(" in html, "親子モーションの合成処理がありません")
@@ -624,6 +633,31 @@ def main() -> int:
         )
         subprocess.run([node, "-e", rig_test], check=True)
         print("PASS: rig JSON normalization and cycle rejection")
+        human_rig_test = "\n".join(
+            [
+                'const RIG_PARTS={body:{tag:"01",label:"胴体",color:"#69f0ae"},head:{tag:"02",label:"頭部・顔",color:"#ffdf6e"},material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},prop:{tag:"04",label:"小物・尻尾",color:"#ff86c8"}};',
+                'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
+                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},prop:{strength:1,gravity:-.00155,stiffness:8,damping:4},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2}};",
+                "const rigSprings={};",
+                extract_js_function(html, "newRigSpring"),
+                extract_js_function(html, "buildHumanRigParts"),
+                extract_js_function(html, "buildRigPartsFromProfile"),
+                extract_js_function(html, "buildHumanBoneRig"),
+                extract_js_function(html, "buildBoneRigFromParts"),
+                'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
+                "const humanParts=buildRigPartsFromProfile(human);",
+                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右"];',
+                'if(JSON.stringify(humanParts.map(part=>part.label))!==JSON.stringify(expected))throw new Error("人物部位の分類・順序が不正です");',
+                'if(humanParts.find(part=>part.label==="手 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="脚 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
+                "const humanBones=buildBoneRigFromParts(humanParts,human);",
+                'for(const label of ["骨盤","背骨","首","頭頂","肩 左","肘 左","手首 左","肩 右","肘 右","手首 右","股関節 左","膝 左","足首 左","股関節 右","膝 右","足首 右"])if(!humanBones.some(point=>point.label===label))throw new Error(`人体ボーンがありません: ${label}`);',
+                'if(humanBones.length>24)throw new Error("人体ボーンが上限を超えています");',
+                'const generic={kind:"wide",head:[.5,.2,.2,.2],body:[.5,.55,.3,.3],material:[.5,.4,.4,.3],prop:[.7,.5,.15,.15],groundY:.9,motionRange:[.02,.01]};',
+                'if(buildRigPartsFromProfile(generic).length!==4||buildBoneRigFromParts(buildRigPartsFromProfile(generic),generic).length!==5)throw new Error("人物以外の既存リグが変わっています");',
+            ]
+        )
+        subprocess.run([node, "-e", human_rig_test], check=True)
+        print("PASS: human eight-part rig and articulated bone hierarchy")
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
