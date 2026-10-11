@@ -266,3 +266,9 @@
   Bundled Node.jsを使った`python3 scripts/ci/web_regression_gate.py`は、JavaScript構文、リグJSON、人物8部位・人体ボーン、固定5素材の精度閾値を含め全項目PASS。Desktop Chromeで座り姿勢、ロング衣装、腕を前後へ伸ばした姿勢を確認し、人物（姿勢AI）、外れ値補正6点／3点、8部位・17ボーン点、モーション追随中を表示。最終60fpsで、素材切替直後だけ52fpsだった。
 
   iPhone 17 Pro Simulator（iOS 26.5）のパネル非表示・狭幅画面で、前へ伸ばした手・肘、上げた手、両脚のワイヤーと17ボーンが人物へ一致し、モーション中もoverlayが残ることを確認。表示36fps。iPad Pro 13-inch (M5) Simulator（iOS 26.5）でも同じ位置関係を確認し、高解像度デバッグoverlayは10fpsだった。Simulator上の精度確認はPASSとするが、fpsは物理端末性能ではない。物理iPhone／iPad SafariのGPU性能、タッチ編集、カメラ権限は未検証。使用モデルはCodex GPT-5、動的切替なし。
+
+### 2026-10-11 19:43 JST - Codex GPT-5 - 種別: 検証・Git - 精度レポート公開
+
+- 内容:
+
+  人物認識精度の反復値、根本原因、採用アルゴリズム、実表示結果、残る限界を`Docs/HUMAN_RIG_ACCURACY.md`へまとめ、今回分だけを`2aa9b67 docs: report human rig accuracy loops`として`origin/main`へpushした。別件で進行中のカメラ・背景削除・リグ編集差分はcommitへ混ぜず、作業ツリーに保持した。品質Run 38132906600とPages Run 38132906464はいずれもsuccess。公開レポートとcommit checkoutのSHA-256は`7ba0b8f0f785c47f8396acb517e836164f649a1cab71e6d08bee4e7a4ecf37c0`で一致し、HEADと`origin/main`は`2aa9b67`で同期した。Node.js 20非推奨とUbuntu 26移行予定はRunner注記であり、ジョブ失敗ではない。
