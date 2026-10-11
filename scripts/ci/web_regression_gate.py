@@ -90,6 +90,8 @@ def main() -> int:
     for element_id, label in [
         ("demoNext", "デモ画像切替ボタン"),
         ("demoGallery", "デモ画像ギャラリー"),
+        ("backgroundLayerFile", "背景レイヤー個別読込"),
+        ("foregroundLayerFile", "前景レイヤー個別読込"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}がありません")
     require("const DEMO_ASSETS=[" in html, "デモ画像のプリセット定義がありません")
@@ -160,13 +162,14 @@ def main() -> int:
         ("image", "画像"),
         ("live2d", "Live2D"),
         ("lighting", "照明"),
-        ("crop", "トリミング"),
+        ("crop", "背景削除"),
         ("effects", "立体表示"),
         ("device", "デバイス"),
     ]:
         require(f'id="tab-{tab_id}"' in html, f"設定タブがありません: {label}")
         require(f'data-tab-panel="{tab_id}"' in html, f"設定タブ画面がありません: {label}")
     require('id="settingsTabs"' in html, "設定タブのタブリストがありません")
+    require('data-tab="crop">背景削除</button>' in html, "トリミングタブが背景削除へ改名されていません")
     require("function switchSettingsTab(" in html, "設定タブの切替処理がありません")
     require(
         html.index('id="file"') > html.index('id="demoGallery"'),
@@ -206,6 +209,7 @@ def main() -> int:
         ("bonePointPart", "ボーン追随部位"),
         ("boneFollowAmount", "ボーン追随率"),
         ("boneRigStatus", "ボーン構造検証表示"),
+        ("splitBoneSegment", "選択ボーン分割"),
         ("exportRig", "リグJSON保存"),
         ("importRig", "リグJSON読込"),
         ("rigProjectFile", "リグJSON入力"),
@@ -228,10 +232,11 @@ def main() -> int:
     require('id="rigPartList" size="6"' in html, "編集部位はドロップダウンでなく一覧選択にしてください")
     for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
         require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
-    require("const MAX_RIG_PARTS=8;" in html, "WebGL上限を管理する部位数定義がありません")
+    require("const MAX_RIG_PARTS=12;" in html, "髪・胸を含む12部位上限がありません")
+    require('length>8)issues.push("追加部位は8件までです")' in html, "追加8部位の構造検証上限が更新されていません")
     for human_part in ["頭", "腕 左", "腕 右", "手 左", "手 右", "上半身", "脚 左", "脚 右"]:
         require(f'label:"{human_part}"' in html, f"人物向けLive2D部位がありません: {human_part}")
-    require("function buildHumanRigParts(" in html, "人物向け8部位の初期リグ生成がありません")
+    require("function buildHumanRigParts(" in html, "人物向け部位の初期リグ生成がありません")
     require("function buildHumanBoneRig(" in html, "人物向け人体ボーン生成がありません")
     require("const POSE_MODEL_URL=" in html, "人物姿勢モデルが固定されていません")
     require("async function inferHumanPoseProfile(" in html, "人物姿勢ランドマーク認識がありません")
@@ -248,9 +253,27 @@ def main() -> int:
     require("function deleteSelectedRigPart(" in html, "部位削除処理がありません")
     require("function effectiveRigMotion(" in html, "親子モーションの合成処理がありません")
     require("function wouldCreateRigCycle(" in html, "循環する親子関係を防止していません")
-    require('value="chest">胸部弾性（2軸遅延）' in html, "胸部向けの個別重力モーションがありません")
+    for preset, label in [
+        ("face", "顔（微細追従）"),
+        ("eyes", "目（瞬き・視線）"),
+        ("mouth", "口（開閉）"),
+        ("hair", "髪（柔体）"),
+        ("hand", "手（安定追従）"),
+        ("chest", "胸部弾性（2軸遅延）"),
+        ("hips", "腰・臀部（低周波）"),
+        ("propRigid", "小物（剛体移動）"),
+        ("tail", "尻尾（しなり）"),
+    ]:
+        require(f'value="{preset}">{label}' in html, f"部位別モーションがありません: {label}")
+    require("float rigRigidAt(" in html, "小物を形状変形させない剛体範囲移動がありません")
+    require("uniform vec4 u_corePartRigid;" in html, "標準部位の剛体フラグがありません")
+    require("uniform vec4 u_extraPartRigid;" in html, "追加部位1〜4の剛体フラグがありません")
+    require("uniform vec4 u_extraPartRigid2;" in html, "追加部位5〜8の剛体フラグがありません")
+    require('chestMotion:true' in html, "既知の女性デモへ胸部モーション許可が明示されていません")
+    require('chestMotion:false' in html, "男性デモで胸部モーションを禁止していません")
+    require("profile.chestMotion===true" in html, "胸部自動追加が明示メタデータだけに限定されていません")
     require("uniform vec4 u_corePartEnabled;" in html, "削除／無効化した標準部位をshaderへ反映できません")
-    for index in range(4):
+    for index in range(8):
         require(f"uniform vec4 u_extraRegion{index};" in html, f"追加部位{index + 1}のshader領域がありません")
         require(f"uniform vec2 u_extraMotion{index};" in html, f"追加部位{index + 1}のshaderモーションがありません")
     require("function applyRigPartControls(" in html, "部位ごとのモーション編集処理がありません")
@@ -274,6 +297,12 @@ def main() -> int:
     require('guideDragTarget.startsWith("rig:")' in html, "ワイヤーフレーム中心を直接ドラッグ編集できません")
     require('guideDragTarget.startsWith("resize:")' in html, "ワイヤーフレーム範囲を直接リサイズできません")
     require('guideDragTarget.startsWith("bone:")' in html, "ボーンポイントをプレビュー上で直接移動できません")
+    require('guideDragTarget.startsWith("rotate:")' in html, "部位楕円をプレビュー上で回転できません")
+    require('return `bone-segment:${bone.id}`' in html, "ボーン線を選択できません")
+    require("function splitSelectedBoneSegment(" in html, "選択ボーンを中点分割できません")
+    require("guideHandles.rotations" in html, "部位楕円の回転ハンドルがありません")
+    require("function boneSelectionScale(" in html, "高解像度画面に応じたボーン強調倍率がありません")
+    require('id="debugShowTags" type="checkbox">認識タグ番号' in html, "認識タグ番号が初期OFFではありません")
     require('id="stopCamera"' in html and "function stopCamera(" in html, "デバイスタブからカメラを停止できません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
@@ -495,6 +524,10 @@ def main() -> int:
         "const filteredSubject=filterSubjectComponents(categories,width,height);" in html,
         "連結領域フィルタが人物マスク生成に適用されていません",
     )
+    require("function fillEnclosedSubjectHoles(" in html, "人物輪郭内部の分類抜けを補修できません")
+    require("function includeAttachedOtherRegions(" in html, "人物へ接する小物カテゴリを救済できません")
+    require("const attachedSubject=includeAttachedOtherRegions(filteredSubject,categories,width,height);" in html, "人物へ接する小物カテゴリの救済が適用されていません")
+    require("const filledSubject=fillEnclosedSubjectHoles(attachedSubject,width,height);" in html, "人物マスクへ内部穴補修が適用されていません")
     require("const core=new Uint8Array(total);" in html, "細い誤接続を分離するマスク収縮がありません")
     require(
         "labels[nextY*width+nextX]===largestLabel" in html,
@@ -514,7 +547,23 @@ def main() -> int:
     require("@mediapipe/tasks-vision@1.0.1/wasm" in html, "MediaPipe WASMの固定URLがありません")
     require("window.isSecureContext" in html, "Secure Context検査がありません")
     require("navigator.mediaDevices.getUserMedia" in html, "getUserMedia呼び出しがありません")
-    require('facingMode:{ideal:"user"}' in html, "フロントカメラ指定がありません")
+    for element_id, label in [
+        ("cameraDevice", "カメラ選択"),
+        ("cameraFacing", "前面／背面カメラ選択"),
+        ("cameraBackground", "カメラ背景切替"),
+        ("viewInputMode", "視点入力モード"),
+        ("startTilt", "端末傾き開始"),
+        ("calibrateTilt", "端末傾き中央合わせ"),
+    ]:
+        require(f'id="{element_id}"' in html, f"{label}のUIがありません")
+    require("navigator.mediaDevices.enumerateDevices" in html, "PCを含むカメラ一覧取得がありません")
+    require("function cameraConstraints(" in html, "指定カメラ／前面／背面の制約生成がありません")
+    require("deviceId:{exact:selectedDevice}" in html, "選択したカメラをgetUserMediaへ指定していません")
+    require('facingMode:{ideal:facing}' in html, "前面／背面カメラ指定がありません")
+    require("function handleDeviceOrientation(" in html, "端末傾きの視点入力処理がありません")
+    require("DeviceOrientationEvent.requestPermission" in html, "iOSの端末傾き権限要求がありません")
+    require("uniform sampler2D u_cameraBackgroundTex;" in html, "カメラ背景用テクスチャがありません")
+    require("function updateCameraBackgroundTexture(" in html, "カメラ映像を背景テクスチャへ更新できません")
     require('delegate:"GPU"' in html, "GPU初期化がありません")
     require("retrying with CPU" in html, "GPU失敗時のCPUフォールバックがありません")
 
@@ -561,6 +610,22 @@ def main() -> int:
             script.flush()
             subprocess.run([node, "--check", script.name], check=True)
         print("PASS: JavaScript syntax")
+        mask_test = "\n".join(
+            [
+                extract_js_function(html, "fillEnclosedSubjectHoles"),
+                extract_js_function(html, "includeAttachedOtherRegions"),
+                "const width=9,height=9,mask=new Uint8Array(width*height);",
+                "for(let y=2;y<=6;y++)for(let x=2;x<=6;x++)if(x===2||x===6||y===2||y===6)mask[y*width+x]=1;",
+                "const filled=fillEnclosedSubjectHoles(mask,width,height);",
+                'if(!filled[4*width+4])throw new Error("人物内部の分類抜けを補修できません");',
+                'if(filled[0])throw new Error("外周背景まで人物として補修しています");',
+                "const categories=new Uint8Array(width*height);categories[4*width+2]=5;categories[4*width+1]=5;",
+                "const attached=includeAttachedOtherRegions(mask,categories,width,height);",
+                'if(!attached[4*width+1])throw new Error("人物へ接する小物カテゴリを救済できません");',
+            ]
+        )
+        subprocess.run([node, "-e", mask_test], check=True)
+        print("PASS: enclosed person-mask hole repair")
 
         rig_fixture = {
             "format": "P3D-PseudoLive2D-Rig",
@@ -628,7 +693,7 @@ def main() -> int:
         }
         rig_test = "\n".join(
             [
-                "const MAX_RIG_PARTS=8,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
+                "const MAX_RIG_PARTS=12,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
                 'const RIG_PARTS={body:{},head:{},material:{},prop:{}};',
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
                 'const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};',
@@ -651,9 +716,9 @@ def main() -> int:
         print("PASS: rig JSON normalization and cycle rejection")
         human_rig_test = "\n".join(
             [
-                'const RIG_PARTS={body:{tag:"01",label:"胴体",color:"#69f0ae"},head:{tag:"02",label:"頭部・顔",color:"#ffdf6e"},material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},prop:{tag:"04",label:"小物・尻尾",color:"#ff86c8"}};',
+                'const RIG_PARTS={body:{tag:"01",label:"胴体",color:"#69f0ae"},head:{tag:"02",label:"頭部・顔",color:"#ffdf6e"},material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},prop:{tag:"04",label:"付属部位",color:"#ff86c8"}};',
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
-                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},prop:{strength:1,gravity:-.00155,stiffness:8,damping:4},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2}};",
+                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},face:{strength:.55,gravity:0,stiffness:34,damping:10.5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},hand:{strength:.62,gravity:-.00018,stiffness:30,damping:10.2},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2},propRigid:{strength:.72,gravity:-.00018,stiffness:35,damping:11.5}};",
                 "const rigSprings={};",
                 extract_js_function(html, "newRigSpring"),
                 extract_js_function(html, "poseMidpoint"),
@@ -666,18 +731,23 @@ def main() -> int:
                 extract_js_function(html, "buildBoneRigFromParts"),
                 'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
                 "const humanParts=buildRigPartsFromProfile(human);",
-                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右"];',
+                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪"];',
                 'if(JSON.stringify(humanParts.map(part=>part.label))!==JSON.stringify(expected))throw new Error("人物部位の分類・順序が不正です");',
+                'if(humanParts.some(part=>part.label==="胸"))throw new Error("胸部許可のない人物へ胸部モーションを追加しています");',
+                'const femaleParts=buildRigPartsFromProfile({...human,chestMotion:true});',
+                'if(femaleParts.length!==10||femaleParts.find(part=>part.label==="胸")?.preset!=="chest")throw new Error("明示した女性デモへ胸部モーションを追加できません");',
+                'if(humanParts.find(part=>part.label==="髪")?.preset!=="hair"||humanParts.find(part=>part.label==="手 左")?.preset!=="hand")throw new Error("人体の髪・手へ専用アルゴリズムが設定されていません");',
                 'if(humanParts.find(part=>part.label==="手 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="脚 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
                 "const humanBones=buildBoneRigFromParts(humanParts,human);",
-                'for(const label of ["骨盤","背骨","首","頭頂","肩 左","肘 左","手首 左","肩 右","肘 右","手首 右","股関節 左","膝 左","足首 左","股関節 右","膝 右","足首 右"])if(!humanBones.some(point=>point.label===label))throw new Error(`人体ボーンがありません: ${label}`);',
+                'for(const label of ["骨盤","腰","背骨","首","頭頂","肩 左","肘 左","手首 左","肩 右","肘 右","手首 右","股関節 左","膝 左","足首 左","股関節 右","膝 右","足首 右"])if(!humanBones.some(point=>point.label===label))throw new Error(`人体ボーンがありません: ${label}`);',
+                'if(humanBones.length!==17)throw new Error("人物ボーンは腰を含む17ポイントである必要があります");',
                 'if(humanBones.length>24)throw new Error("人体ボーンが上限を超えています");',
                 'const generic={kind:"wide",head:[.5,.2,.2,.2],body:[.5,.55,.3,.3],material:[.5,.4,.4,.3],prop:[.7,.5,.15,.15],groundY:.9,motionRange:[.02,.01]};',
-                'if(buildRigPartsFromProfile(generic).length!==4||buildBoneRigFromParts(buildRigPartsFromProfile(generic),generic).length!==5)throw new Error("人物以外の既存リグが変わっています");',
+                'if(buildRigPartsFromProfile(generic).length!==4||buildRigPartsFromProfile(generic).find(part=>part.role==="prop")?.preset!=="propRigid"||buildBoneRigFromParts(buildRigPartsFromProfile(generic),generic).length!==5)throw new Error("人物以外の小物剛体リグが不正です");',
             ]
         )
         subprocess.run([node, "-e", human_rig_test], check=True)
-        print("PASS: human eight-part rig and articulated bone hierarchy")
+        print("PASS: human 9/10-part rig and articulated bone hierarchy")
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
