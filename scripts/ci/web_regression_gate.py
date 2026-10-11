@@ -98,6 +98,10 @@ def main() -> int:
     require("uniform sampler2D u_foregroundTex;" in html, "透過立ち絵の独立テクスチャがありません")
     require("uniform float u_hasLayeredDemo;" in html, "2層デモの切替uniformがありません")
     require("vec4 sourceColorAt(vec2 uv)" in html, "背景と透過立ち絵の合成処理がありません")
+    require(
+        'src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png"' in html,
+        "美少女キャラデモが背景と透過キャラの2層構成ではありません",
+    )
     require(html.count("data-demo-index=") >= 9, "背景なしゆるキャラ／モフモフを含む9種類以上のデモがありません")
     require("ゆるアクスタ（透過）" in html, "背景なしゆるキャラのアクスタデモがありません")
     require("モフモフアクスタ（透過）" in html, "背景なしモフモフ動物のアクスタデモがありません")
@@ -229,6 +233,12 @@ def main() -> int:
         require(f'label:"{human_part}"' in html, f"人物向けLive2D部位がありません: {human_part}")
     require("function buildHumanRigParts(" in html, "人物向け8部位の初期リグ生成がありません")
     require("function buildHumanBoneRig(" in html, "人物向け人体ボーン生成がありません")
+    require("const POSE_MODEL_URL=" in html, "人物姿勢モデルが固定されていません")
+    require("async function inferHumanPoseProfile(" in html, "人物姿勢ランドマーク認識がありません")
+    require("profile.poseLandmarks" in html, "人物リグへ姿勢ランドマークを渡していません")
+    require("return [name,[Math.max(.01,Math.min(.99,x)),Math.max(.01,Math.min(.99,y)),value[2]]]" in html, "人物姿勢ランドマークを名前付き座標として保持していません")
+    require("uniform vec4 u_corePartAngles;" in html, "方向付き人物部位をshaderへ渡せません")
+    require("uniform vec4 u_extraPartAngles;" in html, "追加人物部位の方向をshaderへ渡せません")
     require(html.count('rigType:"human"') >= 5, "人物デモが人物向けリグ種別へ分類されていません")
     require(
         "左／右はキャラクター本人基準" in html,
@@ -343,6 +353,7 @@ def main() -> int:
         ("depthFile", "Depth Map入力"),
         ("subjectMaskFile", "人物／物体マスク入力"),
         ("autoPerson", "端末内人物分離"),
+        ("layerFromMask", "一枚絵の背景補完2層化"),
         ("clearMaps", "マップ解除"),
         ("mapStatus", "マップ状態表示"),
         ("lightX", "疑似光源X"),
@@ -403,6 +414,11 @@ def main() -> int:
     require("ImageSegmenter.createFromOptions" in html, "端末内人物分離の初期化がありません")
     require("function depthForPersonPart(category)" in html, "人物部位別Depth割当がありません")
     require("result.categoryMask.getAsUint8Array()" in html, "人物カテゴリマスクをテクスチャ化していません")
+    require("function pseudoInpaintBackground(" in html, "人物除去領域の端末内擬似背景補完がありません")
+    require("async function createLayeredSceneFromMask(" in html, "一枚絵を背景と透過前景へ分離する処理がありません")
+    require("multiSourceFill(" in html, "複数方向の近傍色伝播による背景補完がありません")
+    require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
+    require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
     require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")
     require("uniform vec2 u_texelSize;" in html, "輪郭検出用texelサイズのshader uniformがありません")
     require("uniform float u_motionScale;" in html, "視差低減用のshader uniformがありません")
@@ -640,6 +656,10 @@ def main() -> int:
                 "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},prop:{strength:1,gravity:-.00155,stiffness:8,damping:4},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2}};",
                 "const rigSprings={};",
                 extract_js_function(html, "newRigSpring"),
+                extract_js_function(html, "poseMidpoint"),
+                extract_js_function(html, "poseDistance"),
+                extract_js_function(html, "humanPoseBones"),
+                extract_js_function(html, "orientedRigRegion"),
                 extract_js_function(html, "buildHumanRigParts"),
                 extract_js_function(html, "buildRigPartsFromProfile"),
                 extract_js_function(html, "buildHumanBoneRig"),
@@ -660,6 +680,21 @@ def main() -> int:
         print("PASS: human eight-part rig and articulated bone hierarchy")
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
+
+    accuracy = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/ci/human_rig_accuracy.py")],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    accuracy_metrics = json.loads(accuracy.stdout)
+    baseline_accuracy, final_accuracy = accuracy_metrics[0], accuracy_metrics[-1]
+    require(final_accuracy["bone_error_percent"] <= 1.0, "人物ボーン平均誤差が1%を超えています")
+    require(final_accuracy["bone_pck_5_percent"] >= 95.0, "人物ボーンPCK@5%が95%未満です")
+    require(final_accuracy["part_center_error_percent"] <= 1.0, "人物部位中心誤差が1%を超えています")
+    require(final_accuracy["part_iou_percent"] >= 95.0, "人物部位範囲IoUが95%未満です")
+    require(final_accuracy["bone_error_percent"] < baseline_accuracy["bone_error_percent"] * .1, "人物ボーン誤差を90%以上削減できていません")
+    print("PASS: fixed five-asset human rig accuracy benchmark")
 
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: six effect modes including Depth Map layered and Trick Portal 3D")

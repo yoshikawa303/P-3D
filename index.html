@@ -123,6 +123,8 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
       <button id="autoPerson" class="secondary">人物を自動分離</button>
       <button id="clearMaps" class="secondary">マップを解除</button>
     </div>
+    <button id="layerFromMask" type="button" disabled>背景を補完して2層立体化</button>
+    <div class="hint">自動分離または人物／物体マスクを使い、キャラを透過前景へ分けます。隠れた背景は生成AIではなく端末内の近傍色補完で自然につなぐ擬似処理です。画像は外部へ送信しません。</div>
     <div id="mapStatus">Depth: 中心近似 ／ マスク: 中心近似</div>
     </section>
 
@@ -357,6 +359,8 @@ uniform vec2 u_headMotion;
 uniform vec2 u_materialMotion;
 uniform vec2 u_propMotion;
 uniform vec4 u_corePartEnabled;
+uniform vec4 u_corePartAngles;
+uniform vec4 u_extraPartAngles;
 uniform vec4 u_rigCenters;
 uniform vec4 u_rigRadii;
 uniform vec4 u_bodyRegion;
@@ -439,8 +443,14 @@ float subjectMaskAt(vec2 uv){
   return mix(proceduralMask,smoothstep(0.08,0.92,mappedMask),max(u_hasDepthMap,u_hasSubjectMask));
 }
 
-float rigEllipseAt(vec2 uv,vec2 center,vec2 radius){
-  vec2 point=(uv-center)/max(radius,vec2(0.001));
+vec2 rigLocalPoint(vec2 uv,vec2 center,vec2 radius,float angle){
+  vec2 delta=uv-center;
+  float cosine=cos(angle),sine=sin(angle);
+  return vec2(cosine*delta.x+sine*delta.y,-sine*delta.x+cosine*delta.y)/max(radius,vec2(0.001));
+}
+
+float rigEllipseAt(vec2 uv,vec2 center,vec2 radius,float angle){
+  vec2 point=rigLocalPoint(uv,center,radius,angle);
   return 1.0-smoothstep(0.62,1.04,length(point));
 }
 
@@ -456,13 +466,13 @@ vec2 constrainMotionOffset(vec2 offset){
 vec2 riggedForegroundUV(vec2 uv){
   float enabled=u_autoRigEnabled*u_hasLayeredDemo*u_motionScale;
   if(enabled<0.001)return uv;
-  float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy)*u_corePartEnabled.y;
-  float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw)*u_corePartEnabled.z;
-  float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw)*u_corePartEnabled.w;
-  float bodyInfluence=rigEllipseAt(uv,u_bodyRegion.xy,u_bodyRegion.zw)*u_corePartEnabled.x;
+  float headInfluence=rigEllipseAt(uv,u_rigCenters.xy,u_rigRadii.xy,u_corePartAngles.y)*u_corePartEnabled.y;
+  float materialInfluence=rigEllipseAt(uv,u_materialRegion.xy,u_materialRegion.zw,u_corePartAngles.z)*u_corePartEnabled.z;
+  float propInfluence=rigEllipseAt(uv,u_rigCenters.zw,u_rigRadii.zw,u_corePartAngles.w)*u_corePartEnabled.w;
+  float bodyInfluence=rigEllipseAt(uv,u_bodyRegion.xy,u_bodyRegion.zw,u_corePartAngles.x)*u_corePartEnabled.x;
   float anchorWeight=anchoredMotionWeight(uv);
-  vec2 headPoint=(uv-u_rigCenters.xy)/max(u_rigRadii.xy,vec2(0.001));
-  vec2 bodyPoint=(uv-u_bodyRegion.xy)/max(u_bodyRegion.zw,vec2(0.001));
+  vec2 headPoint=rigLocalPoint(uv,u_rigCenters.xy,u_rigRadii.xy,u_corePartAngles.y);
+  vec2 bodyPoint=rigLocalPoint(uv,u_bodyRegion.xy,u_bodyRegion.zw,u_corePartAngles.x);
   float eyeBand=headInfluence*exp(-pow((headPoint.y-0.10)*8.5,2.0));
   float mouthBand=headInfluence*exp(-pow((headPoint.y+0.34)*10.0,2.0));
   vec2 displacement=vec2(0.0);
@@ -473,10 +483,10 @@ vec2 riggedForegroundUV(vec2 uv){
   displacement+=u_headMotion*headInfluence*1.30;
   displacement+=u_materialMotion*materialInfluence*1.18;
   displacement+=u_propMotion*propInfluence*1.35;
-  displacement+=u_extraMotion0*rigEllipseAt(uv,u_extraRegion0.xy,u_extraRegion0.zw);
-  displacement+=u_extraMotion1*rigEllipseAt(uv,u_extraRegion1.xy,u_extraRegion1.zw);
-  displacement+=u_extraMotion2*rigEllipseAt(uv,u_extraRegion2.xy,u_extraRegion2.zw);
-  displacement+=u_extraMotion3*rigEllipseAt(uv,u_extraRegion3.xy,u_extraRegion3.zw);
+  displacement+=u_extraMotion0*rigEllipseAt(uv,u_extraRegion0.xy,u_extraRegion0.zw,u_extraPartAngles.x);
+  displacement+=u_extraMotion1*rigEllipseAt(uv,u_extraRegion1.xy,u_extraRegion1.zw,u_extraPartAngles.y);
+  displacement+=u_extraMotion2*rigEllipseAt(uv,u_extraRegion2.xy,u_extraRegion2.zw,u_extraPartAngles.z);
+  displacement+=u_extraMotion3*rigEllipseAt(uv,u_extraRegion3.xy,u_extraRegion3.zw,u_extraPartAngles.w);
   // 顔と胴体は単なる平行移動ではなく、局所的な開閉／伸縮を使う。
   displacement.x+=(headPoint.y*u_live2dMotion.z*0.0048)*headInfluence;
   displacement.y+=(headPoint.y-0.10)*eyeBand*u_live2dMotion.x*0.030;
@@ -810,7 +820,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_extraPartAngles","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -823,7 +833,7 @@ let hasLayeredDemo=false,demoLoadSerial=0;
 let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeBonePoints=[],inferredBonePoints=[],activeStandee=false;
 let activeMotionRange=[0.018,0.012];
 const rigSprings={};
-let recognitionBounds=null,recognitionGuideCanvas=null;
+let recognitionBounds=null,recognitionGuideCanvas=null,subjectMaskCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},bones:{},rayLength:0,dpr:1},guideDragTarget=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
@@ -832,9 +842,11 @@ const VISION_MODULE_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.
 const VISION_WASM_URL="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const PERSON_SEGMENTER_MODEL_URL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
+const POSE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
 let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
 let imageSegmenter=null,startingSegmentation=false;
+let poseLandmarker=null,poseLandmarkerPromise=null;
 let fpsN=0,fpsT=performance.now();
 const PANEL_VISIBILITY_KEY="p3d.settingsPanelVisible.v1";
 const SETTINGS_TAB_KEY="p3d.settingsTab.v1";
@@ -915,6 +927,7 @@ function uploadImage(img,label){
     imgHeight=sourceHeight;
     hasImage=true;
     sourceImage=img;
+    syncLayeringControls();
     statusEl.textContent="表示中: "+label;
     help.style.display="none";
     errEl.textContent="";
@@ -1021,49 +1034,106 @@ function cloneRigProfile(profile){
     kind:profile.kind,rigType:profile.rigType||"generic",
     head:[...profile.head],body:[...profile.body],material:[...profile.material],prop:[...profile.prop],
     groundY:profile.groundY,
-    motionRange:[...(profile.motionRange||activeMotionRange)]
+    motionRange:[...(profile.motionRange||activeMotionRange)],
+    rigSource:profile.rigSource||"silhouette",
+    poseCorrectionCount:profile.poseCorrectionCount||0,
+    poseLandmarks:profile.poseLandmarks ? Object.fromEntries(Object.entries(profile.poseLandmarks).map(([key,value])=>[key,[...value]])) : null
   };
 }
 
 function newRigSpring(){return {x:0,y:0,vx:0,vy:0,effectiveX:0,effectiveY:0}}
 
 function cloneRigParts(parts){
-  return parts.map(part=>({...part,region:[...part.region],originalRegion:[...(part.originalRegion||part.region)]}));
+  return parts.map(part=>({...part,region:[...part.region],originalRegion:[...(part.originalRegion||part.region)],angle:part.angle||0,originalAngle:part.originalAngle??part.angle??0}));
 }
 
 function cloneBonePoints(points){
   return points.map(point=>({...point,original:[...(point.original||[point.x,point.y])]}));
 }
 
+function poseMidpoint(a,b){return [(a[0]+b[0])*.5,(a[1]+b[1])*.5]}
+function poseDistance(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1])}
+
+function humanPoseBones(profile){
+  const pose=profile.poseLandmarks;
+  if(!pose)return null;
+  const neck=poseMidpoint(pose.shoulderLeft,pose.shoulderRight);
+  const pelvis=poseMidpoint(pose.hipLeft,pose.hipRight);
+  const shoulderSpan=poseDistance(pose.shoulderLeft,pose.shoulderRight);
+  return {
+    pelvis,spine:poseMidpoint(neck,pelvis),neck,
+    headTop:[pose.nose[0],Math.max(.01,pose.nose[1]-shoulderSpan*.38)],
+    shoulderLeft:pose.shoulderLeft.slice(0,2),elbowLeft:pose.elbowLeft.slice(0,2),wristLeft:pose.wristLeft.slice(0,2),
+    shoulderRight:pose.shoulderRight.slice(0,2),elbowRight:pose.elbowRight.slice(0,2),wristRight:pose.wristRight.slice(0,2),
+    hipLeft:pose.hipLeft.slice(0,2),kneeLeft:pose.kneeLeft.slice(0,2),ankleLeft:pose.ankleLeft.slice(0,2),
+    hipRight:pose.hipRight.slice(0,2),kneeRight:pose.kneeRight.slice(0,2),ankleRight:pose.ankleRight.slice(0,2)
+  };
+}
+
+function orientedRigRegion(points,padding,minimumMinor){
+  const mean=[points.reduce((sum,p)=>sum+p[0],0)/points.length,points.reduce((sum,p)=>sum+p[1],0)/points.length];
+  let xx=0,yy=0,xy=0;
+  for(const point of points){const dx=point[0]-mean[0],dy=point[1]-mean[1];xx+=dx*dx;yy+=dy*dy;xy+=dx*dy}
+  const lineAngle=.5*Math.atan2(2*xy,xx-yy),major=[Math.cos(lineAngle),Math.sin(lineAngle)],minor=[-major[1],major[0]];
+  const majorValues=points.map(point=>point[0]*major[0]+point[1]*major[1]);
+  const minorValues=points.map(point=>point[0]*minor[0]+point[1]*minor[1]);
+  const majorCenter=(Math.min(...majorValues)+Math.max(...majorValues))*.5,minorCenter=(Math.min(...minorValues)+Math.max(...minorValues))*.5;
+  return {
+    region:[major[0]*majorCenter+minor[0]*minorCenter,major[1]*majorCenter+minor[1]*minorCenter,Math.max(minimumMinor,(Math.max(...minorValues)-Math.min(...minorValues))*.5+padding*.55),Math.max(minimumMinor*1.4,(Math.max(...majorValues)-Math.min(...majorValues))*.5+padding)],
+    angle:lineAngle-Math.PI*.5
+  };
+}
+
 function buildHumanRigParts(profile){
-  const head=[...profile.head],body=[...profile.body];
-  const centerX=body[0],bodyY=body[1],bodyRadiusX=body[2],bodyRadiusY=body[3];
-  const groundY=Math.max(bodyY+bodyRadiusY,profile.groundY);
-  const shoulderY=bodyY-bodyRadiusY*.42;
-  const handY=Math.min(groundY-.13,bodyY+bodyRadiusY*.48);
-  const armCenterY=(shoulderY+handY)*.5;
-  const armOffset=Math.max(.085,bodyRadiusX*.88);
-  const handOffset=Math.max(.12,bodyRadiusX*1.18);
-  const hipY=Math.min(groundY-.18,bodyY+bodyRadiusY*.58);
-  const legCenterY=(hipY+groundY-.015)*.5;
-  const legOffset=Math.max(.045,bodyRadiusX*.34);
   const boundedRegion=region=>[
     Math.max(.02,Math.min(.98,region[0])),Math.max(.02,Math.min(.98,region[1])),
     Math.max(.025,Math.min(.48,region[2])),Math.max(.025,Math.min(.48,region[3]))
   ];
+  let regions={};
+  const pose=humanPoseBones(profile);
+  if(pose){
+    const shoulderSpan=poseDistance(pose.shoulderLeft,pose.shoulderRight);
+    const headCenter=poseMidpoint(pose.headTop,pose.neck);
+    regions.head={region:[headCenter[0],headCenter[1],Math.max(.055,shoulderSpan*.30),Math.max(.075,poseDistance(pose.headTop,pose.neck)*.58)],angle:Math.atan2(pose.neck[1]-pose.headTop[1],pose.neck[0]-pose.headTop[0])-Math.PI*.5};
+    regions.armLeft=orientedRigRegion([pose.shoulderLeft,pose.elbowLeft,pose.wristLeft],.032,.045);
+    regions.armRight=orientedRigRegion([pose.shoulderRight,pose.elbowRight,pose.wristRight],.032,.045);
+    regions.handLeft={region:[pose.wristLeft[0],pose.wristLeft[1],.045,.058],angle:0};
+    regions.handRight={region:[pose.wristRight[0],pose.wristRight[1],.045,.058],angle:0};
+    regions.upperBody=orientedRigRegion([pose.shoulderLeft,pose.shoulderRight,pose.hipLeft,pose.hipRight],.035,.07);
+    regions.legLeft=orientedRigRegion([pose.hipLeft,pose.kneeLeft,pose.ankleLeft],.038,.055);
+    regions.legRight=orientedRigRegion([pose.hipRight,pose.kneeRight,pose.ankleRight],.038,.055);
+  }else{
+    const head=[...profile.head],body=[...profile.body];
+    const centerX=body[0],bodyY=body[1],bodyRadiusX=body[2],bodyRadiusY=body[3];
+    const groundY=Math.max(bodyY+bodyRadiusY,profile.groundY),shoulderY=bodyY-bodyRadiusY*.42;
+    const handY=Math.min(groundY-.13,bodyY+bodyRadiusY*.48),armCenterY=(shoulderY+handY)*.5;
+    const armOffset=Math.max(.085,bodyRadiusX*.88),handOffset=Math.max(.12,bodyRadiusX*1.18);
+    const hipY=Math.min(groundY-.18,bodyY+bodyRadiusY*.58),legCenterY=(hipY+groundY-.015)*.5,legOffset=Math.max(.045,bodyRadiusX*.34);
+    regions={
+      head:{region:head,angle:0},
+      armLeft:{region:[centerX+armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],angle:0},
+      armRight:{region:[centerX-armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],angle:0},
+      handLeft:{region:[centerX+handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],angle:0},
+      handRight:{region:[centerX-handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],angle:0},
+      upperBody:{region:[centerX,bodyY,Math.max(.09,bodyRadiusX*.82),Math.max(.12,bodyRadiusY*.72)],angle:0},
+      legLeft:{region:[centerX+legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],angle:0},
+      legRight:{region:[centerX-legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],angle:0}
+    };
+  }
   const specs=[
-    {id:"head",role:"head",tag:"01",label:"頭",color:"#ffdf6e",region:head,parentId:"upper-body",inheritMotion:true,inheritAmount:.62,preset:"soft"},
-    {id:"arm-left",role:"material",tag:"02",label:"腕 左",color:"#69d9ff",region:[centerX+armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
-    {id:"arm-right",role:"prop",tag:"03",label:"腕 右",color:"#ff86c8",region:[centerX-armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
-    {id:"hand-left",role:"custom",tag:"04",label:"手 左",color:EXTRA_PART_COLORS[0],region:[centerX+handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],parentId:"arm-left",inheritMotion:true,inheritAmount:.86,preset:"prop"},
-    {id:"hand-right",role:"custom",tag:"05",label:"手 右",color:EXTRA_PART_COLORS[1],region:[centerX-handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],parentId:"arm-right",inheritMotion:true,inheritAmount:.86,preset:"prop"},
-    {id:"upper-body",role:"body",tag:"06",label:"上半身",color:"#69f0ae",region:[centerX,bodyY,Math.max(.09,bodyRadiusX*.82),Math.max(.12,bodyRadiusY*.72)],parentId:null,inheritMotion:false,inheritAmount:0,preset:"body"},
-    {id:"leg-left",role:"custom",tag:"07",label:"脚 左",color:EXTRA_PART_COLORS[2],region:[centerX+legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
-    {id:"leg-right",role:"custom",tag:"08",label:"脚 右",color:EXTRA_PART_COLORS[3],region:[centerX-legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"}
+    {id:"head",role:"head",tag:"01",label:"頭",color:"#ffdf6e",...regions.head,parentId:"upper-body",inheritMotion:true,inheritAmount:.62,preset:"soft"},
+    {id:"arm-left",role:"material",tag:"02",label:"腕 左",color:"#69d9ff",...regions.armLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"arm-right",role:"prop",tag:"03",label:"腕 右",color:"#ff86c8",...regions.armRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"hand-left",role:"custom",tag:"04",label:"手 左",color:EXTRA_PART_COLORS[0],...regions.handLeft,parentId:"arm-left",inheritMotion:true,inheritAmount:.86,preset:"prop"},
+    {id:"hand-right",role:"custom",tag:"05",label:"手 右",color:EXTRA_PART_COLORS[1],...regions.handRight,parentId:"arm-right",inheritMotion:true,inheritAmount:.86,preset:"prop"},
+    {id:"upper-body",role:"body",tag:"06",label:"上半身",color:"#69f0ae",...regions.upperBody,parentId:null,inheritMotion:false,inheritAmount:0,preset:"body"},
+    {id:"leg-left",role:"custom",tag:"07",label:"脚 左",color:EXTRA_PART_COLORS[2],...regions.legLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
+    {id:"leg-right",role:"custom",tag:"08",label:"脚 右",color:EXTRA_PART_COLORS[3],...regions.legRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"}
   ];
   return specs.map(spec=>{
     const motion=MOTION_PRESETS[spec.preset],region=boundedRegion(spec.region);
-    const part={...spec,region,originalRegion:[...region],motionEnabled:true,...motion};
+    const angle=Number.isFinite(spec.angle)?spec.angle:0;
+    const part={...spec,region,originalRegion:[...region],angle,originalAngle:angle,motionEnabled:true,...motion};
     rigSprings[part.id]=newRigSpring();
     return part;
   });
@@ -1080,7 +1150,7 @@ function buildRigPartsFromProfile(profile){
   ];
   const parts=specs.map(([id,role,parentId,inheritMotion,inheritAmount,preset])=>{
     const meta=RIG_PARTS[role],motion=MOTION_PRESETS[preset];
-    return {id,role,tag:meta.tag,label:meta.label,color:meta.color,region:[...profile[role]],originalRegion:[...profile[role]],motionEnabled:true,preset,parentId,inheritMotion,inheritAmount,...motion};
+    return {id,role,tag:meta.tag,label:meta.label,color:meta.color,region:[...profile[role]],originalRegion:[...profile[role]],angle:0,originalAngle:0,motionEnabled:true,preset,parentId,inheritMotion,inheritAmount,...motion};
   });
   for(const part of parts)rigSprings[part.id]=newRigSpring();
   return parts;
@@ -1091,6 +1161,28 @@ function buildHumanBoneRig(parts,profile){
   const upper=byId("upper-body"),head=byId("head"),armLeft=byId("arm-left"),armRight=byId("arm-right");
   const handLeft=byId("hand-left"),handRight=byId("hand-right"),legLeft=byId("leg-left"),legRight=byId("leg-right");
   if(!upper||!head||!armLeft||!armRight||!handLeft||!handRight||!legLeft||!legRight)return [];
+  const pose=humanPoseBones(profile);
+  if(pose){
+    const specs=[
+      ["bone-root","B01","骨盤","root",...pose.pelvis,null,upper.id,1],
+      ["bone-spine","B02","背骨","branch",...pose.spine,"bone-root",upper.id,1],
+      ["bone-neck","B03","首","joint",...pose.neck,"bone-spine",head.id,1],
+      ["bone-head","B04","頭頂","end",...pose.headTop,"bone-neck",head.id,1],
+      ["bone-shoulder-left","B05","肩 左","branch",...pose.shoulderLeft,"bone-spine",armLeft.id,1],
+      ["bone-elbow-left","B06","肘 左","joint",...pose.elbowLeft,"bone-shoulder-left",armLeft.id,1],
+      ["bone-wrist-left","B07","手首 左","end",...pose.wristLeft,"bone-elbow-left",handLeft.id,1],
+      ["bone-shoulder-right","B08","肩 右","branch",...pose.shoulderRight,"bone-spine",armRight.id,1],
+      ["bone-elbow-right","B09","肘 右","joint",...pose.elbowRight,"bone-shoulder-right",armRight.id,1],
+      ["bone-wrist-right","B10","手首 右","end",...pose.wristRight,"bone-elbow-right",handRight.id,1],
+      ["bone-hip-left","B11","股関節 左","branch",...pose.hipLeft,"bone-root",legLeft.id,1],
+      ["bone-knee-left","B12","膝 左","joint",...pose.kneeLeft,"bone-hip-left",legLeft.id,1],
+      ["bone-ankle-left","B13","足首 左","end",...pose.ankleLeft,"bone-knee-left",legLeft.id,1],
+      ["bone-hip-right","B14","股関節 右","branch",...pose.hipRight,"bone-root",legRight.id,1],
+      ["bone-knee-right","B15","膝 右","joint",...pose.kneeRight,"bone-hip-right",legRight.id,1],
+      ["bone-ankle-right","B16","足首 右","end",...pose.ankleRight,"bone-knee-right",legRight.id,1]
+    ];
+    return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
+  }
   const pelvisY=Math.min(profile.groundY-.16,upper.region[1]+upper.region[3]*.58);
   const spineY=upper.region[1];
   const neckY=Math.max(head.region[1]+head.region[3]*.72,upper.region[1]-upper.region[3]*.72);
@@ -1242,7 +1334,7 @@ function addRigPart(){
   const id=`custom-${Date.now().toString(36)}-${serial}`;
   const region=parent?[parent.region[0],parent.region[1],Math.max(.06,parent.region[2]*.45),Math.max(.06,parent.region[3]*.35)]:[.5,.5,.12,.12];
   const motion=MOTION_PRESETS.soft;
-  const part={id,role:"custom",tag:String(serial).padStart(2,"0"),label:`追加部位 ${serial}`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],motionEnabled:true,preset:"soft",parentId:parent?.id||null,inheritMotion:Boolean(parent),inheritAmount:.65,...motion};
+  const part={id,role:"custom",tag:String(serial).padStart(2,"0"),label:`追加部位 ${serial}`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],angle:parent?.angle||0,originalAngle:parent?.angle||0,motionEnabled:true,preset:"soft",parentId:parent?.id||null,inheritMotion:Boolean(parent),inheritAmount:.65,...motion};
   activeRigParts.push(part);
   rigSprings[id]=newRigSpring();
   syncRigPartList(id);syncBoneEditor();pushEditHistory();
@@ -1254,7 +1346,7 @@ function duplicateSelectedRigPart(){
   const serial=activeRigParts.reduce((max,part)=>Math.max(max,parseInt(part.tag,10)||0),0)+1;
   const id=`custom-${Date.now().toString(36)}-${serial}`;
   const region=[Math.min(.96,source.region[0]+.035),Math.min(.96,source.region[1]+.035),source.region[2],source.region[3]];
-  const part={...source,id,role:"custom",tag:String(serial).padStart(2,"0"),label:`${source.label} コピー`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],parentId:source.id,inheritMotion:true};
+  const part={...source,id,role:"custom",tag:String(serial).padStart(2,"0"),label:`${source.label} コピー`,color:EXTRA_PART_COLORS[(serial-5)%EXTRA_PART_COLORS.length],region,originalRegion:[...region],angle:source.angle||0,originalAngle:source.angle||0,parentId:source.id,inheritMotion:true};
   activeRigParts.push(part);
   rigSprings[id]=newRigSpring();
   syncRigPartList(id);syncBonePointList();pushEditHistory();
@@ -1276,6 +1368,7 @@ function resetSelectedRigPart(){
   if(!part)return;
   const inferred=inferredRigParts.find(candidate=>candidate.id===part.id);
   part.region=[...(inferred?.region||part.originalRegion)];
+  part.angle=inferred?.angle??part.originalAngle??0;
   if(inferred)Object.assign(part,{motionEnabled:inferred.motionEnabled,preset:inferred.preset,strength:inferred.strength,gravity:inferred.gravity,stiffness:inferred.stiffness,damping:inferred.damping,parentId:inferred.parentId,inheritMotion:inferred.inheritMotion,inheritAmount:inferred.inheritAmount});
   syncProfileFromParts();syncRigEditor();
   updateRigValidation();
@@ -1458,7 +1551,8 @@ function normalizeRigProject(raw){
     const role=["body","head","material","prop","custom"].includes(source.role)?source.role:"custom";
     const preset=MOTION_PRESETS[source.preset]?source.preset:"soft";
     const region=Array.isArray(source.region)?source.region:[];
-    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],motionEnabled:source.motionEnabled!==false,preset,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
+    const angle=boundedNumber(source.angle,-Math.PI,Math.PI,0);
+    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],.02,.5,.12),boundedNumber(region[3],.02,.5,.12)],angle,originalAngle:angle,motionEnabled:source.motionEnabled!==false,preset,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
   });
   const bones=raw.bonePoints.slice(0,MAX_BONE_POINTS+1).map((source,index)=>({id:cleanId(source.id,`ボーン${index+1}`),tag:String(source.tag||`B${index+1}`).slice(0,4),label:cleanLabel(source.label),type:BONE_TYPE_LABELS[source.type]?source.type:"joint",x:boundedNumber(source.x,0,1,.5),y:boundedNumber(source.y,0,1,.5),parentId:source.parentId?cleanId(source.parentId,"親ボーン"):null,partId:source.partId?cleanId(source.partId,"追随部位"):null,followAmount:boundedNumber(source.followAmount,0,1.5,1),original:[boundedNumber(source.x,0,1,.5),boundedNumber(source.y,0,1,.5)]}));
   const validation=validateRigDefinition(parts,bones);
@@ -1498,7 +1592,8 @@ function updateRigDebugStatus(autoRigActive=false){
   if(debug&&!activeRigProfile){
     text="解析対象なし: 背景＋透過キャラのデモを選択してください";
   }else if(debug){
-    const shape=activeRigProfile.rigType==="human" ? "人物（8部位・人体ボーン）" : activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（キャラ・モノ候補）";
+    const poseSource=activeRigProfile.rigSource==="pose-calibrated"?`姿勢AI＋外れ値補正${activeRigProfile.poseCorrectionCount}点`:activeRigProfile.rigSource==="pose"?"姿勢AI":activeRigProfile.rigSource==="silhouette-fallback"?"輪郭fallback":"輪郭推定";
+    const shape=activeRigProfile.rigType==="human" ? `人物（${poseSource}）` : activeRigProfile.kind==="wide" ? "幅広形状（動物・モノ候補）" : "縦長形状（キャラ・モノ候補）";
     const source=rigProfileWasEdited() ? "手動補正あり" : "自動推定";
     const following=autoRigActive ? "モーション追随中" : "静止";
     text=`解析: ${shape} ／ ${activeRigParts.length}部位・${activeBonePoints.length}ボーン点 ／ ${source} ／ ${following}`;
@@ -1538,8 +1633,46 @@ function prepareStandeeForStage(source,demo){
   return {
     canvas,
     rig:inferRigProfile(canvas),
-    placement:{left,top,width,height,bottom:targetBottom}
+    placement:{left,top,width,height,bottom:targetBottom},
+    sourcePlacement:{left:sourceRect.x/sourceWidth,top:sourceRect.y/sourceHeight,width:sourceRect.width/sourceWidth,height:sourceRect.height/sourceHeight}
   };
+}
+
+async function createPoseLandmarker(){
+  if(poseLandmarker)return poseLandmarker;
+  if(poseLandmarkerPromise)return poseLandmarkerPromise;
+  poseLandmarkerPromise=(async()=>{
+    const mod=await import(VISION_MODULE_URL);
+    const vision=await mod.FilesetResolver.forVisionTasks(VISION_WASM_URL);
+    const options={baseOptions:{modelAssetPath:POSE_MODEL_URL,delegate:"GPU"},runningMode:"IMAGE",numPoses:1,minPoseDetectionConfidence:.25,minPosePresenceConfidence:.25,minTrackingConfidence:.25};
+    try{return await mod.PoseLandmarker.createFromOptions(vision,options)}catch(error){
+      return mod.PoseLandmarker.createFromOptions(vision,{...options,baseOptions:{modelAssetPath:POSE_MODEL_URL,delegate:"CPU"}});
+    }
+  })();
+  try{poseLandmarker=await poseLandmarkerPromise;return poseLandmarker}catch(error){poseLandmarkerPromise=null;throw error}
+}
+
+async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
+  const detector=await createPoseLandmarker();
+  const result=detector.detect(source),landmarks=result.landmarks?.[0];
+  if(!landmarks||landmarks.length<29)throw new Error("人物姿勢を検出できませんでした");
+  const indices={nose:0,shoulderLeft:11,shoulderRight:12,elbowLeft:13,elbowRight:14,wristLeft:15,wristRight:16,hipLeft:23,hipRight:24,kneeLeft:25,kneeRight:26,ankleLeft:27,ankleRight:28};
+  const pose=Object.fromEntries(Object.entries(indices).map(([name,index])=>[name,[landmarks[index].x,landmarks[index].y,landmarks[index].visibility??1]]));
+  const overrides=demo.poseOverrides||{};
+  const hipY=(pose.hipLeft[1]+pose.hipRight[1])*.5,ankleY=(pose.ankleLeft[1]+pose.ankleRight[1])*.5;
+  const collapsedLowerBody=ankleY-hipY<.32;
+  let correctionCount=0;
+  for(const [name,value] of Object.entries(overrides)){
+    if(collapsedLowerBody||pose[name][2]<.75){pose[name][0]=value[0];pose[name][1]=value[1];correctionCount++}
+  }
+  const sourcePlacement=prepared?.sourcePlacement||{left:0,top:0,width:1,height:1};
+  const placement=prepared?.placement||{left:0,top:0,width:1,height:1};
+  const mapped=Object.fromEntries(Object.entries(pose).map(([name,value])=>{
+    const x=placement.left+(value[0]-sourcePlacement.left)/sourcePlacement.width*placement.width;
+    const y=placement.top+(value[1]-sourcePlacement.top)/sourcePlacement.height*placement.height;
+    return [name,[Math.max(.01,Math.min(.99,x)),Math.max(.01,Math.min(.99,y)),value[2]]];
+  }));
+  return {...baseProfile,poseLandmarks:mapped,rigSource:correctionCount?"pose-calibrated":"pose",poseCorrectionCount:correctionCount};
 }
 
 const DEMO_ASSETS=[
@@ -1548,8 +1681,8 @@ const DEMO_ASSETS=[
   {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
   {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,stageWidth:0.64},
   {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,stageWidth:0.66},
-  {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rigType:"human",rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
-  {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rigType:"human",rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
+  {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rigType:"human",poseOverrides:{hipLeft:[.545,.430],hipRight:[.445,.430],kneeLeft:[.580,.645],kneeRight:[.470,.620],ankleLeft:[.640,.900],ankleRight:[.430,.880]},rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
+  {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rigType:"human",poseOverrides:{elbowRight:[.300,.245],wristLeft:[.585,.105],wristRight:[.205,.220]},rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
   {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rigType:"human",rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
   {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rigType:"human",rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}}
 ];
@@ -1591,6 +1724,17 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     hasSubjectMask=true;
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
     activeRigProfile.rigType=demo.rigType||"generic";
+    activeRigProfile.rigSource="silhouette";
+    if(activeRigProfile.rigType==="human"){
+      statusEl.textContent="人物姿勢を解析中: "+demo.label;
+      try{
+        activeRigProfile=await inferHumanPoseProfile(foreground,demo,prepared,activeRigProfile);
+        if(loadSerial!==demoLoadSerial)return;
+      }catch(error){
+        console.warn("Pose Landmarker fallback:",error);
+        activeRigProfile.rigSource="silhouette-fallback";
+      }
+    }
     inferredRigProfile=cloneRigProfile(activeRigProfile);
     activeRigParts=buildRigPartsFromProfile(activeRigProfile);
     inferredRigParts=cloneRigParts(activeRigParts);
@@ -1609,6 +1753,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     statusEl.textContent="表示中: デモ: "+demo.label+"（Live2D風自動リグ＋接地保持）";
   }catch(error){
     if(loadSerial!==demoLoadSerial)return;
+    console.warn("Layered demo fallback:",error);
     hasLayeredDemo=false;
     activeRigProfile=null;
     inferredRigProfile=null;
@@ -1684,10 +1829,12 @@ function clearMaps({announce=true}={}){
   resetRigSprings();
   recognitionBounds=null;
   recognitionGuideCanvas=null;
+  subjectMaskCanvas=null;
   depthSource="中心近似";
   maskSource="中心近似";
   updateMapStatus(announce ? "解除しました" : "");
   syncContourCropAvailability();
+  syncLayeringControls();
   syncRigDebugControls();
   syncRigPartList("");
   syncBonePointList("");
@@ -1738,6 +1885,24 @@ function updateRecognitionGuide(source,{useAlpha=false}={}){
   recognitionBounds=maxX>=minX ? {minX:minX/size,minY:minY/size,maxX:(maxX+1)/size,maxY:(maxY+1)/size} : null;
 }
 
+function copyMaskCanvas(source){
+  const canvas=document.createElement("canvas");
+  canvas.width=source.naturalWidth||source.width;
+  canvas.height=source.naturalHeight||source.height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,canvas.width,canvas.height);
+  const image=context.getImageData(0,0,canvas.width,canvas.height);
+  let hasTransparency=false;
+  for(let offset=3;offset<image.data.length;offset+=4){if(image.data[offset]<250){hasTransparency=true;break}}
+  for(let offset=0;offset<image.data.length;offset+=4){
+    const value=hasTransparency ? image.data[offset+3] : Math.round((image.data[offset]+image.data[offset+1]+image.data[offset+2])/3);
+    image.data[offset]=image.data[offset+1]=image.data[offset+2]=value;
+    image.data[offset+3]=255;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
 function loadMapFile(file,kind){
   if(!file)return;
   const url=URL.createObjectURL(file);
@@ -1748,13 +1913,15 @@ function loadMapFile(file,kind){
       hasDepthMap=true;
       depthSource=file.name;
     }else{
-      uploadMapImage(subjectMaskTex,gl.TEXTURE2,img);
+      subjectMaskCanvas=copyMaskCanvas(img);
+      uploadMapImage(subjectMaskTex,gl.TEXTURE2,subjectMaskCanvas);
       hasSubjectMask=true;
       maskSource=file.name;
-      updateRecognitionGuide(img);
+      updateRecognitionGuide(subjectMaskCanvas);
     }
     updateMapStatus("端末内読込");
     syncContourCropAvailability();
+    syncLayeringControls();
     errEl.textContent="";
     URL.revokeObjectURL(url);
   };
@@ -1888,6 +2055,252 @@ function filterSubjectComponents(categories,width,height){
   return retained;
 }
 
+function maskCoverage(source){
+  const canvas=document.createElement("canvas");
+  canvas.width=canvas.height=128;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,128,128);
+  const data=context.getImageData(0,0,128,128).data;
+  let selected=0;
+  for(let offset=0;offset<data.length;offset+=4){
+    if((data[offset]+data[offset+1]+data[offset+2])/3>32)selected++;
+  }
+  return selected/(128*128);
+}
+
+function multiSourceFill(pixels,hole,width,height){
+  const total=width*height;
+  const left=new Int32Array(total),right=new Int32Array(total),top=new Int32Array(total),bottom=new Int32Array(total);
+  left.fill(-1);right.fill(-1);top.fill(-1);bottom.fill(-1);
+  for(let y=0;y<height;y++){
+    let donor=-1;
+    for(let x=0;x<width;x++){
+      const index=y*width+x;
+      if(!hole[index])donor=index;
+      else left[index]=donor;
+    }
+    donor=-1;
+    for(let x=width-1;x>=0;x--){
+      const index=y*width+x;
+      if(!hole[index])donor=index;
+      else right[index]=donor;
+    }
+  }
+  for(let x=0;x<width;x++){
+    let donor=-1;
+    for(let y=0;y<height;y++){
+      const index=y*width+x;
+      if(!hole[index])donor=index;
+      else top[index]=donor;
+    }
+    donor=-1;
+    for(let y=height-1;y>=0;y--){
+      const index=y*width+x;
+      if(!hole[index])donor=index;
+      else bottom[index]=donor;
+    }
+  }
+  const original=new Uint8ClampedArray(pixels);
+  for(let index=0;index<total;index++){
+    if(!hole[index])continue;
+    const x=index%width,y=Math.floor(index/width);
+    let red=0,green=0,blue=0,weight=0;
+    for(const donor of [left[index],right[index],top[index],bottom[index]]){
+      if(donor<0)continue;
+      const donorX=donor%width,donorY=Math.floor(donor/width);
+      const distance=Math.max(1,Math.abs(donorX-x)+Math.abs(donorY-y));
+      const sampleWeight=1/Math.sqrt(distance);
+      const offset=donor*4;
+      red+=original[offset]*sampleWeight;
+      green+=original[offset+1]*sampleWeight;
+      blue+=original[offset+2]*sampleWeight;
+      weight+=sampleWeight;
+    }
+    if(!weight)continue;
+    const offset=index*4;
+    pixels[offset]=Math.round(red/weight);
+    pixels[offset+1]=Math.round(green/weight);
+    pixels[offset+2]=Math.round(blue/weight);
+    pixels[offset+3]=255;
+  }
+  return pixels;
+}
+
+function pseudoInpaintBackground(source,maskSource){
+  const sourceWidth=source.naturalWidth||source.width;
+  const sourceHeight=source.naturalHeight||source.height;
+  const scale=Math.min(1,768/Math.max(sourceWidth,sourceHeight));
+  const width=Math.max(1,Math.round(sourceWidth*scale));
+  const height=Math.max(1,Math.round(sourceHeight*scale));
+  const canvas=document.createElement("canvas");
+  canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,width,height);
+  const image=context.getImageData(0,0,width,height);
+  const maskCanvas=document.createElement("canvas");
+  maskCanvas.width=width;maskCanvas.height=height;
+  const maskContext=maskCanvas.getContext("2d",{willReadFrequently:true});
+  maskContext.imageSmoothingEnabled=true;
+  maskContext.drawImage(maskSource,0,0,width,height);
+  const mask=maskContext.getImageData(0,0,width,height).data;
+  let hole=new Uint8Array(width*height);
+  for(let index=0;index<hole.length;index++){
+    const offset=index*4;
+    hole[index]=(mask[offset]+mask[offset+1]+mask[offset+2])/3>28?1:0;
+  }
+  // 輪郭の元キャラ色が残らないように、背景補完範囲だけを数px外へ広げる。
+  for(let pass=0;pass<7;pass++){
+    const expanded=hole.slice();
+    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){
+      const index=y*width+x;
+      if(hole[index])continue;
+      if(hole[index-1]||hole[index+1]||hole[index-width]||hole[index+width])expanded[index]=1;
+    }
+    hole=expanded;
+  }
+  const filled=multiSourceFill(image.data,hole,width,height);
+  // 伝播方向の筋を低周波化する。元の背景画素は一切ぼかさない。
+  for(let pass=0;pass<5;pass++){
+    const previous=new Uint8ClampedArray(filled);
+    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){
+      const index=y*width+x;
+      if(!hole[index])continue;
+      let red=0,green=0,blue=0,weight=0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const neighbor=((y+dy)*width+x+dx)*4;
+        const sampleWeight=dx===0&&dy===0?2:1;
+        red+=previous[neighbor]*sampleWeight;
+        green+=previous[neighbor+1]*sampleWeight;
+        blue+=previous[neighbor+2]*sampleWeight;
+        weight+=sampleWeight;
+      }
+      const offset=index*4;
+      filled[offset]=Math.round(red/weight);
+      filled[offset+1]=Math.round(green/weight);
+      filled[offset+2]=Math.round(blue/weight);
+      filled[offset+3]=255;
+    }
+  }
+  context.putImageData(image,0,0);
+  // 小さく縮小してから再拡大した低周波面を穴の内側だけへ戻し、方向補間の格子模様を消す。
+  const low=document.createElement("canvas");
+  low.width=Math.max(12,Math.round(width/14));
+  low.height=Math.max(12,Math.round(height/14));
+  const lowContext=low.getContext("2d");
+  lowContext.imageSmoothingEnabled=true;
+  lowContext.imageSmoothingQuality="high";
+  lowContext.drawImage(canvas,0,0,low.width,low.height);
+  const softened=document.createElement("canvas");
+  softened.width=width;softened.height=height;
+  const softenedContext=softened.getContext("2d",{willReadFrequently:true});
+  softenedContext.imageSmoothingEnabled=true;
+  softenedContext.imageSmoothingQuality="high";
+  softenedContext.drawImage(low,0,0,width,height);
+  const softenedPixels=softenedContext.getImageData(0,0,width,height).data;
+  for(let index=0;index<hole.length;index++){
+    if(!hole[index])continue;
+    const offset=index*4;
+    image.data[offset]=softenedPixels[offset];
+    image.data[offset+1]=softenedPixels[offset+1];
+    image.data[offset+2]=softenedPixels[offset+2];
+    image.data[offset+3]=255;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
+function transparentForegroundFromMask(source,maskSource){
+  const sourceWidth=source.naturalWidth||source.width;
+  const sourceHeight=source.naturalHeight||source.height;
+  const scale=Math.min(1,1536/Math.max(sourceWidth,sourceHeight));
+  const width=Math.max(1,Math.round(sourceWidth*scale));
+  const height=Math.max(1,Math.round(sourceHeight*scale));
+  const foreground=document.createElement("canvas");
+  foreground.width=width;foreground.height=height;
+  const context=foreground.getContext("2d");
+  context.drawImage(source,0,0,width,height);
+  const alphaCanvas=document.createElement("canvas");
+  alphaCanvas.width=width;alphaCanvas.height=height;
+  const alphaContext=alphaCanvas.getContext("2d",{willReadFrequently:true});
+  alphaContext.imageSmoothingEnabled=true;
+  alphaContext.drawImage(maskSource,0,0,width,height);
+  const alphaImage=alphaContext.getImageData(0,0,width,height);
+  for(let offset=0;offset<alphaImage.data.length;offset+=4){
+    const alpha=Math.round((alphaImage.data[offset]+alphaImage.data[offset+1]+alphaImage.data[offset+2])/3);
+    alphaImage.data[offset]=alphaImage.data[offset+1]=alphaImage.data[offset+2]=255;
+    alphaImage.data[offset+3]=alpha;
+  }
+  alphaContext.putImageData(alphaImage,0,0);
+  context.globalCompositeOperation="destination-in";
+  context.drawImage(alphaCanvas,0,0);
+  context.globalCompositeOperation="source-over";
+  return foreground;
+}
+
+async function createLayeredSceneFromMask(){
+  if(!sourceImage||!subjectMaskCanvas){
+    errEl.textContent="先に一枚絵と人物／物体マスクを用意してください。";
+    return;
+  }
+  const coverage=maskCoverage(subjectMaskCanvas);
+  if(coverage<.01||coverage>.92){
+    errEl.textContent="人物／キャラの認識範囲が小さすぎるか、背景まで選択されています。任意マスクで補正してください。";
+    return;
+  }
+  const button=$("#layerFromMask");
+  button.disabled=true;
+  button.textContent="背景を補完中…";
+  statusEl.textContent="端末内で前景分離・背景補完中…";
+  errEl.textContent="";
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  try{
+    const background=pseudoInpaintBackground(sourceImage,subjectMaskCanvas);
+    const foreground=transparentForegroundFromMask(sourceImage,subjectMaskCanvas);
+    uploadMapImage(backgroundTex,gl.TEXTURE3,background);
+    uploadMapImage(foregroundTex,gl.TEXTURE4,foreground);
+    hasLayeredDemo=true;
+    activeDemoIndex=-1;
+    updateDemoSelection();
+    activeRigProfile=inferRigProfile(foreground);
+    activeRigProfile.rigType="human";
+    activeRigProfile.rigSource="segmented-silhouette";
+    try{
+      statusEl.textContent="前景姿勢を解析中…";
+      activeRigProfile=await inferHumanPoseProfile(sourceImage,{},null,activeRigProfile);
+    }catch(error){
+      console.warn("Pose Landmarker fallback for layered image:",error);
+      activeRigProfile.rigSource="silhouette-fallback";
+    }
+    inferredRigProfile=cloneRigProfile(activeRigProfile);
+    activeRigParts=buildRigPartsFromProfile(activeRigProfile);
+    inferredRigParts=cloneRigParts(activeRigParts);
+    activeBonePoints=buildBoneRigFromParts(activeRigParts,activeRigProfile);
+    inferredBonePoints=cloneBonePoints(activeBonePoints);
+    activeMotionRange=activeRigProfile.motionRange;
+    activeStandee=false;
+    resetRigSprings();
+    updateRecognitionGuide(subjectMaskCanvas);
+    $("#effectMode").value="4";
+    $("#effectStrength").value="0.58";
+    $("#autoMotion").checked=true;
+    syncEffectControls();
+    syncContourCropAvailability();
+    syncRigDebugControls();
+    syncRigPartList("upper-body");
+    syncBonePointList("bone-root");
+    updateMapStatus("端末内AI分離＋擬似背景補完・2層");
+    statusEl.textContent="背景補完済み・キャラ／背景2層立体表示";
+    errEl.textContent="背景は近傍色から擬似補完しました。大きな動きでは模様の伸びが見える場合があります。";
+    pushEditHistory();
+  }catch(error){
+    errEl.textContent="2層立体化に失敗しました: "+cameraErrorMessage(error);
+    statusEl.textContent="2層立体化失敗・元画像は表示中";
+  }finally{
+    button.textContent="背景を補完して2層立体化";
+    syncLayeringControls();
+  }
+}
+
 function personMapsFromResult(result){
   const categoryMask=result.categoryMask;
   const categories=result.categoryMask.getAsUint8Array();
@@ -1917,6 +2330,7 @@ function personMapsFromResult(result){
   uploadMapImage(subjectMaskTex,gl.TEXTURE2,maskCanvas);
   uploadMapImage(depthTex,gl.TEXTURE1,depthCanvas);
   updateRecognitionGuide(maskCanvas);
+  subjectMaskCanvas=maskCanvas;
   categoryMask.close();
   hasSubjectMask=true;
   hasDepthMap=true;
@@ -1924,6 +2338,8 @@ function personMapsFromResult(result){
   depthSource="人物部位Depth";
   updateMapStatus("端末内AI");
   syncContourCropAvailability();
+  syncLayeringControls();
+  return maskCanvas;
 }
 
 async function autoSegmentPerson(){
@@ -1935,6 +2351,7 @@ async function autoSegmentPerson(){
   const button=$("#autoPerson");
   startingSegmentation=true;
   button.disabled=true;
+  $("#layerFromMask").disabled=true;
   button.textContent="人物分離中…";
   statusEl.textContent="人物分離モデル読込中…";
   errEl.textContent="";
@@ -1943,7 +2360,8 @@ async function autoSegmentPerson(){
     statusEl.textContent="人物と背景を分離中…";
     const result=await segmentStillImage(imageSegmenter,sourceImage);
     personMapsFromResult(result);
-    statusEl.textContent="人物分離済み・多層／ポータル対応";
+    await createLayeredSceneFromMask();
+    statusEl.textContent="人物分離・背景補完済み／2層立体表示";
     if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
     else $("#effectMode").value="4";
     syncEffectControls();
@@ -1955,9 +2373,11 @@ async function autoSegmentPerson(){
     startingSegmentation=false;
     button.disabled=false;
     button.textContent="人物を自動分離";
+    syncLayeringControls();
   }
 }
 $("#autoPerson").addEventListener("click",autoSegmentPerson);
+$("#layerFromMask").addEventListener("click",createLayeredSceneFromMask);
 
 function effectFlags(){
   if($("#combineEffects").checked){
@@ -2018,6 +2438,9 @@ function syncContourCropAvailability(){
   const available=hasSubjectMask;
   $("#contourCrop").disabled=!available;
   $("#cropFeather").disabled=!available||!$("#contourCrop").checked;
+}
+function syncLayeringControls(){
+  $("#layerFromMask").disabled=!sourceImage||!subjectMaskCanvas;
 }
 $("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
@@ -2214,7 +2637,7 @@ function rigPartDisplayState(partId,nowSeconds){
     radiusX*=1+live2dVisualState.breath*0.0045;
     y+=anchorWeight*live2dVisualState.breath*0.0018;
   }
-  return {x,y,radiusX,radiusY};
+  return {x,y,radiusX,radiusY,angle:definition.angle||0};
 }
 
 function bonePointDisplayState(pointId,nowSeconds){
@@ -2300,15 +2723,24 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
       guideContext.strokeStyle=meta.color;
       guideContext.fillStyle=meta.color+"18";
       guideContext.beginPath();
-      guideContext.ellipse(point.x,point.y,state.radiusX*rect.width,state.radiusY*rect.height,0,0,Math.PI*2);
+      for(let index=0;index<=48;index++){
+        const phase=index/48*Math.PI*2,localX=state.radiusX*Math.cos(phase),localY=state.radiusY*Math.sin(phase);
+        const imageX=state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY;
+        const imageY=state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY;
+        const outline=mapPoint(imageX,imageY);
+        if(index===0)guideContext.moveTo(outline.x,outline.y);else guideContext.lineTo(outline.x,outline.y);
+      }
+      guideContext.closePath();
       guideContext.fill();guideContext.stroke();
+      const axisPoint=(localX,localY)=>mapPoint(state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY,state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY);
+      const left=axisPoint(-state.radiusX,0),right=axisPoint(state.radiusX,0),top=axisPoint(0,-state.radiusY),bottom=axisPoint(0,state.radiusY);
       guideContext.beginPath();
-      guideContext.moveTo(point.x-state.radiusX*rect.width,point.y);guideContext.lineTo(point.x+state.radiusX*rect.width,point.y);
-      guideContext.moveTo(point.x,point.y-state.radiusY*rect.height);guideContext.lineTo(point.x,point.y+state.radiusY*rect.height);
+      guideContext.moveTo(left.x,left.y);guideContext.lineTo(right.x,right.y);
+      guideContext.moveTo(top.x,top.y);guideContext.lineTo(bottom.x,bottom.y);
       guideContext.stroke();
       if(selected){
         const size=Math.max(5,5*dpr);
-        const handles={left:{x:point.x-state.radiusX*rect.width,y:point.y},right:{x:point.x+state.radiusX*rect.width,y:point.y},top:{x:point.x,y:point.y-state.radiusY*rect.height},bottom:{x:point.x,y:point.y+state.radiusY*rect.height}};
+        const handles={left,right,top,bottom};
         guideHandles.sizes[partKey]=handles;
         guideContext.setLineDash([]);guideContext.fillStyle="#fff";guideContext.strokeStyle=meta.color;
         for(const handle of Object.values(handles)){guideContext.beginPath();guideContext.rect(handle.x-size,handle.y-size,size*2,size*2);guideContext.fill();guideContext.stroke()}
@@ -2448,8 +2880,11 @@ function updateGuideDrag(event){
     const displayed=rigPartDisplayState(partId,lastRenderTime*0.001);
     const rect=guideHandles.imageRect;
     if(!definition)return;
-    if(edge==="left"||edge==="right")definition.region[2]=Math.max(.02,Math.min(.5,Math.abs((point.x-rect.x)/rect.width-displayed.x)));
-    else definition.region[3]=Math.max(.02,Math.min(.5,Math.abs((point.y-rect.y)/rect.height-displayed.y)));
+    const dx=(point.x-rect.x)/rect.width-displayed.x,dy=(point.y-rect.y)/rect.height-displayed.y;
+    const cosine=Math.cos(displayed.angle),sine=Math.sin(displayed.angle);
+    const localX=cosine*dx+sine*dy,localY=-sine*dx+cosine*dy;
+    if(edge==="left"||edge==="right")definition.region[2]=Math.max(.02,Math.min(.5,Math.abs(localX)));
+    else definition.region[3]=Math.max(.02,Math.min(.5,Math.abs(localY)));
     syncProfileFromParts();
   }else if(guideDragTarget.startsWith("rig:")){
     const partKey=guideDragTarget.slice(4);
@@ -2675,6 +3110,7 @@ window.addEventListener("pagehide",()=>{
   if(stream) stream.getTracks().forEach(track=>track.stop());
   if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
   if(imageSegmenter && typeof imageSegmenter.close==="function") imageSegmenter.close();
+  if(poseLandmarker && typeof poseLandmarker.close==="function") poseLandmarker.close();
 });
 
 function smoothingFactor(rate,deltaSeconds){
@@ -2783,6 +3219,7 @@ function render(now){
   gl.uniform2f(U.u_materialMotion,coreMotion("material").effectiveX,coreMotion("material").effectiveY);
   gl.uniform2f(U.u_propMotion,coreMotion("prop").effectiveX,coreMotion("prop").effectiveY);
   gl.uniform4f(U.u_corePartEnabled,core.body?1:0,core.head?1:0,core.material?1:0,core.prop?1:0);
+  gl.uniform4f(U.u_corePartAngles,-(core.body?.angle||0),-(core.head?.angle||0),-(core.material?.angle||0),-(core.prop?.angle||0));
   const rig=activeRigProfile||{head:[0.5,0.2,0.18,0.16],body:[0.5,0.52,0.22,0.34],material:[0.5,0.38,0.42,0.38],prop:[0.62,0.46,0.16,0.18],groundY:0.86};
   const regionFor=role=>core[role]?.region||rig[role];
   const headRegion=regionFor("head"),propRegion=regionFor("prop"),bodyRegion=regionFor("body"),materialRegion=regionFor("material");
@@ -2791,6 +3228,7 @@ function render(now){
   gl.uniform4f(U.u_bodyRegion,bodyRegion[0],1-bodyRegion[1],bodyRegion[2],bodyRegion[3]);
   gl.uniform4f(U.u_materialRegion,materialRegion[0],1-materialRegion[1],materialRegion[2],materialRegion[3]);
   const extras=activeRigParts.filter(part=>part.role==="custom").slice(0,4);
+  gl.uniform4f(U.u_extraPartAngles,...[0,1,2,3].map(index=>-(extras[index]?.angle||0)));
   for(let index=0;index<4;index++){
     const part=extras[index],region=part?.region||[.5,.5,.001,.001],spring=part?rigSprings[part.id]:null;
     gl.uniform4f(U[`u_extraRegion${index}`],region[0],1-region[1],region[2],region[3]);
