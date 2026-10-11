@@ -5,8 +5,6 @@ import json
 import math
 from pathlib import Path
 
-from PIL import Image
-
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "scripts/ci/fixtures/human_pose_accuracy.json"
@@ -90,14 +88,8 @@ def oriented_parts(bones: dict[str, list[float]]) -> dict[str, dict[str, float]]
     }
 
 
-def alpha_bounds(name: str) -> tuple[float, float, float, float]:
-    image = Image.open(ROOT / "assets/demos" / name).convert("RGBA")
-    bbox = image.getchannel("A").getbbox() or (0, 0, image.width, image.height)
-    return bbox[0] / image.width, bbox[1] / image.height, (bbox[2] - bbox[0]) / image.width, (bbox[3] - bbox[1]) / image.height
-
-
-def baseline(name: str) -> tuple[dict[str, list[float]], dict[str, dict[str, float]]]:
-    left, top, width, height = alpha_bounds(name)
+def baseline(asset: dict[str, object]) -> tuple[dict[str, list[float]], dict[str, dict[str, float]]]:
+    left, top, width, height = asset["alphaBounds"]
     center_x = left + width / 2
     ground = min(0.995, top + height)
     head = [center_x, top + height * 0.17, min(width * 0.28, 0.25), min(height * 0.17, 0.19)]
@@ -177,7 +169,7 @@ def main() -> int:
     loops: dict[str, list[tuple[dict[str, list[float]], dict[str, dict[str, float]], dict[str, list[float]]]]] = {"L0 symmetric alpha template": [], "L1 raw pose + axis-aligned regions": [], "L2 raw pose + oriented regions": [], "L3 confidence/outlier calibration + oriented regions": []}
     for asset in fixture["assets"]:
         reference = reference_bones(asset["reference"])
-        base_bones, base_parts = baseline(asset["name"])
+        base_bones, base_parts = baseline(asset)
         loops["L0 symmetric alpha template"].append((base_bones, base_parts, reference))
         raw_bones = bones_from_pose(asset["pose"])
         raw_oriented = oriented_parts(raw_bones)

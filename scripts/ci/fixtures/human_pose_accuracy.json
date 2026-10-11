@@ -3,6 +3,7 @@
   "assets": [
     {
       "name": "demo-heroine-foreground.png",
+      "alphaBounds": [0.1220703125, 0.0201822917, 0.818359375, 0.9798177083],
       "pose": {
         "nose": [0.4617, 0.2165, 1.000],
         "shoulderLeft": [0.7285, 0.3229, 1.000], "shoulderRight": [0.3415, 0.3133, 1.000],
@@ -25,6 +26,7 @@
     },
     {
       "name": "demo-standee-girl-celestial.png",
+      "alphaBounds": [0.0, 0.0, 1.0, 1.0],
       "pose": {
         "nose": [0.4991, 0.1110, 1.000],
         "shoulderLeft": [0.5729, 0.2030, 1.000], "shoulderRight": [0.3936, 0.1908, 1.000],
@@ -51,6 +53,7 @@
     },
     {
       "name": "demo-standee-girl-cyber.png",
+      "alphaBounds": [0.0, 0.0, 0.984375, 1.0],
       "pose": {
         "nose": [0.4547, 0.1227, 0.987],
         "shoulderLeft": [0.5922, 0.1889, 0.997], "shoulderRight": [0.4050, 0.2140, 0.999],
@@ -75,6 +78,7 @@
     },
     {
       "name": "demo-standee-man-royal.png",
+      "alphaBounds": [0.0638020833, 0.0069444444, 0.81640625, 0.9930555556],
       "pose": {
         "nose": [0.4551, 0.0862, 1.000],
         "shoulderLeft": [0.6274, 0.1749, 1.000], "shoulderRight": [0.3611, 0.1968, 1.000],
@@ -97,6 +101,7 @@
     },
     {
       "name": "demo-standee-man-street.png",
+      "alphaBounds": [0.0638020833, 0.0104166667, 0.8580729167, 0.9765625],
       "pose": {
         "nose": [0.4084, 0.1052, 1.000],
         "shoulderLeft": [0.6171, 0.1781, 1.000], "shoulderRight": [0.3610, 0.2063, 1.000],
