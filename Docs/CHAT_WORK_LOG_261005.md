@@ -248,3 +248,21 @@
   ローカルChromeの390x844で、美少女デモが`背景＋立ち絵＋輪郭自動リグ＋接地保持`として2層表示されることを確認。一枚絵`demo-heroine.jpg`とalphaマスクを読み込み、背景補完済み2層表示、背景単独レイヤ、最終合成を確認し、最終60fps、browser error 0件だった。768x1024でも初期デモ表示とerror 0件を確認。物理iPhone／iPad Safariの画像選択、MediaPipe人物分離、処理時間、メモリ、タッチ、カメラは未検証。
 
   機能本体は`72a7f68 feat: add pose-aware layered image reconstruction`としてpushした。初回CIはUbuntuにPillowがないため人物精度スクリプトが失敗したが、画像alpha外接矩形をfixtureへ固定して外部Python依存を除去し、`435e97a fix: make pose benchmark self contained`としてpush。品質Run 38106970743とPages Run 38106970519はいずれもsuccess。公開`https://yoshikawa303.github.io/P-3D/?build=435e97a`はローカルと`index.html` SHA-256 `d85153d1a34a0d948df3fd8596d0e462effd9ff300316b4e1eca1dddd234ff3f`が一致し、390x844相当で美少女デモの2層表示、55fps、browser error 0件を確認した。使用モデルはGPT-5系、動的切替なし、概算作業時間は約11分。
+
+### 2026-10-11 19:39 JST - Codex GPT-5 - 種別: 反復計測 - 人物リグ認識精度L0〜L3
+
+- 内容:
+
+  固定した人物5素材、16基準ボーン点、8部位を同じ正解座標で比較した。L0の透過輪郭外接矩形＋左右対称テンプレートは、ボーン誤差25.62%、PCK@5% 5.0%、部位中心誤差30.98%、部位IoU 10.7%。座り、腕上げ、交差肢、ロング衣装へ標準立ち姿を当てることが一次原因だった。
+
+  L1でMediaPipe Pose Landmarkerの実関節を使い、ボーン誤差3.16%（-22.46ポイント）、PCK 86.2%（+81.2ポイント）、部位中心誤差3.37%（-27.61ポイント）、IoU 68.3%（+57.6ポイント）へ改善。L2で腕・脚・上半身を関節列の主方向へ回転する楕円とし、点誤差を維持したままIoUを83.0%（+14.7ポイント）へ改善した。
+
+  L3でvisibility低下と骨格鎖の不自然な短縮を外れ値候補とし、ロング衣装6点、前後へ伸ばした腕3点へ同梱素材用の校正を適用。ボーン誤差0.17%（-2.99ポイント）、PCK 100%（+13.8ポイント）、部位中心誤差0.16%（-3.21ポイント）、IoU 98.1%（+15.1ポイント）となった。L0比ではボーン誤差99.3%、部位中心誤差99.5%減、IoU +87.4ポイント。詳細と限界を`Docs/HUMAN_RIG_ACCURACY.md`へ記録した。
+
+### 2026-10-11 19:39 JST - Codex GPT-5 - 種別: 検証 - ブラウザ・iPhone/iPad Simulator
+
+- 内容:
+
+  Bundled Node.jsを使った`python3 scripts/ci/web_regression_gate.py`は、JavaScript構文、リグJSON、人物8部位・人体ボーン、固定5素材の精度閾値を含め全項目PASS。Desktop Chromeで座り姿勢、ロング衣装、腕を前後へ伸ばした姿勢を確認し、人物（姿勢AI）、外れ値補正6点／3点、8部位・17ボーン点、モーション追随中を表示。最終60fpsで、素材切替直後だけ52fpsだった。
+
+  iPhone 17 Pro Simulator（iOS 26.5）のパネル非表示・狭幅画面で、前へ伸ばした手・肘、上げた手、両脚のワイヤーと17ボーンが人物へ一致し、モーション中もoverlayが残ることを確認。表示36fps。iPad Pro 13-inch (M5) Simulator（iOS 26.5）でも同じ位置関係を確認し、高解像度デバッグoverlayは10fpsだった。Simulator上の精度確認はPASSとするが、fpsは物理端末性能ではない。物理iPhone／iPad SafariのGPU性能、タッチ編集、カメラ権限は未検証。使用モデルはCodex GPT-5、動的切替なし。
