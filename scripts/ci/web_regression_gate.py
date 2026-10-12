@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "index.html"
+AUTO_MANIFEST = ROOT / "assets" / "demos" / "auto-demos.js"
 
 
 def require(condition: bool, message: str) -> None:
@@ -40,6 +41,11 @@ def extract_js_function(html: str, name: str) -> str:
 
 
 def main() -> int:
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_demo_manifest.py")],
+        cwd=ROOT,
+        check=True,
+    )
     html = INDEX.read_text(encoding="utf-8")
 
     require(
@@ -92,13 +98,31 @@ def main() -> int:
         ("demoGallery", "デモ画像ギャラリー"),
         ("backgroundLayerFile", "背景レイヤー個別読込"),
         ("foregroundLayerFile", "前景レイヤー個別読込"),
+        ("characterScale", "読込キャラ表示倍率"),
+        ("characterOffsetX", "読込キャラ左右位置"),
+        ("characterOffsetY", "読込キャラ上下位置"),
+        ("resetCharacterPlacement", "読込キャラ配置初期化"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}がありません")
     require("const DEMO_ASSETS=[" in html, "デモ画像のプリセット定義がありません")
+    require('src="assets/demos/auto-demos.js"' in html, "自動デモマニフェストが読み込まれていません")
+    require("...(window.P3D_AUTO_DEMOS||[])" in html, "自動デモがプリセットへ統合されていません")
+    require("function appendAutoDemoCards()" in html, "自動デモのギャラリー表示処理がありません")
+    manifest = AUTO_MANIFEST.read_text(encoding="utf-8")
+    require("window.P3D_AUTO_DEMOS=" in manifest, "自動デモマニフェストが生成されていません")
+    auto_demos = json.loads(manifest.split("=", 1)[1].rstrip(";\n"))
+    require(len(auto_demos) >= 7, "背景分離済みの自動デモが7件ありません")
+    for demo in auto_demos:
+        for key in ("src", "background", "foreground"):
+            require((ROOT / demo[key]).is_file(), f"自動デモ素材がありません: {demo[key]}")
     require("function loadDemo(index" in html, "デモ画像を読み込む処理がありません")
     require("uniform sampler2D u_backgroundTex;" in html, "デモ背景の独立テクスチャがありません")
     require("uniform sampler2D u_foregroundTex;" in html, "透過立ち絵の独立テクスチャがありません")
     require("uniform float u_hasLayeredDemo;" in html, "2層デモの切替uniformがありません")
+    require("uniform float u_characterScale;" in html, "読込キャラ表示倍率uniformがありません")
+    require("uniform vec2 u_characterOffset;" in html, "読込キャラ位置uniformがありません")
+    require("vec2 characterSourceUV(vec2 displayUV)" in html, "前景だけへ適用するキャラ配置座標変換がありません")
+    require("foregroundUV=characterSourceUV(foregroundUV);" in html, "キャラ配置が前景UVへ適用されていません")
     require("vec4 sourceColorAt(vec2 uv)" in html, "背景と透過立ち絵の合成処理がありません")
     require(
         'src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png"' in html,
@@ -294,6 +318,13 @@ def main() -> int:
     require("function resetRigDefinition(" in html, "リグ全体を自動推定へ戻せません")
     require("rigParts:" in html[html.index("function captureEditState()") :], "部位編集がUndo／Redo状態へ含まれていません")
     require("bonePoints:" in html[html.index("function captureEditState()") :], "ボーン編集がUndo／Redo状態へ含まれていません")
+    edit_controls = html[html.index("const EDIT_CONTROL_IDS=") : html.index("function captureEditState()")]
+    for control_id in ["characterScale", "characterOffsetX", "characterOffsetY"]:
+        require(f'"{control_id}"' in edit_controls, f"{control_id}がUndo／Redo状態へ含まれていません")
+    require("function characterDisplayPoint(" in html, "配置後のキャラ座標へガイドを変換できません")
+    require("function characterSourcePoint(" in html, "ガイド編集位置をキャラ元座標へ戻せません")
+    require("characterDisplayPoint(x,y)" in html, "部位またはボーンガイドがキャラ配置へ追従しません")
+    require("characterSourcePoint(requestedX,requestedY)" in html, "配置後の直接編集が元座標へ反映されません")
     require('guideDragTarget.startsWith("rig:")' in html, "ワイヤーフレーム中心を直接ドラッグ編集できません")
     require('guideDragTarget.startsWith("resize:")' in html, "ワイヤーフレーム範囲を直接リサイズできません")
     require('guideDragTarget.startsWith("bone:")' in html, "ボーンポイントをプレビュー上で直接移動できません")

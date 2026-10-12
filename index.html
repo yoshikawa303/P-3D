@@ -24,6 +24,8 @@ button:disabled{opacity:.58}
 button.secondary{background:#303038;color:#fff}
 input[type=file]{display:none}
 .row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:12px}
+.row.withValue{grid-template-columns:92px minmax(0,1fr) 46px}
+.row output{text-align:right;color:#c7f5ff;font-variant-numeric:tabular-nums}
 input[type=range]{width:100%}
 select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
 input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:7px 9px;background:#303038;color:#fff;font:inherit}
@@ -121,6 +123,12 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
       <label class="filelabel">キャラ・人物レイヤー<input id="foregroundLayerFile" type="file" accept="image/*"></label>
     </div>
     <div class="hint">背景と透過PNGのキャラ／手前人物を別々に選べます。片方だけを差し替えた場合は、現在表示中のもう一方を維持します。</div>
+    <div class="sectionTitle">キャラ表示位置</div>
+    <div class="row withValue"><label for="characterScale">表示倍率</label><input id="characterScale" type="range" min="0.4" max="2.5" step="0.01" value="1"><output id="characterScaleValue" for="characterScale">100%</output></div>
+    <div class="row withValue"><label for="characterOffsetX">左右位置</label><input id="characterOffsetX" type="range" min="-0.5" max="0.5" step="0.01" value="0"><output id="characterOffsetXValue" for="characterOffsetX">中央</output></div>
+    <div class="row withValue"><label for="characterOffsetY">上下位置</label><input id="characterOffsetY" type="range" min="-0.5" max="0.5" step="0.01" value="0"><output id="characterOffsetYValue" for="characterOffsetY">中央</output></div>
+    <button id="resetCharacterPlacement" class="secondary" type="button">キャラ配置を初期値へ戻す</button>
+    <div class="hint">背景はそのままに、読込キャラ／人物だけを非破壊で拡大・縮小・移動します。左右・上下位置は画像幅／高さに対する割合です。</div>
     <div class="buttons">
       <label class="filelabel">Depth Map<input id="depthFile" type="file" accept="image/*"></label>
       <label class="filelabel">人物／物体マスク<input id="subjectMaskFile" type="file" accept="image/*"></label>
@@ -310,6 +318,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
   </div>
 </div>
 
+<script src="assets/demos/auto-demos.js"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -382,6 +391,8 @@ uniform float u_spatialStrength;
 uniform float u_zeroParallax;
 uniform float u_viewZ;
 uniform float u_hasLayeredDemo;
+uniform float u_characterScale;
+uniform vec2 u_characterOffset;
 uniform float u_autoRigEnabled;
 uniform vec2 u_bodyMotion;
 uniform vec2 u_headMotion;
@@ -426,6 +437,12 @@ uniform float u_cameraAspect;
 uniform float u_cameraMirror;
 varying vec2 v_uv;
 
+vec2 characterSourceUV(vec2 displayUV){
+  float scale=max(u_characterScale,0.01);
+  vec2 sourceUV=(displayUV-vec2(0.5)-u_characterOffset)/scale+vec2(0.5);
+  return mix(displayUV,sourceUV,u_hasLayeredDemo);
+}
+
 vec4 cameraBackgroundAt(vec2 uv){
   vec2 cameraUV=uv;
   float cameraAspect=max(u_cameraAspect,0.001);
@@ -436,6 +453,7 @@ vec4 cameraBackgroundAt(vec2 uv){
 }
 
 float cleanLayerAlphaAt(vec2 uv){
+  if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0)return 0.0;
   vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
   vec2 stepSize=max(u_texelSize,vec2(0.0005));
   float center=texture2D(u_foregroundTex,safeUV).a;
@@ -454,7 +472,7 @@ vec4 sourceColorAt(vec2 uv){
   vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
   vec4 original=texture2D(u_tex,safeUV);
   vec4 layerForeground=texture2D(u_foregroundTex,safeUV);
-  float layerAlpha=cleanLayerAlphaAt(safeUV);
+  float layerAlpha=cleanLayerAlphaAt(uv);
   vec4 layerBackground=mix(texture2D(u_backgroundTex,safeUV),cameraBackgroundAt(safeUV),u_useCameraBackground);
   vec4 layered=vec4(mix(layerBackground.rgb,layerForeground.rgb,layerAlpha),1.0);
   return mix(original,layered,u_hasLayeredDemo);
@@ -686,7 +704,7 @@ void main(){
   float trickPortalStrength=clamp(u_trickPortalStrength,0.0,1.0);
   float parallaxDepth=d;
   float depthScale=1.0;
-  float foregroundMask=subjectMaskAt(base);
+  float foregroundMask=subjectMaskAt(characterSourceUV(base));
 
   if(u_enableRelief>0.5){
     // 中心領域をなだらかな面から厚みのあるカード状へ寄せる。
@@ -731,8 +749,8 @@ void main(){
   }
 
   backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
+  foregroundUV=characterSourceUV(foregroundUV);
   foregroundUV=riggedForegroundUV(foregroundUV);
-  foregroundUV=clamp(foregroundUV,vec2(0.0),vec2(1.0));
   // すべてのモードで移動先のマスクを使い、移動前の輪郭を合成へ残さない。
   float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
   foregroundMask=displacedForegroundMask;
@@ -890,7 +908,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -986,9 +1004,9 @@ function resize(){
   }
 }
 
-function uploadImage(img,label){
+function uploadImage(img,label,{preserveCharacterPlacement=false}={}){
   try{
-    clearMaps({announce:false});
+    clearMaps({announce:false,preserveCharacterPlacement});
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D,tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
@@ -1795,9 +1813,32 @@ const DEMO_ASSETS=[
   {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rigType:"human",chestMotion:true,poseOverrides:{hipLeft:[.545,.430],hipRight:[.445,.430],kneeLeft:[.580,.645],kneeRight:[.470,.620],ankleLeft:[.640,.900],ankleRight:[.430,.880]},rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
   {src:"assets/demos/demo-standee-girl-cyber.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-cyber.png",label:"ネオン美少女",centerX:"0.50",centerY:"0.47",radius:"0.43",strength:"0.74",standee:true,rigType:"human",chestMotion:true,poseOverrides:{elbowRight:[.300,.245],wristLeft:[.585,.105],wristRight:[.205,.220]},rig:{head:[0.50,0.14,0.17,0.14],material:[0.50,0.32,0.47,0.35],prop:[0.72,0.46,0.16,0.18]}},
   {src:"assets/demos/demo-standee-man-royal.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-royal.png",label:"王宮イケメン",centerX:"0.50",centerY:"0.48",radius:"0.41",strength:"0.70",standee:true,rigType:"human",chestMotion:false,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.39,0.43,0.43],prop:[0.54,0.39,0.14,0.17]}},
-  {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rigType:"human",chestMotion:false,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}}
+  {src:"assets/demos/demo-standee-man-street.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-man-street.png",label:"ストリートイケメン",centerX:"0.50",centerY:"0.48",radius:"0.40",strength:"0.69",standee:true,rigType:"human",chestMotion:false,rig:{head:[0.50,0.13,0.16,0.14],material:[0.50,0.31,0.39,0.30],prop:[0.48,0.39,0.17,0.17]}},
+  ...(window.P3D_AUTO_DEMOS||[])
 ];
 let activeDemoIndex=-1;
+
+function appendAutoDemoCards(){
+  const gallery=$("#demoGallery");
+  for(let index=9;index<DEMO_ASSETS.length;index++){
+    const demo=DEMO_ASSETS[index];
+    const button=document.createElement("button");
+    button.className="demoCard";
+    button.type="button";
+    button.dataset.demoIndex=String(index);
+    button.setAttribute("aria-pressed","false");
+    const preview=document.createElement("img");
+    preview.src=demo.thumb||demo.src;
+    preview.alt="";
+    preview.loading="lazy";
+    const label=document.createElement("span");
+    label.textContent=demo.label;
+    button.append(preview,label);
+    gallery.append(button);
+  }
+}
+
+appendAutoDemoCards();
 
 function updateDemoSelection(){
   for(const card of document.querySelectorAll("[data-demo-index]")){
@@ -1861,6 +1902,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     updateRecognitionGuide(displayedForeground,{useAlpha:true});
     updateMapStatus(demo.standee ? "展示台fit＋輪郭自動リグ＋接地保持" : "背景＋立ち絵＋輪郭自動リグ＋接地保持");
     syncContourCropAvailability();
+    syncCharacterPlacementControls();
     syncRigDebugControls();
     syncRigPartList("body");
     syncBonePointList("bone-root");
@@ -1922,13 +1964,13 @@ function imageFromFile(file){
   });
 }
 
-async function activateIndependentLayers(label="個別レイヤー"){
+async function activateIndependentLayers(label="個別レイヤー",{preserveCharacterPlacement=false}={}){
   if(!backgroundLayerSource||!foregroundLayerSource){
     statusEl.textContent="背景とキャラの両方を選択してください";
     return;
   }
   const background=backgroundLayerSource,foreground=foregroundLayerSource;
-  uploadImage(foreground,label);
+  uploadImage(foreground,label,{preserveCharacterPlacement});
   backgroundLayerSource=background;
   foregroundLayerSource=foreground;
   uploadMapImage(backgroundTex,gl.TEXTURE3,backgroundLayerSource);
@@ -1956,7 +1998,7 @@ async function activateIndependentLayers(label="個別レイヤー"){
   maskSource="透過キャラ・人物レイヤー";
   updateRecognitionGuide(foregroundLayerSource,{useAlpha:true});
   updateMapStatus("背景／キャラ個別読込・2層");
-  syncContourCropAvailability();syncRigDebugControls();syncRigPartList(activeRigProfile.rigType==="human"?"upper-body":"body");syncBonePointList("bone-root");
+  syncContourCropAvailability();syncCharacterPlacementControls();syncRigDebugControls();syncRigPartList(activeRigProfile.rigType==="human"?"upper-body":"body");syncBonePointList("bone-root");
   statusEl.textContent="背景／キャラ個別読込・2層立体表示";
   errEl.textContent="";
   pushEditHistory();
@@ -1967,7 +2009,7 @@ async function loadIndependentLayer(file,kind){
   try{
     const image=await imageFromFile(file);
     if(kind==="background")backgroundLayerSource=image;else foregroundLayerSource=image;
-    if(backgroundLayerSource&&foregroundLayerSource)await activateIndependentLayers(`個別レイヤー: ${file.name}`);
+    if(backgroundLayerSource&&foregroundLayerSource)await activateIndependentLayers(`個別レイヤー: ${file.name}`,{preserveCharacterPlacement:kind==="background"});
     else statusEl.textContent=kind==="background"?"背景を読込済み・キャラを選択してください":"キャラを読込済み・背景を選択してください";
   }catch(error){errEl.textContent=`${kind==="background"?"背景":"キャラ"}レイヤーを読み込めませんでした: ${file.name}`}
 }
@@ -1984,7 +2026,7 @@ function resetMapTexture(texture,unit){
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255]));
 }
 
-function clearMaps({announce=true}={}){
+function clearMaps({announce=true,preserveCharacterPlacement=false}={}){
   resetMapTexture(depthTex,gl.TEXTURE1);
   resetMapTexture(subjectMaskTex,gl.TEXTURE2);
   resetMapTexture(backgroundTex,gl.TEXTURE3);
@@ -2010,8 +2052,10 @@ function clearMaps({announce=true}={}){
   subjectMaskCanvas=null;
   depthSource="中心近似";
   maskSource="中心近似";
+  if(!preserveCharacterPlacement)resetCharacterPlacement();
   updateMapStatus(announce ? "解除しました" : "");
   syncContourCropAvailability();
+  syncCharacterPlacementControls();
   syncLayeringControls();
   syncRigDebugControls();
   syncRigPartList("");
@@ -2512,12 +2556,14 @@ async function createLayeredSceneFromMask(){
     activeMotionRange=activeRigProfile.motionRange;
     activeStandee=false;
     resetRigSprings();
+    resetCharacterPlacement();
     updateRecognitionGuide(subjectMaskCanvas);
     $("#effectMode").value="4";
     $("#effectStrength").value="0.58";
     $("#autoMotion").checked=true;
     syncEffectControls();
     syncContourCropAvailability();
+    syncCharacterPlacementControls();
     syncRigDebugControls();
     syncRigPartList("upper-body");
     syncBonePointList("bone-root");
@@ -2677,6 +2723,40 @@ function syncContourCropAvailability(){
 function syncLayeringControls(){
   $("#layerFromMask").disabled=!sourceImage||!subjectMaskCanvas;
 }
+function characterPlacementValues(){
+  return {
+    scale:parseFloat($("#characterScale").value),
+    x:parseFloat($("#characterOffsetX").value),
+    y:parseFloat($("#characterOffsetY").value)
+  };
+}
+function placementOffsetLabel(value,negativeLabel,positiveLabel){
+  const amount=Math.round(Math.abs(value)*100);
+  if(amount===0)return "中央";
+  return `${value<0?negativeLabel:positiveLabel} ${amount}%`;
+}
+function syncCharacterPlacementControls(){
+  const placement=characterPlacementValues();
+  $("#characterScaleValue").textContent=`${Math.round(placement.scale*100)}%`;
+  $("#characterOffsetXValue").textContent=placementOffsetLabel(placement.x,"左","右");
+  $("#characterOffsetYValue").textContent=placementOffsetLabel(placement.y,"上","下");
+  for(const id of ["characterScale","characterOffsetX","characterOffsetY"])$("#"+id).disabled=!hasLayeredDemo;
+  $("#resetCharacterPlacement").disabled=!hasLayeredDemo;
+}
+function resetCharacterPlacement(){
+  $("#characterScale").value="1";
+  $("#characterOffsetX").value="0";
+  $("#characterOffsetY").value="0";
+  syncCharacterPlacementControls();
+}
+for(const id of ["characterScale","characterOffsetX","characterOffsetY"]){
+  $("#"+id).addEventListener("input",syncCharacterPlacementControls);
+}
+$("#resetCharacterPlacement").addEventListener("click",()=>{
+  resetCharacterPlacement();
+  pushEditHistory();
+  errEl.textContent="キャラの表示倍率と位置を初期値へ戻しました。";
+});
 $("#contourCrop").addEventListener("input",syncContourCropAvailability);
 
 const EDIT_CONTROL_IDS=[
@@ -2685,7 +2765,8 @@ const EDIT_CONTROL_IDS=[
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal",
   "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
-  "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather"
+  "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather",
+  "characterScale","characterOffsetX","characterOffsetY"
 ];
 
 function captureEditState(){
@@ -2710,6 +2791,7 @@ function applyEditState(state){
   syncEffectControls();
   syncSpatialControls();
   syncContourCropAvailability();
+  syncCharacterPlacementControls();
   if(state.rigProfile&&state.rigProfile.demoIndex===activeDemoIndex){
     activeRigProfile=cloneRigProfile(state.rigProfile.profile);
   }
@@ -2797,6 +2879,7 @@ $("#resetRig").addEventListener("click",resetRigDefinition);
 syncEffectControls();
 syncSpatialControls();
 syncContourCropAvailability();
+syncCharacterPlacementControls();
 syncRigDebugControls();
 updateHistoryButtons();
 enumerateCameras().catch(()=>{});
@@ -2829,7 +2912,25 @@ function smoothStep01(value){
   return x*x*(3-2*x);
 }
 
-function rigPartDisplayState(partId,nowSeconds){
+function characterDisplayPoint(x,y){
+  if(!hasLayeredDemo)return {x,y};
+  const placement=characterPlacementValues();
+  return {
+    x:.5+(x-.5)*placement.scale+placement.x,
+    y:.5+(y-.5)*placement.scale+placement.y
+  };
+}
+
+function characterSourcePoint(x,y){
+  if(!hasLayeredDemo)return {x,y};
+  const placement=characterPlacementValues();
+  return {
+    x:.5+(x-.5-placement.x)/placement.scale,
+    y:.5+(y-.5-placement.y)/placement.scale
+  };
+}
+
+function rigPartSourceDisplayState(partId,nowSeconds){
   const definition=rigPartById(partId);
   if(!definition)return {x:.5,y:.5,radiusX:.01,radiusY:.01};
   const part=definition.region;
@@ -2877,17 +2978,29 @@ function rigPartDisplayState(partId,nowSeconds){
   return {x,y,radiusX,radiusY,angle:definition.angle||0};
 }
 
-function bonePointDisplayState(pointId,nowSeconds){
+function rigPartDisplayState(partId,nowSeconds){
+  const state=rigPartSourceDisplayState(partId,nowSeconds);
+  const {x,y}=characterDisplayPoint(state.x,state.y);
+  const scale=hasLayeredDemo?characterPlacementValues().scale:1;
+  return {...state,x,y,radiusX:state.radiusX*scale,radiusY:state.radiusY*scale};
+}
+
+function bonePointSourceDisplayState(pointId,nowSeconds){
   const point=bonePointById(pointId);
   if(!point)return {x:.5,y:.5};
   let x=point.x,y=point.y;
   const part=rigPartById(point.partId);
   if(part){
-    const state=rigPartDisplayState(part.id,nowSeconds);
+    const state=rigPartSourceDisplayState(part.id,nowSeconds);
     x+=(state.x-part.region[0])*point.followAmount;
     y+=(state.y-part.region[1])*point.followAmount;
   }
   return {x,y};
+}
+
+function bonePointDisplayState(pointId,nowSeconds){
+  const {x,y}=bonePointSourceDisplayState(pointId,nowSeconds);
+  return characterDisplayPoint(x,y);
 }
 
 function boneSelectionScale(rect,dpr){
@@ -3133,10 +3246,11 @@ function updateGuideDrag(event){
   }else if(guideDragTarget.startsWith("bone:")){
     const boneId=guideDragTarget.slice(5),definition=bonePointById(boneId);
     if(!definition)return;
-    const rect=guideHandles.imageRect,displayed=bonePointDisplayState(boneId,lastRenderTime*0.001);
+    const rect=guideHandles.imageRect,displayed=bonePointSourceDisplayState(boneId,lastRenderTime*0.001);
     const requestedX=(point.x-rect.x)/rect.width,requestedY=(point.y-rect.y)/rect.height;
-    definition.x=Math.max(0,Math.min(1,definition.x+requestedX-displayed.x));
-    definition.y=Math.max(0,Math.min(1,definition.y+requestedY-displayed.y));
+    const requested=characterSourcePoint(requestedX,requestedY);
+    definition.x=Math.max(0,Math.min(1,definition.x+requested.x-displayed.x));
+    definition.y=Math.max(0,Math.min(1,definition.y+requested.y-displayed.y));
     $("#bonePointList").value=boneId;
   }else if(guideDragTarget.startsWith("resize:")){
     const [,partId,edge]=guideDragTarget.split(":");
@@ -3144,7 +3258,9 @@ function updateGuideDrag(event){
     const displayed=rigPartDisplayState(partId,lastRenderTime*0.001);
     const rect=guideHandles.imageRect;
     if(!definition)return;
-    const dx=(point.x-rect.x)/rect.width-displayed.x,dy=(point.y-rect.y)/rect.height-displayed.y;
+    const requested=characterSourcePoint((point.x-rect.x)/rect.width,(point.y-rect.y)/rect.height);
+    const sourceDisplayed=rigPartSourceDisplayState(partId,lastRenderTime*0.001);
+    const dx=requested.x-sourceDisplayed.x,dy=requested.y-sourceDisplayed.y;
     const cosine=Math.cos(displayed.angle),sine=Math.sin(displayed.angle);
     const localX=cosine*dx+sine*dy,localY=-sine*dx+cosine*dy;
     if(edge==="left"||edge==="right")definition.region[2]=Math.max(.02,Math.min(.5,Math.abs(localX)));
@@ -3163,11 +3279,12 @@ function updateGuideDrag(event){
     const definition=rigPartById(partKey);
     if(!definition)return;
     const rect=guideHandles.imageRect;
-    const displayed=rigPartDisplayState(partKey,lastRenderTime*0.001);
+    const displayed=rigPartSourceDisplayState(partKey,lastRenderTime*0.001);
     const requestedX=(point.x-rect.x)/rect.width;
     const requestedY=(point.y-rect.y)/rect.height;
-    definition.region[0]=Math.max(0,Math.min(1,definition.region[0]+requestedX-displayed.x));
-    definition.region[1]=Math.max(0,Math.min(1,definition.region[1]+requestedY-displayed.y));
+    const requested=characterSourcePoint(requestedX,requestedY);
+    definition.region[0]=Math.max(0,Math.min(1,definition.region[0]+requested.x-displayed.x));
+    definition.region[1]=Math.max(0,Math.min(1,definition.region[1]+requested.y-displayed.y));
     syncProfileFromParts();
     $("#rigPartList").value=partKey;
   }else{
@@ -3583,6 +3700,9 @@ function render(now){
   gl.uniform1f(U.u_hasDepthMap,hasDepthMap ? 1 : 0);
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
   gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
+  const characterPlacement=characterPlacementValues();
+  gl.uniform1f(U.u_characterScale,characterPlacement.scale);
+  gl.uniform2f(U.u_characterOffset,characterPlacement.x,-characterPlacement.y);
   gl.uniform1f(U.u_useCameraBackground,cameraBackgroundActive ? 1 : 0);
   gl.uniform1f(U.u_cameraAspect,cameraAspect);
   const activeFacing=stream?.getVideoTracks?.()[0]?.getSettings?.().facingMode||$("#cameraFacing").value;
