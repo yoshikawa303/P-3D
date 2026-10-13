@@ -178,9 +178,12 @@ def main() -> int:
     require("(1.0-anchoredMotionWeight(base))*u_hasLayeredDemo" in html, "ポータル背景が接地点で固定されていません")
     require("clamp(offset,-u_motionRange,u_motionRange)" in html, "前景と背景の稼働範囲制限がありません")
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
-    require("const blinkPulse=" in html and "const breathMotion=" in html, "自動瞬き・呼吸がありません")
+    require("naturalBlinkPulse(now,autoRigActive)" in html and "const breathMotion=" in html, "不規則な自動瞬き・呼吸がありません")
+    require("nextBlinkAt=now+2400+Math.random()*3500" in html, "瞬き間隔が完全周期のままです")
+    require("const mouthMotion=0;" in html, "無発話時の周期的な口パクが残っています")
+    require("const respiration=Math.sin(seconds*1.38);" in html, "体幹と胸で共有する呼吸位相がありません")
     require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
-    require("*0.00180*strength" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
+    require("*0.00135*scale" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
     require("足元は背景の接地点へ保持します" in html, "接地保持のUI説明がありません")
     for tab_id, label in [
         ("image", "画像"),
@@ -368,6 +371,9 @@ def main() -> int:
         ("hologramStrength", "ホログラム個別強度"),
         ("reliefStrength", "ポップ3D個別強度"),
         ("vibrationStrength", "前景微振動個別強度"),
+        ("vibrationHorizontal", "前景微振動の横幅"),
+        ("vibrationVertical", "前景微振動の上下幅"),
+        ("vibrationSpeed", "前景微振動の速さ"),
         ("depthLayerStrength", "Depth多層個別強度"),
         ("trickPortalStrength", "トリックポータル個別強度"),
         ("edgeCleanup", "共通輪郭ぼかし"),
@@ -385,6 +391,7 @@ def main() -> int:
         "uniform float u_hologramStrength;",
         "uniform float u_reliefStrength;",
         "uniform float u_vibrationStrength;",
+        "uniform vec3 u_vibrationTuning;",
         "uniform float u_depthLayerStrength;",
         "uniform float u_trickPortalStrength;",
         "uniform float u_edgeCleanup;",
@@ -392,6 +399,8 @@ def main() -> int:
     ]:
         require(uniform in html, f"複合／輪郭処理のshader uniformがありません: {uniform}")
     require("subjectBoundaryAt" not in html, "輪郭だけを抽出して再着色する処理が残っています")
+    require("vec2(0.0024*u_vibrationTuning.x,0.0008*u_vibrationTuning.y)" in html, "前景微振動の安全な縦横上限がありません")
+    require("u_time*mix(20.0,34.0,u_vibrationTuning.z)" in html, "前景微振動の速度調整がありません")
     require("softBlurAt" not in html, "元の合成画像を再サンプルする輪郭ぼかしが残っています")
     require("applyCommonCleanup" not in html, "移動前背景を境界へ混ぜる共通輪郭処理が残っています")
     require("float hologramDepthAttenuation=" in html, "Depthに応じたホログラム強度制御がありません")
@@ -476,7 +485,13 @@ def main() -> int:
     require("result.categoryMask.getAsUint8Array()" in html, "人物カテゴリマスクをテクスチャ化していません")
     require("function pseudoInpaintBackground(" in html, "人物除去領域の端末内擬似背景補完がありません")
     require("async function createLayeredSceneFromMask(" in html, "一枚絵を背景と透過前景へ分離する処理がありません")
-    require("multiSourceFill(" in html, "複数方向の近傍色伝播による背景補完がありません")
+    require("function pushPullFill(" in html and "pushPullFill(image.data,hole,width,height)" in html, "周囲背景から滑らかに連続させるpush-pull背景補完がありません")
+    require("multiSourceFill(" not in html, "境界色の方向伝播による格子状の補完が残っています")
+    require("function dilateHoleByDistance(" in html, "人物マスク外周を距離で広げる背景補完範囲がありません")
+    require(
+        "dilateHoleByDistance(hole,width,height,Math.max(10,Math.round(Math.max(width,height)*0.04)))" in html,
+        "背景側へ人物の輪郭が残らない補完範囲(画像長辺の4%以上)がありません",
+    )
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
     require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
     require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")

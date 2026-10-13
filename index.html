@@ -247,11 +247,15 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div class="checks" id="effectChecks">
       <div class="effectControl"><label class="check"><input id="enableHologram" type="checkbox">ホログラム</label><input id="hologramStrength" aria-label="ホログラム強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
       <div class="effectControl"><label class="check"><input id="enableRelief" type="checkbox">ポップ3D</label><input id="reliefStrength" aria-label="ポップ3D強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
-      <div class="effectControl"><label class="check"><input id="enableVibration" type="checkbox">前景微振動</label><input id="vibrationStrength" aria-label="前景微振動強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
+      <div class="effectControl"><label class="check"><input id="enableVibration" type="checkbox">前景微振動</label><input id="vibrationStrength" aria-label="前景微振動強度" type="range" min="0" max="1" step="0.01" value="0.55"></div>
       <div class="effectControl"><label class="check"><input id="enableDepthLayers" type="checkbox">Depth多層</label><input id="depthLayerStrength" aria-label="Depth多層強度" type="range" min="0" max="1" step="0.01" value="0.65"></div>
       <div class="effectControl"><label class="check"><input id="enableTrickPortal" type="checkbox">トリックポータル</label><input id="trickPortalStrength" aria-label="トリックポータル強度" type="range" min="0" max="1" step="0.01" value="0.72"></div>
     </div>
     <div class="hint">OFF時は単独モード、ON時はチェックした処理を同時適用します。人物分離後はDepth多層＋トリックポータルの組み合わせが効果的です。</div>
+    <div class="row"><label for="vibrationHorizontal">微振動 横幅</label><input id="vibrationHorizontal" type="range" min="0" max="1" step="0.01" value="0.55"></div>
+    <div class="row"><label for="vibrationVertical">微振動 上下幅</label><input id="vibrationVertical" type="range" min="0" max="1" step="0.01" value="0.40"></div>
+    <div class="row"><label for="vibrationSpeed">微振動 速さ</label><input id="vibrationSpeed" type="range" min="0" max="1" step="0.01" value="0.55"></div>
+    <div class="hint">上下は横より小さく抑えています。大きな上下移動は呼吸ではなく画面振動に見えやすいため、必要な場合だけ増やしてください。</div>
     <div class="row"><label for="edgeCleanup">輪郭ノイズ除去</label><input id="edgeCleanup" type="range" min="0" max="1" step="0.01" value="0.62"></div>
     <div class="row"><label for="hologramNearSuppression">手前ホロ抑制</label><input id="hologramNearSuppression" type="range" min="0" max="1" step="0.01" value="0.55"></div>
     <div class="sectionTitle">裸眼3D強調</div>
@@ -380,6 +384,7 @@ uniform float u_enableTrickPortal;
 uniform float u_hologramStrength;
 uniform float u_reliefStrength;
 uniform float u_vibrationStrength;
+uniform vec3 u_vibrationTuning;
 uniform float u_depthLayerStrength;
 uniform float u_trickPortalStrength;
 uniform float u_edgeCleanup;
@@ -734,9 +739,9 @@ void main(){
 
   if(u_enableVibration>0.5){
     // 背景は元UVで固定し、人物／物体マスク内だけをフレーム同期で微小移動する。
-    float vibrationPhase=u_time*50.0;
+    float vibrationPhase=u_time*mix(20.0,34.0,u_vibrationTuning.z);
     vec2 vibration=vec2(sin(vibrationPhase),cos(vibrationPhase*0.79));
-    vibration*=vec2(0.0035,0.0016)*vibrationStrength*u_motionScale;
+    vibration*=vec2(0.0024*u_vibrationTuning.x,0.0008*u_vibrationTuning.y)*vibrationStrength*u_motionScale;
     if(u_enableDepthLayers<0.5)foregroundUV=base-(base-foregroundUV)*vibrationStrength;
     foregroundUV-=vibration*foregroundMask*mix(1.0,anchoredMotionWeight(base),u_hasLayeredDemo);
     if(u_enableDepthLayers<0.5&&u_hasLayeredDemo<0.5)backgroundUV=base;
@@ -908,7 +913,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -925,6 +930,7 @@ const rigSprings={};
 let recognitionBounds=null,recognitionGuideCanvas=null,subjectMaskCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rotations:{},bones:{},boneSegments:[],rayLength:0,dpr:1},guideDragTarget=null,selectedBoneSegmentId=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
+let blinkStartedAt=-Infinity,nextBlinkAt=performance.now()+2400;
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 let pointerTargetX=0,pointerTargetY=0,gazeTargetX=0,gazeTargetY=0,tiltTargetX=0,tiltTargetY=0;
 let tiltOn=false,tiltBeta=0,tiltGamma=0,tiltBaselineBeta=0,tiltBaselineGamma=0,cameraAspect=1;
@@ -2343,60 +2349,105 @@ function maskCoverage(source){
   return selected/(128*128);
 }
 
-function multiSourceFill(pixels,hole,width,height){
-  const total=width*height;
-  const left=new Int32Array(total),right=new Int32Array(total),top=new Int32Array(total),bottom=new Int32Array(total);
-  left.fill(-1);right.fill(-1);top.fill(-1);bottom.fill(-1);
-  for(let y=0;y<height;y++){
-    let donor=-1;
-    for(let x=0;x<width;x++){
-      const index=y*width+x;
-      if(!hole[index])donor=index;
-      else left[index]=donor;
+// 8近傍chamferでマスクからの距離を求め、radius px以内を補完範囲へ含める（元の背景画素は変更しない）。
+function dilateHoleByDistance(hole,width,height,radius){
+  const limit=radius*3;
+  const dist=new Uint16Array(width*height);
+  for(let index=0;index<dist.length;index++)dist[index]=hole[index]?0:65535;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const index=y*width+x;
+    let best=dist[index];
+    if(x>0)best=Math.min(best,dist[index-1]+3);
+    if(y>0){
+      best=Math.min(best,dist[index-width]+3);
+      if(x>0)best=Math.min(best,dist[index-width-1]+4);
+      if(x+1<width)best=Math.min(best,dist[index-width+1]+4);
     }
-    donor=-1;
-    for(let x=width-1;x>=0;x--){
-      const index=y*width+x;
-      if(!hole[index])donor=index;
-      else right[index]=donor;
+    dist[index]=Math.min(best,65535);
+  }
+  for(let y=height-1;y>=0;y--)for(let x=width-1;x>=0;x--){
+    const index=y*width+x;
+    let best=dist[index];
+    if(x+1<width)best=Math.min(best,dist[index+1]+3);
+    if(y+1<height){
+      best=Math.min(best,dist[index+width]+3);
+      if(x+1<width)best=Math.min(best,dist[index+width+1]+4);
+      if(x>0)best=Math.min(best,dist[index+width-1]+4);
+    }
+    dist[index]=Math.min(best,65535);
+  }
+  const expanded=new Uint8Array(width*height);
+  for(let index=0;index<expanded.length;index++)expanded[index]=dist[index]<=limit?1:0;
+  return expanded;
+}
+
+// push-pull補完: 確定画素を粗い解像度へ集約し(push)、穴だけを粗い層から補間で戻す(pull)。
+function pushPullFill(pixels,hole,width,height){
+  const levels=[];
+  let w=width,h=height;
+  let color=new Float32Array(w*h*3),weight=new Float32Array(w*h);
+  for(let index=0;index<w*h;index++){
+    if(hole[index])continue;
+    weight[index]=1;
+    color[index*3]=pixels[index*4];
+    color[index*3+1]=pixels[index*4+1];
+    color[index*3+2]=pixels[index*4+2];
+  }
+  levels.push({w,h,color,weight});
+  while(w>1||h>1){
+    const nw=Math.max(1,Math.ceil(w/2)),nh=Math.max(1,Math.ceil(h/2));
+    const nextColor=new Float32Array(nw*nh*3),nextWeight=new Float32Array(nw*nh);
+    for(let y=0;y<nh;y++)for(let x=0;x<nw;x++){
+      let sr=0,sg=0,sb=0,sw=0;
+      for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
+        const sx=Math.min(w-1,x*2+dx),sy=Math.min(h-1,y*2+dy);
+        const source=sy*w+sx,wt=weight[source];
+        if(!wt)continue;
+        sr+=color[source*3]*wt;sg+=color[source*3+1]*wt;sb+=color[source*3+2]*wt;sw+=wt;
+      }
+      const target=y*nw+x;
+      if(sw>0){
+        nextColor[target*3]=sr/sw;nextColor[target*3+1]=sg/sw;nextColor[target*3+2]=sb/sw;
+        nextWeight[target]=Math.min(1,sw/4*1.6);
+      }
+    }
+    w=nw;h=nh;color=nextColor;weight=nextWeight;
+    levels.push({w,h,color,weight});
+  }
+  if(!levels[levels.length-1].weight[0])return pixels;
+  for(let level=levels.length-2;level>=0;level--){
+    const fine=levels[level],coarse=levels[level+1];
+    for(let y=0;y<fine.h;y++){
+      const cy=Math.min(coarse.h-1,Math.max(0,(y+0.5)/2-0.5));
+      const y0=Math.floor(cy),y1=Math.min(coarse.h-1,y0+1),fy=cy-y0;
+      for(let x=0;x<fine.w;x++){
+        const index=y*fine.w+x,own=fine.weight[index];
+        if(own>=1)continue;
+        const cx=Math.min(coarse.w-1,Math.max(0,(x+0.5)/2-0.5));
+        const x0=Math.floor(cx),x1=Math.min(coarse.w-1,x0+1),fx=cx-x0;
+        const corners=[[y0*coarse.w+x0,(1-fx)*(1-fy)],[y0*coarse.w+x1,fx*(1-fy)],[y1*coarse.w+x0,(1-fx)*fy],[y1*coarse.w+x1,fx*fy]];
+        let r=0,g=0,b=0,sw=0;
+        for(const [source,wt] of corners){
+          const cwt=wt*coarse.weight[source];
+          if(!cwt)continue;
+          r+=coarse.color[source*3]*cwt;g+=coarse.color[source*3+1]*cwt;b+=coarse.color[source*3+2]*cwt;sw+=cwt;
+        }
+        if(sw<=0)continue;
+        r/=sw;g/=sw;b/=sw;
+        fine.color[index*3]=fine.color[index*3]*own+r*(1-own);
+        fine.color[index*3+1]=fine.color[index*3+1]*own+g*(1-own);
+        fine.color[index*3+2]=fine.color[index*3+2]*own+b*(1-own);
+        fine.weight[index]=1;
+      }
     }
   }
-  for(let x=0;x<width;x++){
-    let donor=-1;
-    for(let y=0;y<height;y++){
-      const index=y*width+x;
-      if(!hole[index])donor=index;
-      else top[index]=donor;
-    }
-    donor=-1;
-    for(let y=height-1;y>=0;y--){
-      const index=y*width+x;
-      if(!hole[index])donor=index;
-      else bottom[index]=donor;
-    }
-  }
-  const original=new Uint8ClampedArray(pixels);
-  for(let index=0;index<total;index++){
+  const base=levels[0];
+  for(let index=0;index<hole.length;index++){
     if(!hole[index])continue;
-    const x=index%width,y=Math.floor(index/width);
-    let red=0,green=0,blue=0,weight=0;
-    for(const donor of [left[index],right[index],top[index],bottom[index]]){
-      if(donor<0)continue;
-      const donorX=donor%width,donorY=Math.floor(donor/width);
-      const distance=Math.max(1,Math.abs(donorX-x)+Math.abs(donorY-y));
-      const sampleWeight=1/Math.sqrt(distance);
-      const offset=donor*4;
-      red+=original[offset]*sampleWeight;
-      green+=original[offset+1]*sampleWeight;
-      blue+=original[offset+2]*sampleWeight;
-      weight+=sampleWeight;
-    }
-    if(!weight)continue;
-    const offset=index*4;
-    pixels[offset]=Math.round(red/weight);
-    pixels[offset+1]=Math.round(green/weight);
-    pixels[offset+2]=Math.round(blue/weight);
-    pixels[offset+3]=255;
+    pixels[index*4]=Math.round(base.color[index*3]);
+    pixels[index*4+1]=Math.round(base.color[index*3+1]);
+    pixels[index*4+2]=Math.round(base.color[index*3+2]);
+    pixels[index*4+3]=255;
   }
   return pixels;
 }
@@ -2423,63 +2474,10 @@ function pseudoInpaintBackground(source,maskSource){
     const offset=index*4;
     hole[index]=(mask[offset]+mask[offset+1]+mask[offset+2])/3>28?1:0;
   }
-  // 輪郭の元キャラ色が残らないように、背景補完範囲だけを数px外へ広げる。
-  for(let pass=0;pass<7;pass++){
-    const expanded=hole.slice();
-    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){
-      const index=y*width+x;
-      if(hole[index])continue;
-      if(hole[index-1]||hole[index+1]||hole[index-width]||hole[index+width])expanded[index]=1;
-    }
-    hole=expanded;
-  }
-  const filled=multiSourceFill(image.data,hole,width,height);
-  // 伝播方向の筋を低周波化する。元の背景画素は一切ぼかさない。
-  for(let pass=0;pass<5;pass++){
-    const previous=new Uint8ClampedArray(filled);
-    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){
-      const index=y*width+x;
-      if(!hole[index])continue;
-      let red=0,green=0,blue=0,weight=0;
-      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-        const neighbor=((y+dy)*width+x+dx)*4;
-        const sampleWeight=dx===0&&dy===0?2:1;
-        red+=previous[neighbor]*sampleWeight;
-        green+=previous[neighbor+1]*sampleWeight;
-        blue+=previous[neighbor+2]*sampleWeight;
-        weight+=sampleWeight;
-      }
-      const offset=index*4;
-      filled[offset]=Math.round(red/weight);
-      filled[offset+1]=Math.round(green/weight);
-      filled[offset+2]=Math.round(blue/weight);
-      filled[offset+3]=255;
-    }
-  }
-  context.putImageData(image,0,0);
-  // 小さく縮小してから再拡大した低周波面を穴の内側だけへ戻し、方向補間の格子模様を消す。
-  const low=document.createElement("canvas");
-  low.width=Math.max(12,Math.round(width/14));
-  low.height=Math.max(12,Math.round(height/14));
-  const lowContext=low.getContext("2d");
-  lowContext.imageSmoothingEnabled=true;
-  lowContext.imageSmoothingQuality="high";
-  lowContext.drawImage(canvas,0,0,low.width,low.height);
-  const softened=document.createElement("canvas");
-  softened.width=width;softened.height=height;
-  const softenedContext=softened.getContext("2d",{willReadFrequently:true});
-  softenedContext.imageSmoothingEnabled=true;
-  softenedContext.imageSmoothingQuality="high";
-  softenedContext.drawImage(low,0,0,width,height);
-  const softenedPixels=softenedContext.getImageData(0,0,width,height).data;
-  for(let index=0;index<hole.length;index++){
-    if(!hole[index])continue;
-    const offset=index*4;
-    image.data[offset]=softenedPixels[offset];
-    image.data[offset+1]=softenedPixels[offset+1];
-    image.data[offset+2]=softenedPixels[offset+2];
-    image.data[offset+3]=255;
-  }
+  // 人物分離は髪・腕・衣装の縁を取りこぼすため、補完範囲を画像サイズ比で十分外へ広げ、背景側へ残る人物の輪郭を消す。
+  hole=dilateHoleByDistance(hole,width,height,Math.max(10,Math.round(Math.max(width,height)*0.04)));
+  // 境界色の4方向平均ではなく、周囲の確定背景から滑らかに連続させるpush-pull補完を使う。
+  pushPullFill(image.data,hole,width,height);
   context.putImageData(image,0,0);
   return canvas;
 }
@@ -2703,8 +2701,11 @@ function syncEffectControls(){
     toggle.disabled=!combined;
     $("#"+strengthId).disabled=!combined||!toggle.checked;
   }
+  const vibrationActive=combined ? $("#enableVibration").checked : parseInt($("#effectMode").value,10)===3;
+  for(const id of ["vibrationHorizontal","vibrationVertical","vibrationSpeed"])$("#"+id).disabled=!vibrationActive;
 }
 $("#combineEffects").addEventListener("input",syncEffectControls);
+$("#effectMode").addEventListener("input",syncEffectControls);
 for(const id of ["enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal"]){
   $("#"+id).addEventListener("input",syncEffectControls);
 }
@@ -2763,7 +2764,7 @@ const EDIT_CONTROL_IDS=[
   "autoMotion","motionStrength",
   "rigDebug","debugShowBackground","debugShowCharacter","debugShowMask","debugShowDepth","debugShowWireframe","debugShowBones","debugShowTags",
   "effectMode","effectStrength","combineEffects","enableHologram","enableRelief","enableVibration","enableDepthLayers","enableTrickPortal",
-  "hologramStrength","reliefStrength","vibrationStrength","depthLayerStrength","trickPortalStrength",
+  "hologramStrength","reliefStrength","vibrationStrength","vibrationHorizontal","vibrationVertical","vibrationSpeed","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
   "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather",
   "characterScale","characterOffsetX","characterOffsetY"
@@ -3609,10 +3610,11 @@ function stepRigSpring(spring,targetX,targetY,stiffness,damping,gravity,deltaSec
 
 function rigMotionTarget(part,seconds,strength){
   const scale=strength*part.strength;
-  if(part.preset==="body")return [Math.sin(seconds*0.83)*0.00180*strength*part.strength,Math.sin(seconds*1.66)*0.00115*scale];
+  const respiration=Math.sin(seconds*1.38);
+  if(part.preset==="body")return [Math.sin(seconds*0.83)*0.00135*scale,respiration*0.00072*scale];
   if(part.preset==="face")return [(-viewX*0.00125+Math.sin(seconds*.72)*.00075)*scale,(-viewY*.00072+Math.cos(seconds*.91)*.00042)*scale];
   if(part.preset==="eyes")return [(viewX*.00115+Math.sin(seconds*.63)*.00022)*scale,(viewY*.00038)*scale];
-  if(part.preset==="mouth")return [Math.sin(seconds*.84)*.00018*scale,Math.max(0,Math.sin(seconds*2.15+.8))*.00072*scale];
+  if(part.preset==="mouth")return [0,Math.max(0,respiration)*.00008*scale];
   if(part.preset==="hair")return [(-viewX*0.00450+Math.sin(seconds*1.76+0.8)*0.00440)*scale,Math.cos(seconds*1.24+0.4)*0.00230*scale];
   if(part.preset==="hand")return [(-viewX*.00175+Math.sin(seconds*.96+1.1)*.00085)*scale,(-viewY*.00055+Math.cos(seconds*1.08)*.00052)*scale];
   if(part.preset==="hips")return [(-viewX*.00135+Math.sin(seconds*.62)*.00105)*scale,Math.cos(seconds*.74)*.00072*scale];
@@ -3620,11 +3622,26 @@ function rigMotionTarget(part,seconds,strength){
   if(part.preset==="tail")return [(-viewX*0.00580+Math.sin(seconds*1.29+1.7)*0.00620)*scale,Math.cos(seconds*0.91+1.2)*0.00310*scale];
   if(part.preset==="chest"){
     const parentSpring=rigSprings[part.parentId]||newRigSpring();
-    const delayedX=-viewX*0.0022+Math.sin(seconds*1.18+0.55)*0.0024-parentSpring.vx*0.12;
-    const elasticY=Math.sin(seconds*2.36+0.22)*0.0017+Math.cos(seconds*1.12)*0.00075-Math.abs(parentSpring.vy)*0.08;
+    const delayedX=-viewX*0.0018+Math.sin(seconds*0.83+0.18)*0.0012-parentSpring.vx*0.10;
+    const elasticY=Math.sin(seconds*1.38-0.16)*0.00125+Math.sin(seconds*2.76-0.32)*0.00022-Math.abs(parentSpring.vy)*0.05;
     return [delayedX*scale,elasticY*scale];
   }
   return [(-viewX*0.00350+Math.sin(seconds*1.13)*0.00280)*scale,(Math.cos(seconds*1.41)*0.00185-viewY*0.00120)*scale];
+}
+
+function naturalBlinkPulse(now,active){
+  if(!active){
+    blinkStartedAt=-Infinity;
+    nextBlinkAt=now+2200;
+    return 0;
+  }
+  if(now>=nextBlinkAt){
+    blinkStartedAt=now;
+    nextBlinkAt=now+2400+Math.random()*3500;
+  }
+  const elapsed=now-blinkStartedAt;
+  if(elapsed<0||elapsed>170)return 0;
+  return Math.pow(Math.sin(Math.PI*elapsed/170),2);
 }
 
 function effectiveRigMotion(partId,visiting=new Set()){
@@ -3739,10 +3756,10 @@ function render(now){
   gl.uniform2f(U.u_motionRange,activeMotionRange[0],activeMotionRange[1]);
   gl.uniform1f(U.u_standeeMode,activeStandee&&hasLayeredDemo ? 1 : 0);
   const liveSeconds=now*0.001;
-  const blinkPulse=Math.pow(Math.max(0,Math.sin(liveSeconds*1.73+0.35)),24);
-  const mouthMotion=0.5+0.5*Math.sin(liveSeconds*2.15+0.8);
+  const blinkPulse=naturalBlinkPulse(now,autoRigActive);
+  const mouthMotion=0;
   const gazeMotion=Math.sin(liveSeconds*0.71)+viewX*0.55;
-  const breathMotion=0.5+0.5*Math.sin(liveSeconds*1.38);
+  const breathMotion=Math.sin(liveSeconds*1.38);
   live2dVisualState={blink:autoRigActive?blinkPulse:0,mouth:autoRigActive?mouthMotion:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
   gl.uniform4f(U.u_live2dMotion,autoRigActive?blinkPulse:0,autoRigActive?mouthMotion:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
   const debugLayerMode=$("#rigDebug").checked&&hasLayeredDemo;
@@ -3761,6 +3778,7 @@ function render(now){
   gl.uniform1f(U.u_hologramStrength,strengths.hologram);
   gl.uniform1f(U.u_reliefStrength,strengths.relief);
   gl.uniform1f(U.u_vibrationStrength,strengths.vibration);
+  gl.uniform3f(U.u_vibrationTuning,parseFloat($("#vibrationHorizontal").value),parseFloat($("#vibrationVertical").value),parseFloat($("#vibrationSpeed").value));
   gl.uniform1f(U.u_depthLayerStrength,strengths.depthLayers);
   gl.uniform1f(U.u_trickPortalStrength,strengths.trickPortal);
   gl.uniform1f(U.u_edgeCleanup,parseFloat($("#edgeCleanup").value));
