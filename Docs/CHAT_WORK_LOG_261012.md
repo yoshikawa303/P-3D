@@ -171,3 +171,27 @@
 
 - 使用モデル: Codex GPT-5。前景微振動shader、部位別ばね、呼吸・瞬きの時間制御、設定UIと回帰検査を一体で修正するため継続使用。動的切替なし。
 - 実装方針: 前景微振動の横・縦・速さを分離して既定値と上限を抑え、体幹・胸を共通呼吸位相へ同期する。瞬きの完全周期と無発話時の周期的口パクを解消し、接地固定、小物剛体、視差低減対応を維持する。
+
+### 2026-10-14 02:26 JST - Codex GPT-5 - 種別: 作業結果 - 生理・知覚に沿うLive2Dモーション改善
+
+## 実装
+
+- `振動3D（背景固定）`の前景微振動へ`横幅`、`上下幅`、`速さ`を追加。最大振幅を横UV 0.24%、縦0.08%へ縮小し、既定値は効果強度込みで横約0.086%、縦約0.021%へ抑えた。横周波数は約3.2〜5.4Hz、縦は0.79倍とした。
+- 体幹と胸を約13.2回／分の共通呼吸位相へ同期し、胸だけに小さな遅延と第2高調波を付与。独立正弦波同士の不自然な逆位相を解消した。
+- 瞬きを完全周期から2.4〜5.9秒の不規則間隔へ変更。無発話時の周期的な口パクを停止した。
+- 既存の接地固定、部位階層、小物剛体、髪／尻尾の柔体ばね、視差低減時の停止を維持した。
+- 直前に未pushだったSample1背景補完修正も、検証済みの後続差分として同じ公開履歴へ保持した。
+
+## 検証
+
+- `python3 scripts/ci/web_regression_gate.py`: PASS。新しい縦横上限、速度調整、共通呼吸位相、不規則瞬き、口パク停止を回帰条件へ追加した。
+- JavaScript構文検査: PASS。`git diff --check`: PASS。
+- ローカルHTTP表示: WebGL描画、16デモ、立体表示タブ、新しい3設定、60fpsを確認。アプリの表示エラーなし。
+- GitHub Actions `P-3D quality gates`: commit `d156eb1`でSUCCESS。
+- GitHub Pages: 配信処理SUCCESS後、公開HTMLで`vibrationHorizontal`、`naturalBlinkPulse`、`dilateHoleByDistance`を確認。
+- 未検証: iPhone Safari実機での視覚的な揺れ量、前面／背面カメラ、端末傾き、実機GPU負荷。正式な実機視覚評価には含めない。
+
+## Git
+
+- 作業ディレクトリはGit checkoutではないため`git init`せず、一時cloneで`d156eb1 fix: tune natural motion and layered background repair`を`origin/main`へpushした。push後はHEADと`origin/main`が一致し、ahead/behindは`0/0`。
+- 概算作業時間: 約42分。使用モデル: Codex GPT-5、動的切替なし。
