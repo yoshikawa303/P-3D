@@ -257,3 +257,9 @@ test
 ★pushして。
 また、実行可能なサイトリンクを教えて
 ```
+
+### 2026-10-18 JST - Claude Sonnet 5.5 - 種別: 作業結果 - 背景3層視差のpushと公開URL案内
+
+- 一時cloneで2コミット（機能 / 作業ログ）を作り`origin/main`へpush。HEAD `f6d4dd9`、リモートと一致。
+- Pages: 公開HTMLに`backgroundLayerUV`を確認、HTTP 200。公開URL `https://yoshikawa303.github.io/P-3D/`。
+- 未検証: iPhone Safari実機での表示・負荷・カメラ追跡。作業ディレクトリは非Git checkoutのため`git init`せず。使用モデル: Claude Sonnet 5.5、動的切替なし。約4分。
