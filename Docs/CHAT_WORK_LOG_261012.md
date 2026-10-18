@@ -195,3 +195,65 @@
 
 - 作業ディレクトリはGit checkoutではないため`git init`せず、一時cloneで`d156eb1 fix: tune natural motion and layered background repair`を`origin/main`へpushした。push後はHEADと`origin/main`が一致し、ahead/behindは`0/0`。
 - 概算作業時間: 約42分。使用モデル: Codex GPT-5、動的切替なし。
+
+### 2026-10-14 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - test / Remote Control 有効化
+
+```text
+test
+/remote-control
+```
+
+- モデル/対象工程: Claude Sonnet 5.5。セッション設定操作のみ（コード変更なし）。
+
+### 2026-10-14 JST - Claude Sonnet 5.5 - 種別: 作業結果 - test / Remote Control 有効化
+
+- このセッションの Remote Control を有効化した（状態: `on`）。claude.ai/code または Claude モバイルアプリから追従・操作できる。
+- コード・Git 変更なし。検証対象外。概算作業時間: 約1分。使用モデル: Claude Sonnet 5.5、動的切替なし。
+
+### 2026-10-14 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - ディレクトリ指定のみ
+
+```text
+@"/Volumes/DATA/XCode_Project/P-3D/"
+```
+
+### 2026-10-14 JST - Claude Sonnet 5.5 - 種別: 作業結果 - ディレクトリ指定のみ
+
+- 指示は作業ディレクトリの指定のみで具体的な依頼がなかったため、内容を確認する旨を返信した。変更なし。使用モデル: Claude Sonnet 5.5、動的切替なし。
+
+### 2026-10-16 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - キャラと背景の疑似3D空間配置の可否
+
+```text
+★キャラと背景を認識した際、各要素を疑似的な３D空間に配置して、より立体感を出すことは可能か？
+```
+
+- モデル/対象工程: Claude Sonnet 5.5。既存実装の調査と実現可否の回答（コード変更なし）。
+
+### 2026-10-16 JST - Claude Sonnet 5.5 - 種別: 作業結果 - キャラと背景の疑似3D空間配置の可否
+
+- 結論: 可能。2層分離（MediaPipe人物分離＋擬似補完背景）、Depth多層、トリックポータル、裸眼3D強調で土台は実装済み。
+- 追加案: キャラ部位別の奥行き面、背景3層化、Depthメッシュ変形、Disocclusion補正、Off-Axis Projection。最初の着手候補は背景3層化。
+- 検証: `Docs/ARCHITECTURE.md` の読解のみ。コード変更、CI、iPhone Safari実機は未実施。
+- 概算作業時間: 約3分。使用モデル: Claude Sonnet 5.5、動的切替なし。
+
+### 2026-10-18 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - 疑似3D空間配置（背景3層化）の実装
+
+```text
+★実装して
+```
+
+- モデル/対象工程: Claude Sonnet 5.5。複数ファイル横断のshader設計を含むため上位モデルのまま実装。直前提案の「背景を遠景・中景・近景に分け、キャラを中間層に置く」を対象とする。
+
+### 2026-10-18 JST - Claude Sonnet 5.5 - 種別: 作業結果 - 背景3層視差の実装
+
+- 実装: 2層素材の背景をDepthで遠景／中景／近景へ分け、帯別に視差を変える`背景3層視差`（スライダ`bgLayerStrength`、初期60%、0%で従来動作）を追加。キャラは全層より手前の中間面。
+- 変更: `index.html`（shader `backgroundLayerUV`、uniform、UI、Undo対象）、`scripts/ci/web_regression_gate.py`（回帰検査4件追加）、`Docs/ARCHITECTURE.md`、`CHANGELOG.md`。
+- 検証: `web_regression_gate.py` PASS。ローカルHTTPでデモ表示、GLエラー0、コンソールエラーなし。
+- 限界: 近景帯がキャラを遮蔽する処理は未実装。視差量の見え方の調整、iPhone Safari実機（性能・カメラ追跡）は未検証。Git: 作業ディレクトリはcheckoutではないため未commit・未push。
+- 概算作業時間: 約15分。使用モデル: Claude Sonnet 5.5、動的切替なし。
+
+### 2026-10-18 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - 背景3層視差のpushと公開URL案内
+
+```text
+★pushして。
+また、実行可能なサイトリンクを教えて
+```
