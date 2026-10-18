@@ -127,6 +127,8 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div class="row withValue"><label for="characterScale">表示倍率</label><input id="characterScale" type="range" min="0.4" max="2.5" step="0.01" value="1"><output id="characterScaleValue" for="characterScale">100%</output></div>
     <div class="row withValue"><label for="characterOffsetX">左右位置</label><input id="characterOffsetX" type="range" min="-0.5" max="0.5" step="0.01" value="0"><output id="characterOffsetXValue" for="characterOffsetX">中央</output></div>
     <div class="row withValue"><label for="characterOffsetY">上下位置</label><input id="characterOffsetY" type="range" min="-0.5" max="0.5" step="0.01" value="0"><output id="characterOffsetYValue" for="characterOffsetY">中央</output></div>
+    <div class="row withValue"><label for="bgLayerStrength">背景3層視差</label><input id="bgLayerStrength" type="range" min="0" max="1" step="0.01" value="0.6"><output id="bgLayerStrengthValue" for="bgLayerStrength">60%</output></div>
+    <div class="hint">背景をDepthで遠景・中景・近景に分け、層ごとに視差を変えます。キャラは全層より手前の中間面です。0%で従来の背景視差に戻ります。</div>
     <button id="resetCharacterPlacement" class="secondary" type="button">キャラ配置を初期値へ戻す</button>
     <div class="hint">背景はそのままに、読込キャラ／人物だけを非破壊で拡大・縮小・移動します。左右・上下位置は画像幅／高さに対する割合です。</div>
     <div class="buttons">
@@ -396,6 +398,7 @@ uniform float u_spatialStrength;
 uniform float u_zeroParallax;
 uniform float u_viewZ;
 uniform float u_hasLayeredDemo;
+uniform float u_bgLayerStrength;
 uniform float u_characterScale;
 uniform vec2 u_characterOffset;
 uniform float u_autoRigEnabled;
@@ -620,6 +623,23 @@ float depthDisparityAt(float depth){
   return mix(depth,relativeDepth,spatialAmount);
 }
 
+// 背景をDepthで遠景／中景／近景の3帯へ分け、帯ごとに視差量を変える。キャラは全帯より手前の中間面として別処理する。
+vec2 backgroundLayerUV(vec2 base,vec2 current){
+  float strength=clamp(u_bgLayerStrength,0.0,1.0)*u_hasLayeredDemo;
+  if(strength<=0.0)return current;
+  vec2 uv=current;
+  for(int i=0;i<2;i++){
+    float bd=depthAt(uv);
+    float nearW=smoothstep(0.46,0.76,bd);
+    float farW=1.0-smoothstep(0.14,0.42,bd);
+    float midW=clamp(1.0-nearW-farW,0.0,1.0);
+    vec2 layerView=u_viewFar*0.14*farW+u_viewMid*0.40*midW+u_viewNear*0.72*nearW;
+    vec2 offset=constrainMotionOffset(layerView*u_depth*(0.22+depthDisparityAt(bd)));
+    uv=base-offset*anchoredMotionWeight(base);
+  }
+  return mix(current,uv,strength);
+}
+
 float portalSignedDistance(vec2 uv){
   vec2 inset=vec2(0.075,0.060);
   return min(min(uv.x-inset.x,1.0-inset.x-uv.x),min(uv.y-inset.y,1.0-inset.y-uv.y));
@@ -736,6 +756,8 @@ void main(){
     backgroundUV=base-backgroundOffset;
     foregroundUV=base-mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base)*u_hasLayeredDemo+(1.0-u_hasLayeredDemo));
   }
+
+  backgroundUV=backgroundLayerUV(base,backgroundUV);
 
   if(u_enableVibration>0.5){
     // 背景は元UVで固定し、人物／物体マスク内だけをフレーム同期で微小移動する。
@@ -913,7 +935,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -2741,7 +2763,8 @@ function syncCharacterPlacementControls(){
   $("#characterScaleValue").textContent=`${Math.round(placement.scale*100)}%`;
   $("#characterOffsetXValue").textContent=placementOffsetLabel(placement.x,"左","右");
   $("#characterOffsetYValue").textContent=placementOffsetLabel(placement.y,"上","下");
-  for(const id of ["characterScale","characterOffsetX","characterOffsetY"])$("#"+id).disabled=!hasLayeredDemo;
+  for(const id of ["characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"])$("#"+id).disabled=!hasLayeredDemo;
+  $("#bgLayerStrengthValue").textContent=`${Math.round(parseFloat($("#bgLayerStrength").value)*100)}%`;
   $("#resetCharacterPlacement").disabled=!hasLayeredDemo;
 }
 function resetCharacterPlacement(){
@@ -2750,7 +2773,7 @@ function resetCharacterPlacement(){
   $("#characterOffsetY").value="0";
   syncCharacterPlacementControls();
 }
-for(const id of ["characterScale","characterOffsetX","characterOffsetY"]){
+for(const id of ["characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"]){
   $("#"+id).addEventListener("input",syncCharacterPlacementControls);
 }
 $("#resetCharacterPlacement").addEventListener("click",()=>{
@@ -2767,7 +2790,7 @@ const EDIT_CONTROL_IDS=[
   "hologramStrength","reliefStrength","vibrationStrength","vibrationHorizontal","vibrationVertical","vibrationSpeed","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
   "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather",
-  "characterScale","characterOffsetX","characterOffsetY"
+  "characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"
 ];
 
 function captureEditState(){
@@ -3718,6 +3741,7 @@ function render(now){
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
   gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
   const characterPlacement=characterPlacementValues();
+  gl.uniform1f(U.u_bgLayerStrength,parseFloat($("#bgLayerStrength").value));
   gl.uniform1f(U.u_characterScale,characterPlacement.scale);
   gl.uniform2f(U.u_characterOffset,characterPlacement.x,-characterPlacement.y);
   gl.uniform1f(U.u_useCameraBackground,cameraBackgroundActive ? 1 : 0);

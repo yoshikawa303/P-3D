@@ -324,6 +324,10 @@ def main() -> int:
     edit_controls = html[html.index("const EDIT_CONTROL_IDS=") : html.index("function captureEditState()")]
     for control_id in ["characterScale", "characterOffsetX", "characterOffsetY"]:
         require(f'"{control_id}"' in edit_controls, f"{control_id}がUndo／Redo状態へ含まれていません")
+    require('id="bgLayerStrength"' in html, "背景3層視差の強度スライダがありません")
+    require('"bgLayerStrength"' in edit_controls, "背景3層視差がUndo／Redo状態へ含まれていません")
+    require("vec2 backgroundLayerUV(" in html and "backgroundUV=backgroundLayerUV(base,backgroundUV);" in html, "背景3層視差がshaderへ適用されていません")
+    require("gl.uniform1f(U.u_bgLayerStrength," in html and '"u_bgLayerStrength"' in html, "背景3層視差のuniformが転送されていません")
     require("function characterDisplayPoint(" in html, "配置後のキャラ座標へガイドを変換できません")
     require("function characterSourcePoint(" in html, "ガイド編集位置をキャラ元座標へ戻せません")
     require("characterDisplayPoint(x,y)" in html, "部位またはボーンガイドがキャラ配置へ追従しません")
