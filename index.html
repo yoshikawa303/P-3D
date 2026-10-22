@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Poster Pseudo 3D v2</title>
 <style>
-html,body{margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow:hidden}
+html,body{--fs-main:13px;--fs-sub:12px;--fs-hint:11px;margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;overflow:hidden}
 #stage{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
 #guide{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}
@@ -14,46 +14,49 @@ html,body{margin:0;height:100%;background:#09090b;color:#fff;font-family:-apple-
 .pill{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.62);backdrop-filter:blur(10px);font-size:12px;white-space:nowrap}
 #status{min-width:0;max-width:48vw;overflow:hidden;text-overflow:ellipsis}
 #topActions{display:flex;gap:6px;align-items:center;pointer-events:auto}
-#panelToggle,#demoNext{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
+#panelToggle,#demoNext,#moveCharacter{min-height:44px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(10px)}
+#moveCharacter[aria-pressed="true"]{background:#d9f8ff;color:#102128;border-color:#79e7ff}
+#moveCharacter[hidden]{display:none}
 #demoNext{background:linear-gradient(135deg,rgba(255,112,180,.94),rgba(116,97,255,.94));border-color:rgba(255,255,255,.34)}
-#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;height:min(54dvh,620px);overflow:hidden;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:9px;opacity:1;transform:translateY(0);visibility:visible;transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
+#panel{position:absolute;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:3;height:min(54dvh,620px);overflow:hidden;padding:11px;border-radius:18px;background:rgba(20,20,24,.78);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.13);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:9px;opacity:1;transform:translateY(0);visibility:visible;font-size:var(--fs-main);transition:opacity .18s ease,transform .18s ease,visibility 0s linear 0s}
 #panel.is-hidden{opacity:0;transform:translateY(calc(100% + 24px));visibility:hidden;pointer-events:none;transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s}
 .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-button,.filelabel{border:0;border-radius:12px;padding:11px 8px;font-size:14px;font-weight:700;text-align:center;background:#fff;color:#111}
+button,.filelabel{border:0;border-radius:12px;padding:11px 8px;font-size:var(--fs-main);font-weight:700;text-align:center;background:#fff;color:#111}
 button:disabled{opacity:.58}
 button.secondary{background:#303038;color:#fff}
 input[type=file]{display:none}
-.row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:12px}
+.row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;font-size:var(--fs-main)}
 .row.withValue{grid-template-columns:92px minmax(0,1fr) 46px}
 .row output{text-align:right;color:#c7f5ff;font-variant-numeric:tabular-nums}
 input[type=range]{width:100%}
-select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit}
+select{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 10px;background:#303038;color:#fff;font:inherit;font-size:var(--fs-main)}
 input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:7px 9px;background:#303038;color:#fff;font:inherit}
 .settingsTabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .settingsTabs::-webkit-scrollbar{display:none}
-.settingsTabs button{flex:0 0 auto;min-height:38px;padding:7px 12px;border:1px solid rgba(255,255,255,.14);background:#303038;color:#ddd;font-size:12px}
+.settingsTabs button{flex:0 0 auto;min-height:38px;padding:7px 12px;border:1px solid rgba(255,255,255,.14);background:#303038;color:#ddd;font-size:var(--fs-main)}
 .settingsTabs button[aria-selected="true"]{background:#d9f8ff;color:#102128;border-color:#79e7ff}
 #settingsTabContent{min-height:0;overflow-y:auto;padding-right:2px}
 .tabPanel{display:grid;gap:9px}
 .tabPanel[hidden]{display:none}
 .panelFooter{display:grid;gap:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.12)}
-.sectionTitle{margin-top:3px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;font-weight:800;color:#c7f5ff;letter-spacing:.04em}
-.checks{display:grid;gap:6px;font-size:12px}
-.check{display:flex;min-height:30px;align-items:center;gap:7px;padding:2px 4px}
+.sectionTitle{margin-top:3px;padding-top:8px;border-top:1px solid rgba(255,255,255,.12);font-size:var(--fs-main);font-weight:800;color:#c7f5ff;letter-spacing:.04em}
+.checks{display:grid;gap:6px;font-size:var(--fs-main)}
+.check{display:flex;min-height:30px;align-items:center;gap:7px;padding:2px 4px;font-size:var(--fs-main)}
 .check input{width:18px;height:18px}
 .debugLayerGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 7px}
 .debugLayerGrid .check{min-height:27px;padding:1px 3px;border-radius:8px;background:rgba(255,255,255,.035)}
+.rigEditor>label,.boneEditor>label{font-weight:700}
 .rigEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(121,231,255,.18);border-radius:12px;background:rgba(8,20,28,.36)}
 .rigEditor select[size],.boneEditor select[size]{min-height:132px;padding:4px}
 .rigEditor select[size] option,.boneEditor select[size] option{padding:7px 8px;border-radius:7px}
 .boneEditor{display:grid;gap:6px;padding:8px;border:1px solid rgba(255,223,110,.22);border-radius:12px;background:rgba(28,24,8,.32)}
 .compactButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.compactButtons button{padding:9px 7px;font-size:12px}
+.compactButtons button{padding:9px 7px;font-size:var(--fs-main)}
 .tripleButtons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
-.tripleButtons button{padding:9px 5px;font-size:11px}
+.tripleButtons button{padding:9px 5px;font-size:var(--fs-main)}
 .motionFields{display:grid;gap:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08)}
 #rigDirectEditHint{padding:7px;border-radius:9px;background:rgba(121,231,255,.08);color:#c7f5ff}
-#rigDebugStatus{font-size:10px;color:#bfefff;line-height:1.5}
+#rigDebugStatus,#boneRigStatus{font-size:var(--fs-sub);color:#bfefff;line-height:1.5}
 .effectControl{display:grid;grid-template-columns:118px 1fr;align-items:center;gap:8px}
 .effectControl .check{min-width:0}
 .demoGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
@@ -62,13 +65,13 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
 .demoCard.standee img{object-fit:contain;background:linear-gradient(160deg,#111a31,#25152b 72%,#0e1728)}
 .demoCard span{position:absolute;left:4px;right:4px;bottom:4px;padding:5px 3px;border-radius:8px;background:rgba(0,0,0,.66);color:#fff;font-size:10px;font-weight:800;line-height:1.15;text-align:center;backdrop-filter:blur(8px)}
 .demoCard[aria-pressed="true"]{border-color:#79e7ff;box-shadow:0 0 0 2px rgba(121,231,255,.36)}
-.hint{font-size:10px;color:#b8b8c2;line-height:1.45}
+.hint{font-size:var(--fs-hint);color:#b8b8c2;line-height:1.45}
 #help{position:absolute;left:50%;top:42%;z-index:2;transform:translate(-50%,-50%);width:min(82vw,420px);padding:16px;border-radius:18px;background:rgba(0,0,0,.62);text-align:center;line-height:1.6}
 #help b{font-size:17px}
-#err{font-size:11px;color:#ffb4b4;max-height:44px;overflow:auto}
-#mapStatus{font-size:11px;color:#d4d4dc;line-height:1.45}
+#err{font-size:var(--fs-sub);color:#ffb4b4;max-height:44px;overflow:auto}
+#mapStatus{font-size:var(--fs-sub);color:#d4d4dc;line-height:1.45}
 @media (min-width:720px){#panel{left:auto;width:min(420px,calc(100vw - 32px));height:min(720px,calc(100dvh - 86px))}}
-@media (max-width:480px){#status{max-width:28vw}#panelToggle,#demoNext{padding:8px 9px;font-size:11px}}
+@media (max-width:480px){#status{max-width:28vw}#panelToggle,#demoNext,#moveCharacter{padding:8px 9px;font-size:11px}}
 @media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
 </style>
 </head>
@@ -81,6 +84,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div id="status" class="pill">画像未選択</div>
     <div id="topActions">
       <div id="fps" class="pill">-- fps</div>
+      <button id="moveCharacter" type="button" aria-pressed="false" hidden title="キャラを画面上でドラッグして配置">キャラ移動</button>
       <button id="demoNext" type="button" aria-label="デモ画像を切り替えて愛でる" title="デモ画像を切り替える">愛でる</button>
       <button id="panelToggle" type="button" aria-controls="panel" aria-expanded="false">設定を表示</button>
     </div>
@@ -130,7 +134,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div class="row withValue"><label for="bgLayerStrength">背景3層視差</label><input id="bgLayerStrength" type="range" min="0" max="1" step="0.01" value="0.6"><output id="bgLayerStrengthValue" for="bgLayerStrength">60%</output></div>
     <div class="hint">背景をDepthで遠景・中景・近景に分け、層ごとに視差を変えます。キャラは全層より手前の中間面です。0%で従来の背景視差に戻ります。</div>
     <button id="resetCharacterPlacement" class="secondary" type="button">キャラ配置を初期値へ戻す</button>
-    <div class="hint">背景はそのままに、読込キャラ／人物だけを非破壊で拡大・縮小・移動します。左右・上下位置は画像幅／高さに対する割合です。</div>
+    <div class="hint">背景はそのままに、読込キャラ／人物だけを非破壊で拡大・縮小・移動します。画面右上の「キャラ移動」をONにすると、画面をドラッグして移動、2本指のピンチまたはマウスホイールで拡大・縮小できます。左右・上下位置は画像幅／高さに対する割合です。</div>
     <div class="buttons">
       <label class="filelabel">Depth Map<input id="depthFile" type="file" accept="image/*"></label>
       <label class="filelabel">人物／物体マスク<input id="subjectMaskFile" type="file" accept="image/*"></label>
@@ -279,6 +283,11 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
     <div class="row"><label for="cx">キャラ中心X</label><input id="cx" type="range" min="0" max="1" step="0.01" value="0.50"></div>
     <div class="row"><label for="cy">キャラ中心Y</label><input id="cy" type="range" min="0" max="1" step="0.01" value="0.45"></div>
     <div class="row"><label for="radius">キャラ範囲</label><input id="radius" type="range" min="0.10" max="0.70" step="0.01" value="0.33"></div>
+    <div class="sectionTitle">背景とのなじませ（2層表示）</div>
+    <div class="row withValue"><label for="sceneHarmonize">色・光の調和</label><input id="sceneHarmonize" type="range" min="0" max="1" step="0.01" value="0.80"><output id="sceneHarmonizeValue" for="sceneHarmonize">80%</output></div>
+    <div class="row withValue"><label for="sceneShadow">接地影</label><input id="sceneShadow" type="range" min="0" max="1" step="0.01" value="0.80"><output id="sceneShadowValue" for="sceneShadow">80%</output></div>
+    <div id="sceneLookStatus" class="hint">背景の光源: 未解析</div>
+    <div class="hint">背景画像の明るい光源位置・光の色・環境色を端末内で推定し、キャラの色味と明るさ、光源側の輪郭光、足元の影を背景へ合わせます。同じ写真から分離した2層は元の陰影を保つため色調整と追加影を行いません。</div>
     </section>
 
     <section id="panel-crop" class="tabPanel" role="tabpanel" aria-labelledby="tab-crop" data-tab-panel="crop" hidden>
@@ -309,7 +318,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:36px;bo
       <button id="startTilt" class="secondary" type="button">端末傾きを開始</button>
       <button id="calibrateTilt" class="secondary" type="button" disabled>現在角度を中央に</button>
     </div>
-    <div class="hint">カメラ映像は端末内だけで背景へ合成し、同じ選択カメラを視線認識にも使います。背面カメラでは顔が映る配置の場合だけ視線を認識できます。iPhoneの傾きは開始ボタンで許可してください。</div>
+    <div class="hint">カメラ映像は端末内だけで背景へ合成し、同じ選択カメラを視線認識にも使います。背面カメラでは顔が映る配置の場合だけ視線を認識できます。Macへ接続したiPhone（連係カメラ）はiPhoneの背面カメラだけを提供するため、フロント／背面の切替はできません。iPhoneの傾きは開始ボタンで許可してください。</div>
     </section>
     </div>
 
@@ -443,12 +452,30 @@ uniform float u_debugShowCharacter;
 uniform float u_useCameraBackground;
 uniform float u_cameraAspect;
 uniform float u_cameraMirror;
+uniform vec3 u_fgGain;
+uniform vec3 u_lightColor;
+uniform vec2 u_sceneLightDir;
+uniform vec4 u_sceneLook;
+uniform vec4 u_footSpan;
+uniform vec2 u_shadowDir;
 varying vec2 v_uv;
 
 vec2 characterSourceUV(vec2 displayUV){
   float scale=max(u_characterScale,0.01);
   vec2 sourceUV=(displayUV-vec2(0.5)-u_characterOffset)/scale+vec2(0.5);
   return mix(displayUV,sourceUV,u_hasLayeredDemo);
+}
+
+// characterSourceUVの逆変換。キャラ素材上の点（足元など）を表示UVへ戻す。
+vec2 characterDisplayPoint(vec2 sourceUV){
+  float scale=max(u_characterScale,0.01);
+  vec2 displayUV=(sourceUV-vec2(0.5))*scale+vec2(0.5)+u_characterOffset;
+  return mix(sourceUV,displayUV,u_hasLayeredDemo);
+}
+
+// 接地点は素材座標で保持し、表示倍率・位置を変えても足元固定の基準を表示座標へ追従させる。
+float displayGroundAnchor(){
+  return characterDisplayPoint(vec2(0.5,u_groundAnchor)).y;
 }
 
 vec4 cameraBackgroundAt(vec2 uv){
@@ -546,6 +573,12 @@ float rigMotionAt(vec2 uv,vec2 center,vec2 radius,float angle,float rigid){
 
 float anchoredMotionWeight(vec2 uv){
   float anchorSpan=max(u_bodyRegion.w*1.15,0.12);
+  return smoothstep(0.0,anchorSpan,uv.y-displayGroundAnchor());
+}
+
+// リグ変形はキャラ素材座標で評価するため、素材座標の接地点を使う。
+float sourceAnchoredMotionWeight(vec2 uv){
+  float anchorSpan=max(u_bodyRegion.w*1.15,0.12);
   return smoothstep(0.0,anchorSpan,uv.y-u_groundAnchor);
 }
 
@@ -560,7 +593,7 @@ vec2 riggedForegroundUV(vec2 uv){
   float materialInfluence=rigMotionAt(uv,u_materialRegion.xy,u_materialRegion.zw,u_corePartAngles.z,u_corePartRigid.z)*u_corePartEnabled.z;
   float propInfluence=rigMotionAt(uv,u_rigCenters.zw,u_rigRadii.zw,u_corePartAngles.w,u_corePartRigid.w)*u_corePartEnabled.w;
   float bodyInfluence=rigMotionAt(uv,u_bodyRegion.xy,u_bodyRegion.zw,u_corePartAngles.x,u_corePartRigid.x)*u_corePartEnabled.x;
-  float anchorWeight=anchoredMotionWeight(uv);
+  float anchorWeight=sourceAnchoredMotionWeight(uv);
   vec2 headPoint=rigLocalPoint(uv,u_rigCenters.xy,u_rigRadii.xy,u_corePartAngles.y);
   vec2 bodyPoint=rigLocalPoint(uv,u_bodyRegion.xy,u_bodyRegion.zw,u_corePartAngles.x);
   float eyeBand=headInfluence*exp(-pow((headPoint.y-0.10)*8.5,2.0));
@@ -654,7 +687,7 @@ float portalFrameAt(vec2 uv){
 }
 
 vec2 trickPortalBackgroundUV(vec2 uv,float strength){
-  vec2 portalPivot=vec2(0.5,u_groundAnchor);
+  vec2 portalPivot=vec2(0.5,displayGroundAnchor());
   vec2 point=uv-portalPivot;
   // キャラの接地点を固定軸にし、上方の背景ほど奥行きを強くする。
   point.x*=1.0+point.y*0.24*strength;
@@ -689,6 +722,75 @@ float contactShadowAt(vec2 uv){
   // 全身の外周を影で縁取らず、接地する足元だけへ限定する。
   float groundBand=1.0-smoothstep(0.20,0.38,uv.y);
   return outside*smoothstep(0.10,0.78,caster)*cueAmount*groundBand;
+}
+
+float layerAlphaFast(vec2 uv){
+  if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0)return 0.0;
+  return texture2D(u_foregroundTex,uv).a;
+}
+
+// 2層素材の接地影。背景の推定光源方向へ人物シルエットを地面へ投影し、足元の接触影と合わせて背景だけを暗くする。
+// 人物の横へ同形の影を平行移動しないため、足元から離れるほど薄く・柔らかくなる。
+float groundShadowAt(vec2 sceneUV){
+  float strength=u_sceneLook.w*u_hasLayeredDemo*(1.0-u_debugLayerMode);
+  if(strength<0.001)return 0.0;
+  float scale=max(u_characterScale,0.01);
+  vec2 foot=characterDisplayPoint(vec2(u_footSpan.x,u_footSpan.z));
+  float footHalf=max(u_footSpan.y*scale,0.012);
+  float figureHeight=max(u_footSpan.w*scale,0.05);
+  // 接触影は足裏の真下ではなく、わずかに影方向・手前へずらして足元から見える位置へ置く。
+  vec2 contactCenter=foot+vec2(u_shadowDir.x*figureHeight*0.030,-figureHeight*0.006);
+  vec2 contactPoint=(sceneUV-contactCenter)/vec2(footHalf*1.55,figureHeight*0.016+0.004);
+  float contact=exp(-dot(contactPoint,contactPoint)*1.4);
+  float dirY=u_shadowDir.y<0.0 ? min(u_shadowDir.y,-0.06) : max(u_shadowDir.y,0.06);
+  float height=(sceneUV.y-foot.y)/dirY;
+  float castShadow=0.0;
+  if(height>0.0&&height<figureHeight*1.05){
+    vec2 caster=vec2(sceneUV.x-u_shadowDir.x*height,foot.y+height);
+    vec2 sourceUV=characterSourceUV(caster);
+    vec2 blurStep=vec2(0.0015+height*0.030)/max(scale,0.2);
+    float alpha=layerAlphaFast(sourceUV)*0.36;
+    alpha+=layerAlphaFast(sourceUV+vec2(blurStep.x,0.0))*0.16;
+    alpha+=layerAlphaFast(sourceUV-vec2(blurStep.x,0.0))*0.16;
+    alpha+=layerAlphaFast(sourceUV+vec2(0.0,blurStep.y))*0.16;
+    alpha+=layerAlphaFast(sourceUV-vec2(0.0,blurStep.y))*0.16;
+    castShadow=alpha*(1.0-0.70*smoothstep(0.0,figureHeight,height))*u_sceneLook.y;
+  }
+  // 足ごとの接触影。足首から下のシルエットを少し上（奥）・光源側から参照し、各足の裏と影側へ柔らかい暗がりを作る。
+  // 前後に開いた足でも、最下点1か所の楕円ではなくそれぞれの足元が接地して見える。
+  vec2 occluderShift=vec2(-u_shadowDir.x*0.012,0.010)*figureHeight;
+  vec2 occluderUV=sceneUV+occluderShift;
+  float footLimit=1.0-smoothstep(foot.y+figureHeight*0.07,foot.y+figureHeight*0.13,occluderUV.y);
+  vec2 aoStep=vec2(figureHeight*0.007)/max(scale,0.2);
+  vec2 occluderSource=characterSourceUV(occluderUV);
+  float occlusion=layerAlphaFast(occluderSource)*0.28;
+  occlusion+=layerAlphaFast(occluderSource+vec2(aoStep.x,0.0))*0.18;
+  occlusion+=layerAlphaFast(occluderSource-vec2(aoStep.x,0.0))*0.18;
+  occlusion+=layerAlphaFast(occluderSource+vec2(0.0,aoStep.y))*0.18;
+  occlusion+=layerAlphaFast(occluderSource-vec2(0.0,aoStep.y))*0.18;
+  occlusion*=footLimit;
+  float contactShadow=max(contact*0.28,occlusion*0.62);
+  return clamp(max(castShadow*0.70,contactShadow*(0.75+0.25*u_sceneLook.y)),0.0,0.75)*strength;
+}
+
+// 背景の環境光・光源色へ前景をなじませる。色味と明るさはJS側で算出したゲイン、逆光時は光源側の輪郭へリムライトを加える。
+vec3 harmonizeForeground(vec3 color,vec2 sourceUV){
+  float amount=clamp(u_sceneLook.x,0.0,1.0)*u_hasLayeredDemo*(1.0-u_debugLayerMode);
+  if(amount<0.001)return color;
+  vec3 graded=color*u_fgGain;
+  vec2 lightDir=normalize(u_sceneLightDir+vec2(0.0001));
+  vec2 rimStep=max(u_texelSize,vec2(0.0005))*7.0/max(u_characterScale,0.2);
+  float here=layerAlphaFast(sourceUV);
+  float towardLight=layerAlphaFast(sourceUV+lightDir*rimStep);
+  float towardLightFar=layerAlphaFast(sourceUV+lightDir*rimStep*2.2);
+  float rim=clamp(here-0.55*towardLight-0.45*towardLightFar,0.0,1.0);
+  graded+=u_lightColor*rim*u_sceneLook.y*(0.16+0.34*u_sceneLook.z);
+  // 光源と反対側の半身を少し暗くし、背景の光の向きと体の陰影をそろえる。
+  float figureHalfWidth=max(u_footSpan.w*0.22,0.04);
+  float side=clamp((sourceUV.x-u_footSpan.x)/figureHalfWidth,-1.0,1.0);
+  float awayFromLight=clamp(0.5-0.5*side*sign(lightDir.x+0.0001),0.0,1.0);
+  graded*=1.0-0.16*u_sceneLook.y*awayFromLight*here;
+  return mix(color,graded,amount);
 }
 
 float spatialWindowShadeAt(vec2 uv){
@@ -770,12 +872,15 @@ void main(){
   }
 
   if(u_enableTrickPortal>0.5){
-    vec2 portalBackgroundUV=trickPortalBackgroundUV(backgroundUV,trickPortalStrength);
+    // 2層背景は額縁で端を隠さないため、透視変形量を抑えて画面外参照（折り返し）を最小限にする。
+    vec2 portalBackgroundUV=trickPortalBackgroundUV(backgroundUV,trickPortalStrength*mix(1.0,0.35,u_hasLayeredDemo));
     // 2層素材は接地点で変形量を0にし、背景の台座と足元を一致させる。
     backgroundUV=mix(portalBackgroundUV,backgroundUV,(1.0-anchoredMotionWeight(base))*u_hasLayeredDemo);
   }
 
-  backgroundUV=clamp(backgroundUV,vec2(0.0),vec2(1.0));
+  // 2層背景は画面端を越えた参照をclampすると端の画素が縞状に伸びるため、鏡像で折り返して連続させる。
+  vec2 mirroredBackgroundUV=vec2(1.0)-abs(vec2(1.0)-abs(backgroundUV));
+  backgroundUV=mix(clamp(backgroundUV,vec2(0.0),vec2(1.0)),clamp(mirroredBackgroundUV,vec2(0.0),vec2(1.0)),u_hasLayeredDemo);
   foregroundUV=characterSourceUV(foregroundUV);
   foregroundUV=riggedForegroundUV(foregroundUV);
   // すべてのモードで移動先のマスクを使い、移動前の輪郭を合成へ残さない。
@@ -785,6 +890,11 @@ void main(){
   vec4 backgroundColor=mix(texture2D(u_tex,backgroundUV),layerBackground,u_hasLayeredDemo);
   vec4 foregroundColor=mix(texture2D(u_tex,foregroundUV),texture2D(u_foregroundTex,foregroundUV),u_hasLayeredDemo);
   foregroundColor.a=mix(foregroundColor.a,cleanLayerAlphaAt(foregroundUV),u_hasLayeredDemo);
+  if(u_hasLayeredDemo>0.5){
+    // 影は背景だけへ落とし、前景は背景の光源色・明るさへ合わせてから合成する。
+    backgroundColor.rgb*=1.0-groundShadowAt(backgroundUV);
+    foregroundColor.rgb=harmonizeForeground(foregroundColor.rgb,foregroundUV);
+  }
   vec4 c;
   if(u_enableDepthLayers>0.5||u_enableVibration>0.5||u_enableTrickPortal>0.5||u_hasLayeredDemo>0.5){
     c=mix(backgroundColor,foregroundColor,foregroundMask);
@@ -793,7 +903,9 @@ void main(){
   }
 
 
-  if(u_enableTrickPortal>0.5){
+  // 2層素材（写真・イラスト背景＋透過キャラ）では額縁と暗い外壁を描かない。背景の上へ灰色の半透明帯が重なって見え、
+  // 合成済み画像を参照すると額縁付近へ移動前の人物（頭など）の残像も出るため。2層では背景の透視変形と接地点固定だけを使う。
+  if(u_enableTrickPortal>0.5&&u_hasLayeredDemo<0.5){
     // 暗い外壁、透視変形した窓内、照明付き額縁、前景の順で重ねて越境錯視を作る。
     float portalInterior=portalInteriorAt(base);
     float portalFrame=portalFrameAt(base);
@@ -846,6 +958,20 @@ void main(){
       sourceColorAt(materialUV).g,
       sourceColorAt(materialUV-chromaShift).b
     );
+    if(u_hasLayeredDemo>0.5){
+      // 2層素材は背景と前景を各自の移動後UVで読む。合成済み画像を1つのUVで読むと人物の二重像になる。
+      vec3 shiftedForeground=vec3(
+        texture2D(u_foregroundTex,clamp(foregroundUV+chromaShift,vec2(0.0),vec2(1.0))).r,
+        foregroundColor.g,
+        texture2D(u_foregroundTex,clamp(foregroundUV-chromaShift,vec2(0.0),vec2(1.0))).b
+      );
+      vec3 shiftedBackground=vec3(
+        texture2D(u_backgroundTex,clamp(backgroundUV+chromaShift,vec2(0.0),vec2(1.0))).r,
+        backgroundColor.g,
+        texture2D(u_backgroundTex,clamp(backgroundUV-chromaShift,vec2(0.0),vec2(1.0))).b
+      );
+      chromaticSample=mix(shiftedBackground,shiftedForeground,foregroundMask);
+    }
     float phase=base.x*0.82+base.y*0.58+foilNormal.x*0.18-foilNormal.y*0.14+u_view.x*0.32-u_view.y*0.24;
     float bands=0.5+0.5*sin(phase*38.0);
     vec3 rainbow=hologramColor(phase*2.4+bands*0.08);
@@ -885,7 +1011,8 @@ void main(){
 
   // 2層素材では影も移動後の輪郭へ追従させ、元位置へ人物形状を残さない。
   vec2 shadowUV=mix(base,foregroundUV,u_hasLayeredDemo);
-  c.rgb*=1.0-contactShadowAt(shadowUV)*0.42*(1.0-u_debugLayerMode);
+  // 2層素材はgroundShadowAtで背景へ投影影を描くため、シルエットを平行移動する旧接地影は単一画像だけに使う。
+  c.rgb*=1.0-contactShadowAt(shadowUV)*0.42*(1.0-u_debugLayerMode)*(1.0-u_hasLayeredDemo);
   c.rgb*=1.0-spatialWindowShadeAt(v_uv)*0.20*(1.0-u_debugLayerMode);
   if(u_debugLayerMode<0.5)c.rgb*=contourCropMaskAt(foregroundUV);
   gl_FragColor=vec4(c.rgb,1.0);
@@ -935,7 +1062,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -963,7 +1090,7 @@ const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landm
 const PERSON_SEGMENTER_MODEL_URL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
 const POSE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
-let faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
+let cameraNotice="",faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
 let imageSegmenter=null,startingSegmentation=false;
 let poseLandmarker=null,poseLandmarkerPromise=null;
 let fpsN=0,fpsT=performance.now();
@@ -1077,9 +1204,8 @@ function loadURL(url,label,revoke=false){
   img.src=url;
 }
 
-function alphaBounds(source){
+function alphaBounds(source,width=192){
   const sample=document.createElement("canvas");
-  const width=192;
   const sourceWidth=source.naturalWidth||source.width;
   const sourceHeight=source.naturalHeight||source.height;
   const height=Math.max(1,Math.round(width*sourceHeight/sourceWidth));
@@ -1759,17 +1885,152 @@ function updateRigDebugStatus(autoRigActive=false){
 }
 
 // 共通背景の回転台中央上面。足先最下端を前縁ではなく、この接地線へ合わせる。
-const STANDEE_STAGE_CONTACT_Y=0.795;
+// 回転台の透明天板（楕円）は画像高さ0.769（奥の縁）〜0.824（手前の縁）。中心0.797より手前へ足先を置き、
+// 奥の縁に乗って浮いて見えないよう天板の手前側に立たせる。
+const STANDEE_STAGE_CONTACT_Y=0.814;
+
+const NEUTRAL_SCENE_LOOK={gain:[1,1,1],lightColor:[1,1,1],lightDir:[-0.4,0.6],directional:0,backlit:0,harmonize:0,shadow:0,foot:[0.5,0.05,0.1,0.8],shadowDir:[0.3,0.12],label:"未解析"};
+let sceneLook={...NEUTRAL_SCENE_LOOK};
+
+function sampleImagePixels(source,width){
+  const sourceWidth=source.naturalWidth||source.width||1;
+  const sourceHeight=source.naturalHeight||source.height||1;
+  const height=Math.max(1,Math.round(width*sourceHeight/sourceWidth));
+  const sample=document.createElement("canvas");
+  sample.width=width;sample.height=height;
+  const context=sample.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,width,height);
+  return {width,height,data:context.getImageData(0,0,width,height).data};
+}
+
+const luminance=(r,g,b)=>0.2126*r+0.7152*g+0.0722*b;
+
+// 背景の光源（最も明るい小領域）、光の色、環境色を推定し、前景の色ゲイン・輪郭光・影方向を決める。
+// 画像はcanvasで縮小して端末内だけで解析する。sceneMatchedは同じ絵から分離した2層で、元の陰影を保つ。
+function analyzeSceneLook(background,foreground,{sceneMatched=false,standee=false}={}){
+  const bg=sampleImagePixels(background,64);
+  const width=bg.width,height=bg.height,count=width*height;
+  const lumValues=new Float32Array(count);
+  let leftLum=0,rightLum=0;
+  const ground=[0,0,0];let groundCount=0;
+  for(let index=0;index<count;index++){
+    const r=bg.data[index*4]/255,g=bg.data[index*4+1]/255,b=bg.data[index*4+2]/255;
+    const value=luminance(r,g,b);
+    lumValues[index]=value;
+    const x=index%width,y=Math.floor(index/width);
+    if(x<width/2)leftLum+=value;else rightLum+=value;
+    // 人物が立つ下側45%（地面・床）の色を環境光の色として使う。空や海の固有色で前景を青くしない。
+    if(y>=height*0.55){ground[0]+=r;ground[1]+=g;ground[2]+=b;groundCount++}
+  }
+  const groundColor=ground.map(value=>value/Math.max(1,groundCount));
+  const sorted=Float32Array.from(lumValues).sort();
+  const median=sorted[Math.floor(count*0.5)],peak=sorted[Math.floor(count*0.985)];
+  const lightSum=[0,0,0];let lightCount=0;
+  for(let index=0;index<count;index++){
+    if(lumValues[index]<peak)continue;
+    for(let channel=0;channel<3;channel++)lightSum[channel]+=bg.data[index*4+channel]/255;
+    lightCount++;
+  }
+  const lightColorRaw=lightSum.map(value=>value/Math.max(1,lightCount));
+  // 5x5平均の最大位置を光源候補にし、周囲リングより十分明るい小領域なら画面内の太陽・照明とみなす。
+  let blobValue=-1,blobX=0,blobY=0;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    let sum=0,samples=0;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+      const sx=Math.max(0,Math.min(width-1,x+dx)),sy=Math.max(0,Math.min(height-1,y+dy));
+      sum+=lumValues[sy*width+sx];samples++;
+    }
+    if(sum/samples>blobValue){blobValue=sum/samples;blobX=x;blobY=y}
+  }
+  let ringSum=0,ringCount=0;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const distance=Math.hypot(x-blobX,y-blobY);
+    if(distance>=6&&distance<=12){ringSum+=lumValues[y*width+x];ringCount++}
+  }
+  const prominence=blobValue-ringSum/Math.max(1,ringCount);
+  const lightX=(blobX+0.5)/width,lightY=(blobY+0.5)/height;
+  // 明るい屋外ほど影がはっきりし、暗い室内・展示台は拡散光として足元の接触影だけにする。
+  const directional=Math.max(0,Math.min(1,(blobValue-0.55)/0.35))*Math.max(0,Math.min(1,(median-0.25)/0.35));
+  const sunInFrame=directional>0.3&&prominence>=0.17&&blobValue>=0.9&&lightX>0.04&&lightX<0.96&&lightY<0.7;
+
+  const fg=sampleImagePixels(foreground,128);
+  let fgR=0,fgG=0,fgB=0,fgCount=0,top=fg.height,bottom=-1;
+  for(let y=0;y<fg.height;y++)for(let x=0;x<fg.width;x++){
+    const offset=(y*fg.width+x)*4;
+    if(fg.data[offset+3]<200)continue;
+    fgR+=fg.data[offset]/255;fgG+=fg.data[offset+1]/255;fgB+=fg.data[offset+2]/255;fgCount++;
+    top=Math.min(top,y);bottom=Math.max(bottom,y);
+  }
+  if(bottom<0){top=0;bottom=fg.height-1}
+  const footBand=Math.max(1,Math.round((bottom-top+1)*0.035));
+  let footMin=fg.width,footMax=-1;
+  for(let y=Math.max(top,bottom-footBand);y<=bottom;y++)for(let x=0;x<fg.width;x++){
+    if(fg.data[(y*fg.width+x)*4+3]<128)continue;
+    footMin=Math.min(footMin,x);footMax=Math.max(footMax,x);
+  }
+  if(footMax<footMin){footMin=fg.width*0.45;footMax=fg.width*0.55}
+  const footCenterX=(footMin+footMax+1)*0.5/fg.width;
+  const footHalfWidth=Math.max(0.012,(footMax-footMin+1)*0.5/fg.width);
+  const groundY=1-(bottom+1)/fg.height;
+  const figureHeight=(bottom-top+1)/fg.height;
+  const fgMean=[fgR,fgG,fgB].map(value=>value/Math.max(1,fgCount));
+
+  // 光の向き（表示UV、上向き正）。画面内光源は足元→光源、画面外は明るい側の上方から当たるとみなす。
+  const side=Math.abs(lightX-0.5)>0.25 ? Math.sign(lightX-0.5) : Math.sign(rightLum-leftLum)||-1;
+  let lightDir=sunInFrame ? [lightX-footCenterX,(1-lightY)-(groundY+figureHeight*0.55)] : [side*0.75,0.65];
+  const lightLength=Math.hypot(lightDir[0],lightDir[1])||1;
+  lightDir=lightDir.map(value=>value/lightLength);
+  // 地平線付近の夕日など画面内の光源は人物の奥にあるため逆光とし、低い太陽の長い影を光源と反対側の手前へ伸ばす。
+  // 足元が画面下端にある全身画像でも影が見えるよう、手前方向は控えめにして横方向へ長く投影する。
+  const backlit=sunInFrame ? directional : 0;
+  const shadowDir=sunInFrame
+    ? [Math.max(-1.1,Math.min(1.1,(footCenterX-lightX)*2.4)),-0.05]
+    : [-side*0.55,-0.10];
+
+  // 地面色と光源色から照明色を作り、前景の色味へ部分適用する（服の固有色は消さない）。逆光の夕景ほど強める。
+  const illuminant=[0,1,2].map(channel=>groundColor[channel]*(1-0.3*directional)+lightColorRaw[channel]*0.3*directional);
+  const illuminantLum=Math.max(0.02,luminance(...illuminant));
+  const tintAmount=0.6+0.3*backlit;
+  let tint=illuminant.map(value=>1+(Math.max(0.8,Math.min(1.3,value/illuminantLum))-1)*tintAmount);
+  const tintLum=luminance(...tint)||1;
+  tint=tint.map(value=>value/tintLum);
+  const groundLum=luminance(...groundColor),fgLum=Math.max(0.02,luminance(...fgMean));
+  const brightness=Math.max(0.74,Math.min(1.06,Math.pow(groundLum/fgLum,0.35)))*(1-0.16*backlit);
+  const gain=tint.map(value=>value*brightness);
+  const lightNorm=Math.max(...lightColorRaw,0.001);
+  const lightColor=lightColorRaw.map(value=>Math.min(1,value/lightNorm));
+  const describe=directional<0.15?"拡散光（影は足元のみ）":sunInFrame?"逆光（光源が画面内）":side>0?"右上からの日差し":"左上からの日差し";
+  return {
+    gain,lightColor,lightDir,directional,backlit,
+    harmonize:sceneMatched?0:1,
+    shadow:sceneMatched?0:(standee?0.85:1),
+    foot:[footCenterX,footHalfWidth,groundY,figureHeight],
+    shadowDir,
+    label:sceneMatched?"同一画像の2層（元の陰影を維持）":`${describe}・光源色 rgb(${lightColor.map(value=>Math.round(value*255)).join(",")})`
+  };
+}
+
+function applySceneLook(background,foreground,options){
+  try{sceneLook=analyzeSceneLook(background,foreground,options)}
+  catch(error){console.warn("Scene look analysis failed:",error);sceneLook={...NEUTRAL_SCENE_LOOK,label:"解析できないため調整なし"}}
+  syncSceneLookControls();
+}
+
+function syncSceneLookControls(){
+  $("#sceneHarmonizeValue").textContent=`${Math.round(parseFloat($("#sceneHarmonize").value)*100)}%`;
+  $("#sceneShadowValue").textContent=`${Math.round(parseFloat($("#sceneShadow").value)*100)}%`;
+  $("#sceneLookStatus").textContent=`背景の光源: ${hasLayeredDemo?sceneLook.label:"2層表示時のみ"}`;
+}
 
 function prepareStandeeForStage(source,demo){
   const canvas=document.createElement("canvas");
   canvas.width=768;canvas.height=1152;
-  const bounds=alphaBounds(source);
+  // 192px縮小の外接矩形では足先が最大数px浮くため、512px幅で接地位置を測る。
+  const bounds=alphaBounds(source,512);
   const sourceWidth=source.naturalWidth||source.width;
   const sourceHeight=source.naturalHeight||source.height;
-  const sourceScaleX=sourceWidth/192;
-  const sampledHeight=Math.max(1,Math.round(192*sourceHeight/sourceWidth));
-  const sourceScaleY=sourceHeight/sampledHeight;
+  const sourceScaleX=sourceWidth/bounds.sampleWidth;
+  const sourceScaleY=sourceHeight/bounds.sampleHeight;
   const sourceRect={
     x:bounds.x*sourceScaleX,y:bounds.y*sourceScaleY,
     width:bounds.width*sourceScaleX,height:bounds.height*sourceScaleY
@@ -1833,9 +2094,9 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
 }
 
 const DEMO_ASSETS=[
-  {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
-  {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68",rigType:"human",chestMotion:true},
-  {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
+  {src:"assets/demos/demo-mascot.jpg",background:"assets/demos/demo-mascot-background.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"激烈ゆるキャラ",sceneMatched:true,centerX:"0.50",centerY:"0.50",radius:"0.40",strength:"0.72"},
+  {src:"assets/demos/demo-heroine.jpg",background:"assets/demos/demo-heroine-background.jpg",foreground:"assets/demos/demo-heroine-foreground.png",label:"美少女キャラ",sceneMatched:true,centerX:"0.50",centerY:"0.43",radius:"0.42",strength:"0.68",rigType:"human",chestMotion:true},
+  {src:"assets/demos/demo-fluffy.jpg",background:"assets/demos/demo-fluffy-background.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフ動物",sceneMatched:true,centerX:"0.50",centerY:"0.51",radius:"0.43",strength:"0.74"},
   {src:"assets/demos/demo-mascot-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-mascot-foreground.png",label:"ゆるアクスタ（透過）",centerX:"0.50",centerY:"0.51",radius:"0.40",strength:"0.72",standee:true,stageWidth:0.64},
   {src:"assets/demos/demo-fluffy-foreground.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-fluffy-foreground.png",label:"モフモフアクスタ（透過）",centerX:"0.51",centerY:"0.50",radius:"0.43",strength:"0.74",standee:true,stageWidth:0.66},
   {src:"assets/demos/demo-standee-girl-celestial.png",background:"assets/demos/standee-stage.jpg",foreground:"assets/demos/demo-standee-girl-celestial.png",label:"星詠み美少女",centerX:"0.50",centerY:"0.48",radius:"0.42",strength:"0.72",standee:true,rigType:"human",chestMotion:true,poseOverrides:{hipLeft:[.545,.430],hipRight:[.445,.430],kneeLeft:[.580,.645],kneeRight:[.470,.620],ankleLeft:[.640,.900],ankleRight:[.430,.880]},rig:{head:[0.50,0.16,0.18,0.15],material:[0.50,0.33,0.46,0.39],prop:[0.64,0.45,0.15,0.16]}},
@@ -1904,6 +2165,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     foregroundLayerSource=displayedForeground;
     hasLayeredDemo=true;
     hasSubjectMask=true;
+    applySceneLook(background,displayedForeground,{sceneMatched:demo.sceneMatched===true,standee:Boolean(demo.standee)});
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
     activeRigProfile.rigType=demo.rigType||"generic";
     activeRigProfile.chestMotion=demo.chestMotion===true;
@@ -2007,6 +2269,7 @@ async function activateIndependentLayers(label="個別レイヤー",{preserveCha
   uploadMapImage(subjectMaskTex,gl.TEXTURE2,subjectMaskCanvas);
   hasLayeredDemo=true;
   hasSubjectMask=true;
+  applySceneLook(backgroundLayerSource,foregroundLayerSource);
   activeDemoIndex=-1;
   updateDemoSelection();
   activeRigProfile=inferRigProfile(foregroundLayerSource);
@@ -2074,6 +2337,8 @@ function clearMaps({announce=true,preserveCharacterPlacement=false}={}){
   inferredBonePoints=[];
   activeMotionRange=[0.018,0.012];
   activeStandee=false;
+  sceneLook={...NEUTRAL_SCENE_LOOK};
+  syncSceneLookControls();
   resetRigSprings();
   recognitionBounds=null;
   recognitionGuideCanvas=null;
@@ -2556,6 +2821,8 @@ async function createLayeredSceneFromMask(){
     backgroundLayerSource=background;
     foregroundLayerSource=foreground;
     hasLayeredDemo=true;
+    // 同じ写真から分離した2層は元の陰影と色が一致しているため、追加の色調整・影は行わない。
+    applySceneLook(background,foreground,{sceneMatched:true});
     activeDemoIndex=-1;
     updateDemoSelection();
     activeRigProfile=inferRigProfile(foreground);
@@ -2766,6 +3033,8 @@ function syncCharacterPlacementControls(){
   for(const id of ["characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"])$("#"+id).disabled=!hasLayeredDemo;
   $("#bgLayerStrengthValue").textContent=`${Math.round(parseFloat($("#bgLayerStrength").value)*100)}%`;
   $("#resetCharacterPlacement").disabled=!hasLayeredDemo;
+  $("#moveCharacter").hidden=!hasLayeredDemo;
+  if(!hasLayeredDemo&&typeof setCharacterDragMode==="function"&&characterDragMode)setCharacterDragMode(false);
 }
 function resetCharacterPlacement(){
   $("#characterScale").value="1";
@@ -2776,6 +3045,7 @@ function resetCharacterPlacement(){
 for(const id of ["characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"]){
   $("#"+id).addEventListener("input",syncCharacterPlacementControls);
 }
+for(const id of ["sceneHarmonize","sceneShadow"])$("#"+id).addEventListener("input",syncSceneLookControls);
 $("#resetCharacterPlacement").addEventListener("click",()=>{
   resetCharacterPlacement();
   pushEditHistory();
@@ -2790,7 +3060,7 @@ const EDIT_CONTROL_IDS=[
   "hologramStrength","reliefStrength","vibrationStrength","vibrationHorizontal","vibrationVertical","vibrationSpeed","depthLayerStrength","trickPortalStrength",
   "edgeCleanup","hologramNearSuppression","lightX","lightY","lightingStrength","depth","cx","cy","radius",
   "enableSpatial","spatialStrength","zeroParallax","viewDepth","contourCrop","cropFeather",
-  "characterScale","characterOffsetX","characterOffsetY","bgLayerStrength"
+  "characterScale","characterOffsetX","characterOffsetY","bgLayerStrength","sceneHarmonize","sceneShadow"
 ];
 
 function captureEditState(){
@@ -3376,11 +3646,46 @@ function cameraErrorMessage(error){
   return (error && error.message) ? `${name}: ${error.message}` : String(error);
 }
 
-function cameraConstraints(){
-  const selectedDevice=$("#cameraDevice").value;
+function cameraConstraints({deviceId="",facingExact=false}={}){
+  const selectedDevice=deviceId||$("#cameraDevice").value;
   const facing=$("#cameraFacing").value||"user";
-  const videoConstraints=selectedDevice?{deviceId:{exact:selectedDevice}}:{facingMode:{ideal:facing}};
+  const videoConstraints=selectedDevice?{deviceId:{exact:selectedDevice}}:{facingMode:facingExact?{exact:facing}:{ideal:facing}};
   return {video:{...videoConstraints,width:{ideal:1280},height:{ideal:720}},audio:false};
+}
+
+// Macの連係カメラ（USB／無線接続したiPhone）はiPhoneの背面カメラだけを提供し、facingModeも返さない。
+const CONTINUITY_CAMERA_LABEL=/iphone|ipad|continuity|連係/i;
+const FRONT_CAMERA_LABEL=/front|前面|facetime|built-?in|内蔵|user/i;
+const BACK_CAMERA_LABEL=/back|rear|背面|environment/i;
+
+// 方向指定時は、ラベルから一致するカメラを優先する。facingModeを無視するデスクトップで別カメラが開くのを防ぐ。
+async function cameraDeviceForFacing(facing){
+  if(!navigator.mediaDevices?.enumerateDevices)return "";
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==="videoinput"&&device.label);
+  if(devices.length<2)return "";
+  const wanted=facing==="user"?FRONT_CAMERA_LABEL:BACK_CAMERA_LABEL;
+  const match=devices.find(device=>wanted.test(device.label));
+  if(match)return match.deviceId;
+  if(facing==="user"){
+    const nonContinuity=devices.find(device=>!CONTINUITY_CAMERA_LABEL.test(device.label)&&!BACK_CAMERA_LABEL.test(device.label));
+    if(nonContinuity)return nonContinuity.deviceId;
+  }
+  return "";
+}
+
+function cameraFacingNotice(track,requestedFacing){
+  const settings=track?.getSettings?.()||{};
+  const label=track?.label||"";
+  if(settings.facingMode)return settings.facingMode===requestedFacing ? "" : `要求した${requestedFacing==="user"?"フロント":"背面"}カメラを使用できないため、${settings.facingMode==="user"?"フロント":"背面"}カメラで動作しています。`;
+  if(requestedFacing==="user"&&CONTINUITY_CAMERA_LABEL.test(label))return `「${label}」はMacの連係カメラです。連係カメラはiPhoneの背面カメラだけを提供するため、フロントカメラ映像には切り替えられません。iPhone本体のSafariで開くとフロントカメラを使用できます。`;
+  return "";
+}
+
+function cameraMirrorActive(fallbackFacing){
+  const settings=stream?.getVideoTracks?.()[0]?.getSettings?.()||{};
+  if(settings.facingMode)return settings.facingMode==="user";
+  // 向き情報のないデスクトップ用カメラ（連係カメラを含む）は利用者を向くため鏡像表示にする。
+  return stream ? true : fallbackFacing==="user";
 }
 
 async function enumerateCameras(){
@@ -3400,7 +3705,21 @@ async function startCamera(){
   }
 
   statusEl.textContent="カメラ許可を確認中…";
-  const nextStream=await navigator.mediaDevices.getUserMedia(cameraConstraints());
+  const facing=$("#cameraFacing").value||"user";
+  const explicitDevice=$("#cameraDevice").value;
+  let nextStream;
+  if(explicitDevice){
+    nextStream=await navigator.mediaDevices.getUserMedia(cameraConstraints());
+  }else{
+    // 許可済みでラベルが読める場合は方向に合うカメラを選び、無ければ厳密なfacingMode、最後にidealへ緩める。
+    const labelledDevice=await cameraDeviceForFacing(facing).catch(()=>"");
+    try{
+      nextStream=await navigator.mediaDevices.getUserMedia(labelledDevice?cameraConstraints({deviceId:labelledDevice}):cameraConstraints({facingExact:true}));
+    }catch(error){
+      if(error?.name==="NotAllowedError"||error?.name==="SecurityError")throw error;
+      nextStream=await navigator.mediaDevices.getUserMedia(cameraConstraints());
+    }
+  }
 
   try{
     video.srcObject=nextStream;
@@ -3409,6 +3728,8 @@ async function startCamera(){
     cameraOn=true;
     cameraAspect=(video.videoWidth||1280)/Math.max(1,video.videoHeight||720);
     await enumerateCameras();
+    // 使用カメラを明示選択した場合は方向の不一致を警告しない。
+    cameraNotice=explicitDevice ? "" : cameraFacingNotice(nextStream.getVideoTracks()[0],facing);
     $("#stopCamera").disabled=false;
     $("#camera").textContent="選択カメラ動作中・顔検出準備中";
     statusEl.textContent="カメラ起動済み・顔検出準備中…";
@@ -3454,6 +3775,7 @@ async function startFace(){
   try{
     // iOS Safariのユーザー操作中に、外部AIモジュールより先にカメラを要求する。
     await startCamera();
+    errEl.textContent=cameraNotice;
   }catch(error){
     cameraOn=false;
     trackingOn=false;
@@ -3478,7 +3800,7 @@ async function startFace(){
   }catch(error){
     trackingOn=false;
     faceLandmarker=null;
-    errEl.textContent="カメラは起動しましたが、顔検出の準備に失敗しました。ドラッグ操作は使用できます。詳細: "+cameraErrorMessage(error);
+    errEl.textContent="カメラは起動しましたが、顔検出の準備に失敗しました。ドラッグ操作は使用できます。詳細: "+cameraErrorMessage(error)+(cameraNotice?" ／ "+cameraNotice:"");
     statusEl.textContent="カメラ動作中・ドラッグ操作モード";
     cameraButton.textContent="顔追跡を再試行";
   }finally{
@@ -3605,10 +3927,91 @@ function movePointer(e){
   pointerTargetX=Math.max(-1,Math.min(1,((e.clientX-r.left)/r.width-.5)*2));
   pointerTargetY=Math.max(-1,Math.min(1,(.5-(e.clientY-r.top)/r.height)*2));
 }
-canvas.addEventListener("pointerdown",e=>{dragging=true;movePointer(e);canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener("pointermove",e=>{if(dragging||$("#viewInputMode").value==="pointer")movePointer(e)});
-canvas.addEventListener("pointerup",()=>dragging=false);
-canvas.addEventListener("pointercancel",()=>dragging=false);
+// 「キャラ移動」ON中は、画面ドラッグを視点操作ではなくキャラ配置（移動・ピンチ拡縮）へ割り当てる。
+// syncCharacterPlacementControlsが初期化中にも参照するため、TDZにならないvarで宣言する。
+var characterDragMode=false;
+const characterDragPointers=new Map();
+let characterDragStart=null;
+function characterMoveAvailable(){return characterDragMode&&hasLayeredDemo}
+function imageDisplayRect(){
+  const rect=canvas.getBoundingClientRect();
+  const screenAspect=rect.width/Math.max(1,rect.height);
+  const width=Math.max(1,screenAspect>imgAspect ? rect.height*imgAspect : rect.width);
+  const height=Math.max(1,screenAspect>imgAspect ? rect.height : rect.width/imgAspect);
+  return {left:rect.left+(rect.width-width)/2,top:rect.top+(rect.height-height)/2,width,height};
+}
+function clampPlacement(id,value){
+  const input=$("#"+id);
+  return Math.max(parseFloat(input.min),Math.min(parseFloat(input.max),value));
+}
+function characterDragSnapshot(){
+  const points=[...characterDragPointers.values()];
+  const centerX=points.reduce((sum,point)=>sum+point.x,0)/points.length;
+  const centerY=points.reduce((sum,point)=>sum+point.y,0)/points.length;
+  const spread=points.length>1 ? Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y) : 0;
+  return {centerX,centerY,spread,placement:characterPlacementValues()};
+}
+function applyCharacterDrag(){
+  if(!characterDragStart||!characterDragPointers.size)return;
+  const current=characterDragSnapshot(),rect=imageDisplayRect();
+  const start=characterDragStart.placement;
+  const scale=characterDragStart.spread>8&&current.spread>0 ? clampPlacement("characterScale",start.scale*current.spread/characterDragStart.spread) : start.scale;
+  const ratio=scale/start.scale;
+  // 指の中点の下にあるキャラ上の点を保ったまま移動・拡縮する（画面座標、下向き正＝上下位置スライダと同じ向き）。
+  const startX=(characterDragStart.centerX-rect.left)/rect.width,startY=(characterDragStart.centerY-rect.top)/rect.height;
+  const nowX=(current.centerX-rect.left)/rect.width,nowY=(current.centerY-rect.top)/rect.height;
+  $("#characterScale").value=scale.toFixed(3);
+  $("#characterOffsetX").value=clampPlacement("characterOffsetX",nowX-0.5-(startX-0.5-start.x)*ratio).toFixed(3);
+  $("#characterOffsetY").value=clampPlacement("characterOffsetY",nowY-0.5-(startY-0.5-start.y)*ratio).toFixed(3);
+  syncCharacterPlacementControls();
+}
+function restartCharacterDrag(){characterDragStart=characterDragPointers.size?characterDragSnapshot():null}
+function setCharacterDragMode(enabled){
+  characterDragMode=Boolean(enabled)&&hasLayeredDemo;
+  $("#moveCharacter").setAttribute("aria-pressed",String(characterDragMode));
+  $("#moveCharacter").textContent=characterDragMode?"移動を終了":"キャラ移動";
+  canvas.style.cursor=characterDragMode?"move":"";
+  if(characterDragMode){dragging=false;statusEl.textContent="キャラ移動: ドラッグで移動・ピンチ／ホイールで拡大縮小"}
+}
+$("#moveCharacter").addEventListener("click",()=>setCharacterDragMode(!characterDragMode));
+canvas.addEventListener("pointerdown",e=>{
+  if(characterMoveAvailable()){
+    characterDragPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    restartCharacterDrag();
+    try{canvas.setPointerCapture(e.pointerId)}catch(error){console.warn("Pointer capture unavailable:",error)}
+    return;
+  }
+  dragging=true;movePointer(e);canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener("pointermove",e=>{
+  if(characterDragPointers.has(e.pointerId)){
+    characterDragPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    applyCharacterDrag();
+    return;
+  }
+  if(characterMoveAvailable())return;
+  if(dragging||$("#viewInputMode").value==="pointer")movePointer(e);
+});
+function endCanvasPointer(e){
+  if(characterDragPointers.has(e.pointerId)){
+    characterDragPointers.delete(e.pointerId);
+    restartCharacterDrag();
+    if(!characterDragPointers.size)pushEditHistory();
+    return;
+  }
+  dragging=false;
+}
+canvas.addEventListener("pointerup",endCanvasPointer);
+canvas.addEventListener("pointercancel",endCanvasPointer);
+canvas.addEventListener("wheel",e=>{
+  if(!characterMoveAvailable())return;
+  e.preventDefault();
+  const placement=characterPlacementValues();
+  $("#characterScale").value=clampPlacement("characterScale",placement.scale*Math.exp(-e.deltaY*0.0015)).toFixed(3);
+  syncCharacterPlacementControls();
+  clearTimeout(canvas.wheelHistoryTimer);
+  canvas.wheelHistoryTimer=setTimeout(pushEditHistory,350);
+},{passive:false});
 
 window.addEventListener("pagehide",()=>{
   if(stream) stream.getTracks().forEach(track=>track.stop());
@@ -3747,7 +4150,16 @@ function render(now){
   gl.uniform1f(U.u_useCameraBackground,cameraBackgroundActive ? 1 : 0);
   gl.uniform1f(U.u_cameraAspect,cameraAspect);
   const activeFacing=stream?.getVideoTracks?.()[0]?.getSettings?.().facingMode||$("#cameraFacing").value;
-  gl.uniform1f(U.u_cameraMirror,activeFacing==="user" ? 1 : 0);
+  gl.uniform1f(U.u_cameraMirror,cameraMirrorActive(activeFacing) ? 1 : 0);
+  // カメラ映像背景では静止背景の解析結果が合わないため、色調整を止めて足元の接触影だけを残す。
+  const harmonizeAmount=parseFloat($("#sceneHarmonize").value)*sceneLook.harmonize*(cameraBackgroundActive?0:1);
+  const shadowAmount=parseFloat($("#sceneShadow").value)*sceneLook.shadow;
+  gl.uniform3f(U.u_fgGain,...sceneLook.gain);
+  gl.uniform3f(U.u_lightColor,...sceneLook.lightColor);
+  gl.uniform2f(U.u_sceneLightDir,sceneLook.lightDir[0],sceneLook.lightDir[1]);
+  gl.uniform4f(U.u_sceneLook,harmonizeAmount,cameraBackgroundActive?0:sceneLook.directional,sceneLook.backlit,shadowAmount);
+  gl.uniform4f(U.u_footSpan,...sceneLook.foot);
+  gl.uniform2f(U.u_shadowDir,sceneLook.shadowDir[0],sceneLook.shadowDir[1]);
   gl.uniform1f(U.u_autoRigEnabled,autoRigActive ? 1 : 0);
   const core=Object.fromEntries(Object.keys(RIG_PARTS).map(role=>[role,activeRigParts.find(part=>part.role===role)]));
   const coreMotion=role=>core[role]&&rigSprings[core[role].id]?rigSprings[core[role].id]:newRigSpring();

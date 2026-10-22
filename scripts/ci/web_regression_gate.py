@@ -159,10 +159,14 @@ def main() -> int:
         "abs((base.x+base.y*0.24)-(0.16+mod(u_time*0.075,1.28)))/0.13" in html,
         "アクスタ反射帯を0〜1へ収める幅正規化がありません",
     )
-    require("function alphaBounds(source)" in html, "透過輪郭の自動認識がありません")
+    require("function alphaBounds(source,width=192)" in html, "透過輪郭の自動認識がありません")
+    require("const bounds=alphaBounds(source,512);" in html, "アクスタ接地位置を512px幅で測っていません（192px縮小では足先が浮きます）")
     require("function inferRigProfile(source)" in html, "人物／動物／物体の共通リグ推定がありません")
     require("function prepareStandeeForStage(source,demo)" in html, "展示背景へアクスタを自動配置できません")
-    require("const STANDEE_STAGE_CONTACT_Y=0.795;" in html, "回転台上面の接地線が定義されていません")
+    # 回転台の透明天板は画像高さ0.769（奥の縁）〜0.824（手前の縁）。中心0.797以下だと奥の縁へ乗って浮いて見える。
+    contact_match = re.search(r"const STANDEE_STAGE_CONTACT_Y=(0\.\d+);", html)
+    require(contact_match is not None, "回転台上面の接地線が定義されていません")
+    require(0.80 <= float(contact_match.group(1)) <= 0.82, "アクスタの足元が回転台天板の手前側（0.80〜0.82）にありません")
     require("targetBottom=demo.stageBottom||STANDEE_STAGE_CONTACT_Y" in html, "アクスタの足元が回転台上面へ揃いません")
     require("targetBottom=demo.stageBottom||0.84" not in html, "古い回転台前縁の接地線が残っています")
     require("activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground)" in html, "背景付きデモ全体の認識結果を自動リグへ使用していません")
@@ -174,7 +178,8 @@ def main() -> int:
     require("uniform vec2 u_motionRange;" in html, "背景内の許容稼働範囲がありません")
     require("float anchoredMotionWeight(vec2 uv)" in html, "足元へ向けて前景視差を減衰できません")
     require("mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base))" in html, "背景と足元の共通座標がありません")
-    require("vec2 portalPivot=vec2(0.5,u_groundAnchor);" in html, "背景透視変形が接地点を中心にしていません")
+    require("vec2 portalPivot=vec2(0.5,displayGroundAnchor());" in html, "背景透視変形が接地点を中心にしていません")
+    require("float displayGroundAnchor()" in html and "float sourceAnchoredMotionWeight(vec2 uv)" in html, "キャラ配置変更後の接地点を表示座標へ変換していません")
     require("(1.0-anchoredMotionWeight(base))*u_hasLayeredDemo" in html, "ポータル背景が接地点で固定されていません")
     require("clamp(offset,-u_motionRange,u_motionRange)" in html, "前景と背景の稼働範囲制限がありません")
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
@@ -609,7 +614,12 @@ def main() -> int:
     require("navigator.mediaDevices.enumerateDevices" in html, "PCを含むカメラ一覧取得がありません")
     require("function cameraConstraints(" in html, "指定カメラ／前面／背面の制約生成がありません")
     require("deviceId:{exact:selectedDevice}" in html, "選択したカメラをgetUserMediaへ指定していません")
-    require('facingMode:{ideal:facing}' in html, "前面／背面カメラ指定がありません")
+    require('facingMode:facingExact?{exact:facing}:{ideal:facing}' in html, "前面／背面カメラ指定がありません")
+    # Macの連係カメラ（USB接続iPhone）は背面カメラしか提供しない。フロント指定時に黙って背面映像を出さず理由を表示する。
+    require("function cameraFacingNotice(" in html and "連係カメラはiPhoneの背面カメラだけを提供" in html, "連係カメラでフロント指定した場合の説明がありません")
+    require("cameraConstraints({facingExact:true})" in html, "方向指定時に厳密なfacingModeを先に試していません")
+    require("async function cameraDeviceForFacing(" in html, "ラベルから方向に合うカメラを選ぶ処理がありません")
+    require("cameraMirrorActive(activeFacing)" in html, "実際のカメラ向きから鏡像表示を決めていません")
     require("function handleDeviceOrientation(" in html, "端末傾きの視点入力処理がありません")
     require("DeviceOrientationEvent.requestPermission" in html, "iOSの端末傾き権限要求がありません")
     require("uniform sampler2D u_cameraBackgroundTex;" in html, "カメラ背景用テクスチャがありません")
@@ -640,6 +650,50 @@ def main() -> int:
     require('panelToggle.setAttribute("aria-expanded",String(visible))' in html, "切替ボタンのaria-expanded更新がありません")
     require("p3d.settingsPanelVisible.v1" in html, "設定パネルの表示状態保存がありません")
     require("prefers-reduced-motion:reduce" in html, "視差低減設定への対応がありません")
+
+    # 2層合成の不自然表示（2026-10-22報告）: 頭の残像、足横の灰色帯、背景光源と無関係な影・色味。
+    fragment_match = re.search(r"const fs=`(?P<body>.*?)`;", html, re.DOTALL)
+    require(fragment_match is not None, "fragment shaderを取得できません")
+    fragment = fragment_match.group("body")
+    glsl_reserved = {
+        "asm", "cast", "class", "union", "enum", "typedef", "template", "this", "packed", "goto", "switch", "default",
+        "inline", "noinline", "volatile", "public", "static", "extern", "external", "interface", "flat", "long", "short",
+        "double", "half", "fixed", "unsigned", "superp", "input", "output", "hvec2", "hvec3", "hvec4", "dvec2", "dvec3",
+        "dvec4", "fvec2", "fvec3", "fvec4", "sampler1D", "sampler3D", "sampler1DShadow", "sampler2DShadow",
+        "sampler2DRect", "sampler3DRect", "sampler2DRectShadow", "sizeof", "namespace", "using",
+    }
+    used_reserved = sorted(word for word in set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", fragment)) if word in glsl_reserved)
+    require(not used_reserved, f"GLSL ES予約語を識別子に使うとshaderがコンパイルできず画面が表示されません: {used_reserved}")
+    require(
+        "if(u_enableTrickPortal>0.5&&u_hasLayeredDemo<0.5){" in fragment,
+        "2層素材へトリックポータルの額縁・外壁を重ねています（灰色の半透明帯・移動前人物の残像の原因）",
+    )
+    portal_block = fragment.split("if(u_enableTrickPortal>0.5&&u_hasLayeredDemo<0.5){", 1)[1].split("\n  }\n", 1)[0]
+    require("sourceColorAt(base)" in portal_block, "単一画像のポータル外壁処理が失われています")
+    require(
+        "shiftedForeground" in fragment and "shiftedBackground" in fragment,
+        "2層素材のホログラム色収差が合成済み画像を単一UVで読み、人物の二重像を作ります",
+    )
+    require(
+        "*(1.0-u_debugLayerMode)*(1.0-u_hasLayeredDemo);" in fragment,
+        "2層素材でシルエットを平行移動した旧接地影（足横の灰色の影）が残っています",
+    )
+    shadow_index = fragment.find("backgroundColor.rgb*=1.0-groundShadowAt(backgroundUV);")
+    composite_index = fragment.find("c=mix(backgroundColor,foregroundColor,foregroundMask);")
+    require(0 <= shadow_index < composite_index, "接地影は前景合成前に背景だけへ落としてください（人物まで暗くなります）")
+    require("float groundShadowAt(vec2 sceneUV)" in fragment and "footLimit" in fragment, "背景光源方向の投影影と足ごとの接触影がありません")
+    require("foregroundColor.rgb=harmonizeForeground(foregroundColor.rgb,foregroundUV);" in fragment, "前景を背景の光の色・明るさへなじませていません")
+    require("vec2 mirroredBackgroundUV=" in fragment, "2層背景の画面外参照が端の縞（clamp伸び）になります")
+    require(html.count("applySceneLook(") >= 4, "デモ・個別レイヤー・一枚絵2層化の各経路で背景光源を解析していません")
+    require("applySceneLook(background,foreground,{sceneMatched:true});" in html, "同じ写真から分離した2層へ不要な色調整・追加影を掛けています")
+    for element_id in ("sceneHarmonize", "sceneShadow", "sceneLookStatus", "moveCharacter"):
+        require(f'id="{element_id}"' in html, f"背景なじませ／キャラ移動UIがありません: {element_id}")
+    require("function applyCharacterDrag()" in html and 'canvas.addEventListener("wheel"' in html, "キャラを画面上でドラッグ／ピンチ／ホイール配置できません")
+    # 主要テキストのフォントサイズ統一。説明文（.hint）以外の操作系は共通変数を使う。
+    for selector in (".row{", ".check{", ".checks{", "button,.filelabel{", ".compactButtons button{", ".tripleButtons button{", ".settingsTabs button{", ".sectionTitle{"):
+        rule = re.search(re.escape(selector) + r"[^}]*\}", html)
+        require(rule is not None and "font-size:var(--fs-main)" in rule.group(0), f"主要テキストのフォントサイズが統一されていません: {selector}")
+    require("select{" in html and "font-size:var(--fs-main)}" in re.search(r"\nselect\{[^}]*\}", html).group(0), "選択リストのフォントサイズが統一されていません")
 
     for required in [
         "CLAUDE.md",
@@ -798,6 +852,31 @@ def main() -> int:
         )
         subprocess.run([node, "-e", human_rig_test], check=True)
         print("PASS: human 9/10-part rig and articulated bone hierarchy")
+        scene_look_test = "\n".join(
+            [
+                "const NEUTRAL_SCENE_LOOK={gain:[1,1,1],lightColor:[1,1,1],lightDir:[-0.4,0.6],directional:0,backlit:0,harmonize:0,shadow:0,foot:[0.5,0.05,0.1,0.8],shadowDir:[0.3,0.12],label:\"\"};",
+                "const luminance=(r,g,b)=>0.2126*r+0.7152*g+0.0722*b;",
+                # 合成画像を縮小せず、関数ごとの画素生成器で置き換える。
+                "function sampleImagePixels(source,width){const height=Math.round(width*1.5),data=new Uint8ClampedArray(width*height*4);for(let y=0;y<height;y++)for(let x=0;x<width;x++){const c=source(x/width,y/height);data.set(c,(y*width+x)*4)}return {width,height,data}}",
+                extract_js_function(html, "analyzeSceneLook"),
+                # 夕景: 左上の地平線付近に小さな太陽、暖色の地面。人物は昼光の中間色で足元が下端付近。
+                "const sunset=(x,y)=>Math.hypot(x-0.12,(y-0.18)*1.5)<0.05?[255,245,200,255]:y<0.35?[235,150,70,255]:y<0.55?[150,110,90,255]:[160,110,80,255];",
+                "const person=(x,y)=>Math.abs(x-0.5)<0.12&&y>0.05&&y<0.96?[150,140,135,255]:[0,0,0,0];",
+                "const look=analyzeSceneLook(sunset,person);",
+                'if(!(look.backlit>0.3))throw new Error("画面内の夕日を逆光として検出できません: "+JSON.stringify(look));',
+                'if(!(look.gain[0]>look.gain[2]*1.12))throw new Error("夕景で前景を暖色へ寄せていません: "+look.gain);',
+                'if(!(look.shadowDir[0]>0.3))throw new Error("左の太陽に対して影を右（光源と反対）へ伸ばしていません: "+look.shadowDir);',
+                'if(!(look.lightDir[0]<0))throw new Error("光源側（左）の輪郭光方向が不正です: "+look.lightDir);',
+                'if(Math.abs(look.foot[0]-0.5)>0.02||look.foot[2]<0.02||look.foot[2]>0.06)throw new Error("足元位置の推定が不正です: "+look.foot);',
+                "const stage=(x,y)=>y<0.05&&Math.abs(x-0.5)<0.1?[200,200,255,255]:[30,30,60,255];",
+                "const dim=analyzeSceneLook(stage,person,{standee:true});",
+                'if(dim.directional>0.15||dim.backlit!==0)throw new Error("暗い展示台を指向性の強い光と誤判定しています: "+JSON.stringify(dim));',
+                "const matched=analyzeSceneLook(sunset,person,{sceneMatched:true});",
+                'if(matched.harmonize!==0||matched.shadow!==0)throw new Error("同じ写真から分離した2層へ色調整・追加影を掛けています");',
+            ]
+        )
+        subprocess.run([node, "-e", scene_look_test], check=True)
+        print("PASS: background light estimate drives foreground grade and shadow direction")
     else:
         print("SKIP: nodeがないためJavaScript構文検査を省略")
 
@@ -826,6 +905,7 @@ def main() -> int:
     print("PASS: settings panel visibility toggle and accessibility")
     print("PASS: nine demos, stage-fit placement, silhouette auto-rig, and Live2D-style motion")
     print("PASS: Live2D debug layers, editable tagged rig parts, and motion-following wireframe/bones")
+    print("PASS: layered scenes without portal ghost/gray band, ground shadows, color harmony, unified fonts")
     print("PASS: Cross-AI governance documents")
     return 0
 
