@@ -110,3 +110,13 @@ test
 ```
 
 - モデル宣言: Claude Opus 5.5（Git／公開作業の安全確認を含むため継続使用。動的切替なし）。
+
+### 2026-10-22 21:53 JST - Claude Opus 5.5 - 種別: 作業結果 - commit・push・GitHub Pages反映
+
+- 作業フォルダ（`/Volumes/DATA/XCode_Project/P-3D`）はGit checkoutではないため、`git init`はせず `https://github.com/yoshikawa303/P-3D.git` をスクラッチ領域へcloneし、差分を確認した上で変更5ファイル（`index.html`、`scripts/ci/web_regression_gate.py`、`CHANGELOG.md`、`Docs/ARCHITECTURE.md`、`Docs/CHAT_WORK_LOG_261019.md`）だけを反映した。リモートとの差分は今回の変更のみであることを確認済み。
+- 作業フォルダだけにあるハーネス類（`.claude/`、`scripts/hooks/`、`*.command`、zip、`test_img/`）はリポジトリ対象外のため追加していない。
+- commit: `b5fe3fb` fix（本体・CI・文書）、`9ab0690` docs（作業ログ）。`main`へpush（`52e5015..9ab0690`）、リモート`origin/main`のSHA一致を確認。
+- GitHub Actions: `P-3D quality gates` success、`pages build and deployment` success（9ab0690）。
+- Pages: `https://yoshikawa303.github.io/P-3D/` HTTP 200、配信 `index.html` がローカルとバイト一致。アプリ内ブラウザでPages版の夕景ローズ・ウェーブを表示し、光源解析表示・キャラ移動ボタン・JavaScriptエラーなしを確認。
+- 未検証: iPhone Safari実機でのカメラ許可・起動・顔追跡、Mac＋連係カメラでの表示文言。
+- モデル: Claude Opus 5.5（動的切替なし）／概算工数: 約10分
