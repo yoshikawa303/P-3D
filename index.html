@@ -541,6 +541,11 @@ float depthAt(vec2 uv){
   return mix(proceduralDepthAt(uv),sampledDepthAt(uv),u_hasDepthMap);
 }
 
+// 2層素材の背景は建物や家具などの硬質物を含むため、実Depth Mapがない場合は画素ごとに変わる中心ガウスDepthを使わず、一定の遠景Depthで剛体的に平行移動させる。
+float backgroundDepthAt(vec2 uv){
+  return mix(0.18,depthAt(uv),u_hasDepthMap);
+}
+
 float subjectMaskAt(vec2 uv){
   if(u_hasLayeredDemo>0.5)return cleanLayerAlphaAt(uv);
   float proceduralMask=smoothstep(0.42,0.72,proceduralDepthAt(uv));
@@ -662,7 +667,7 @@ vec2 backgroundLayerUV(vec2 base,vec2 current){
   if(strength<=0.0)return current;
   vec2 uv=current;
   for(int i=0;i<2;i++){
-    float bd=depthAt(uv);
+    float bd=backgroundDepthAt(uv);
     float nearW=smoothstep(0.46,0.76,bd);
     float farW=1.0-smoothstep(0.14,0.42,bd);
     float midW=clamp(1.0-nearW-farW,0.0,1.0);
@@ -692,7 +697,7 @@ vec2 trickPortalBackgroundUV(vec2 uv,float strength){
   // キャラの接地点を固定軸にし、上方の背景ほど奥行きを強くする。
   point.x*=1.0+point.y*0.24*strength;
   point.y*=1.0+0.08*strength;
-  float farDepth=1.0-depthAt(uv);
+  float farDepth=1.0-mix(depthAt(uv),backgroundDepthAt(uv),u_hasLayeredDemo);
   point+=u_view*vec2(0.050,0.036)*(0.45+0.55*farDepth)*strength*anchoredMotionWeight(uv);
   return point+portalPivot;
 }
@@ -844,7 +849,8 @@ void main(){
   vec2 backgroundUV=base;
   vec2 foregroundUV=base-u_view*u_depth*depthDisparity*depthScale;
   if(u_hasLayeredDemo>0.5){
-    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*depthDisparity*0.28);
+    float backgroundDisparity=depthDisparityAt(backgroundDepthAt(base));
+    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*backgroundDisparity*0.28);
     vec2 foregroundOffset=constrainMotionOffset(u_view*u_depth*depthDisparity*depthScale);
     backgroundUV=base-backgroundOffset;
     foregroundUV=base-mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base));
@@ -853,7 +859,8 @@ void main(){
     vec2 layeredView=mix(u_viewFar,u_viewMid,smoothstep(0.22,0.58,d));
     layeredView=mix(layeredView,u_viewNear,smoothstep(0.58,0.86,d));
     float layeredDisparity=depthDisparityAt(d);
-    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredDisparity*0.34*depthLayerStrength);
+    float layeredBackgroundDisparity=mix(layeredDisparity,depthDisparityAt(backgroundDepthAt(base)),u_hasLayeredDemo);
+    vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredBackgroundDisparity*0.34*depthLayerStrength);
     vec2 foregroundOffset=constrainMotionOffset(layeredView*u_depth*layeredDisparity*(1.0+0.95*depthLayerStrength)*depthLayerStrength);
     backgroundUV=base-backgroundOffset;
     foregroundUV=base-mix(backgroundOffset,foregroundOffset,anchoredMotionWeight(base)*u_hasLayeredDemo+(1.0-u_hasLayeredDemo));
@@ -2056,6 +2063,12 @@ function prepareStandeeForStage(source,demo){
   };
 }
 
+function withTimeout(promise,ms,label){
+  let timer;
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+"が"+Math.round(ms/1000)+"秒以内に完了しませんでした（通信またはモデル読込の停止）")),ms)});
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
+
 async function createPoseLandmarker(){
   if(poseLandmarker)return poseLandmarker;
   if(poseLandmarkerPromise)return poseLandmarkerPromise;
@@ -2071,7 +2084,7 @@ async function createPoseLandmarker(){
 }
 
 async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
-  const detector=await createPoseLandmarker();
+  const detector=await withTimeout(createPoseLandmarker(),45000,"姿勢検出モデルの読込");
   const result=detector.detect(source),landmarks=result.landmarks?.[0];
   if(!landmarks||landmarks.length<29)throw new Error("人物姿勢を検出できませんでした");
   const indices={nose:0,shoulderLeft:11,shoulderRight:12,elbowLeft:13,elbowRight:14,wristLeft:15,wristRight:16,hipLeft:23,hipRight:24,kneeLeft:25,kneeRight:26,ankleLeft:27,ankleRight:28};
@@ -2924,9 +2937,9 @@ async function autoSegmentPerson(){
   statusEl.textContent="人物分離モデル読込中…";
   errEl.textContent="";
   try{
-    if(!imageSegmenter)imageSegmenter=await createImageSegmenter();
+    if(!imageSegmenter)imageSegmenter=await withTimeout(createImageSegmenter(),45000,"人物分離モデルの読込");
     statusEl.textContent="人物と背景を分離中…";
-    const result=await segmentStillImage(imageSegmenter,sourceImage);
+    const result=await withTimeout(segmentStillImage(imageSegmenter,sourceImage),30000,"人物分離の推論");
     personMapsFromResult(result);
     await createLayeredSceneFromMask();
     statusEl.textContent="人物分離・背景補完済み／2層立体表示";

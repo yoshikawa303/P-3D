@@ -459,7 +459,7 @@ def main() -> int:
     require("layeredView=mix(u_viewFar,u_viewMid" in html, "遠景／中景の視差遅延合成がありません")
     require("layeredView=mix(layeredView,u_viewNear" in html, "近景の視差遅延合成がありません")
     require(
-        "vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredDisparity" in html,
+        "vec2 backgroundOffset=constrainMotionOffset(u_viewFar*u_depth*layeredBackgroundDisparity" in html,
         "背景Depthの遠景相対視差がありません",
     )
     require("float whiteHighlight=" in html, "人物／物体の入射光による白飛びがありません")
@@ -901,7 +901,15 @@ def main() -> int:
     print("PASS: zero-parallax motion, head-distance zoom, contact shadow, and spatial window cues")
     print("PASS: draggable guides, mask-contour crop, undo/redo, and reset defaults")
     print("PASS: camera-before-MediaPipe ordering")
+    require("float backgroundDepthAt(" in html, "2層背景の剛体視差用Depth関数がありません")
+    require("float bd=backgroundDepthAt(uv);" in html, "背景3層視差が画素ごとの中心ガウスDepthで有機的に変形します")
+    require("backgroundDepthAt(base)" in html and "float backgroundDisparity=" in html, "2層背景の視差量が画素ごとのDepthに依存しています")
     print("PASS: pinned MediaPipe dependency and CPU fallback")
+    require("function withTimeout(" in html, "人物分離のタイムアウト補助関数がありません")
+    require("withTimeout(createImageSegmenter()" in html or "withTimeout(createImageSegmenter(" in html, "人物分離モデル読込にタイムアウトがありません")
+    require("withTimeout(segmentStillImage(" in html, "人物分離推論にタイムアウトがありません")
+    require("withTimeout(createPoseLandmarker()" in html, "姿勢検出モデル読込にタイムアウトがありません")
+    print("PASS: segmentation/pose model load and inference timeouts")
     print("PASS: settings panel visibility toggle and accessibility")
     print("PASS: nine demos, stage-fit placement, silhouette auto-rig, and Live2D-style motion")
     print("PASS: Live2D debug layers, editable tagged rig parts, and motion-following wireframe/bones")
