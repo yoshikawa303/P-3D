@@ -19,7 +19,8 @@
 - カメラ／顔追跡: HTTPS、権限、前面／背面／選択Webカメラ、動画再生、MediaPipe module、WASM、model、GPU／CPU、顔ランドマーク、端末傾き権限。
 - 描画: WebGL生成、テクスチャ、画像アスペクト比、フレームレート、手動ドラッグ。
 - 公開: case-sensitiveなファイル名、相対URL、`main` のcommit SHA、Pages反映。
-- 画像: Publicリポジトリへ著作権画像・個人画像を追加しない。
+- リポジトリ: `yoshikawa303/P-3D` はPrivateで運用する。Publicへの変更はユーザーの明示承認なしに行わない。
+- 画像: 著作権画像・個人画像をリポジトリ（Pages配信物を含む）へ追加しない。
 
 ## 仕様変更の事前確認
 

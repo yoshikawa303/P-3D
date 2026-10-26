@@ -23,11 +23,12 @@
 - 変更後は `python3 scripts/ci/web_regression_gate.py` を実行する。
 - デスクトップブラウザの成功とiPhone Safari実機のカメラ・顔追跡成功を同一視しない。完了報告には検証環境と未検証範囲を記載する。
 
-## 3. プライバシーと公開リポジトリ
+## 3. プライバシーとPrivateリポジトリ運用
 
+- GitHubリポジトリ `https://github.com/yoshikawa303/P-3D` は **Private** で管理する（2026-10-26にPublicから変更）。ユーザーの明示承認なくPublicへ戻さない。
 - GitHub Pages公開URLは `https://yoshikawa303.github.io/P-3D/`、公開ブランチは `main` とする。
 - 選択画像とカメラフレームはブラウザ内で処理し、明示的な仕様変更がない限り外部サーバーへアップロードしない。
-- 著作権のある検証画像、個人画像、APIキー、資格情報、ブラウザデータをPublicリポジトリへ追加しない。
+- 著作権のある検証画像、個人画像、APIキー、資格情報、ブラウザデータをGitリポジトリへ追加しない（Privateでも、Pages配信物は公開され得るため同様に扱う）。
 - 秘密情報をHTML、JavaScript、ログ、Git履歴へ保存しない。
 
 ## 4. 文書同期
