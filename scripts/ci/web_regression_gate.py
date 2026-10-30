@@ -497,14 +497,29 @@ def main() -> int:
     require("multiSourceFill(" not in html, "境界色の方向伝播による格子状の補完が残っています")
     require("function dilateHoleByDistance(" in html, "人物マスク外周を距離で広げる背景補完範囲がありません")
     require(
-        "dilateHoleByDistance(hole,width,height,Math.max(6,Math.round(Math.max(width,height)*0.018)))" in html,
-        "背景側へ人物の輪郭が残らず、ぼけた帯も広げない補完範囲(画像長辺の1.8%)がありません",
+        "dilateHoleByDistance(hole,width,height,Math.max(3,Math.round(Math.max(width,height)*MARGIN_RATIO)))" in html
+        and "MARGIN_RATIO=0.008" in html,
+        "背景側へ人物の輪郭が残らず、ぼけた帯も広げない補完範囲(画像長辺の0.8%)がありません",
     )
     require(
         "function refinedSubjectAlpha(" in html and "function boxBlurFloat(" in html
-        and html.count("refinedSubjectAlpha(source,maskSource") >= 3,
+        and html.count("refinedSubjectAlpha(guideSource,maskSource") >= 2,
         "粗い人物マスクを画像エッジへ吸着させるガイデッドフィルタ精密化が前景・背景補完の両方で使われていません",
     )
+    require(
+        "function detectGraphicOverlay(" in html and "function personMaskWithOverlay(" in html
+        and "function combinePersonMasks(" in html and "function overlayFrontCanvas(" in html,
+        "人物の手前にかかる文字・図形を検出して手前レイヤーへ分離する処理がありません",
+    )
+    require(
+        "personMaskWithOverlay(sourceImage," in html and "buildLayerSet(sourceImage,subjectMaskCanvas,currentSubjectOverlay)" in html,
+        "人物自動分離が手前レイヤー分離(personMaskWithOverlay/buildLayerSet)へ接続されていません",
+    )
+    require(
+        "uniform sampler2D u_frontTex;" in html and "texture2D(u_frontTex,backgroundUV)" in html and "u_hasFront" in html,
+        "手前レイヤーを人物の上へ重ねるshaderがありません",
+    )
+    require("function addFillDetail(" in html and "addFillDetail(image.data,original,hole,width,height)" in html, "補完背景の質感移植がありません")
     require("const blend=boxBlurFloat(" in html, "補完範囲の縁を元画素へなじませる処理がありません")
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
     require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
@@ -653,6 +668,9 @@ def main() -> int:
     require('$("#cameraToggle").addEventListener("click"' in html and "syncCameraToggle()" in html, "カメラON/OFFアイコンの処理がありません")
     require('$("#rigDebugToggle").addEventListener("click"' in html and "syncRigDebugToggle()" in html, "解析レイヤON/OFFアイコンの処理がありません")
     require('panelToggle.textContent' not in html and '$("#moveCharacter").textContent' not in html, "アイコンボタンのtextContent上書きが残っています")
+    require("grid-template-columns:76px minmax(0,1fr) auto" in html and "white-space:nowrap" in html.split(".row output{")[1].split("}")[0], "スライダー値の出力欄が折り返されます")
+    require("function rigStateMatches(" in html and "rigSessionId++" in html, "個別読込・自動分離後のリグ履歴復元が画像世代で区別されていません")
+    require('const available=Boolean(part&&$("#rigDebug")' not in html and 'const available=Boolean(point&&$("#rigDebug")' not in html, "部位・ボーン編集が解析表示トグルに依存しています")
     require('id="panelToggle"' in html, "設定パネルの切替ボタンがありません")
     require('aria-controls="panel"' in html, "設定パネル切替のaria-controlsがありません")
     require('aria-expanded="false"' in html, "設定パネル切替の初期aria-expandedが不正です")
@@ -955,7 +973,7 @@ def main() -> int:
     print("PASS: pinned MediaPipe dependency and CPU fallback")
     require("function withTimeout(" in html, "人物分離のタイムアウト補助関数がありません")
     require("withTimeout(createImageSegmenter()" in html or "withTimeout(createImageSegmenter(" in html, "人物分離モデル読込にタイムアウトがありません")
-    require("withTimeout(segmentStillImage(" in html, "人物分離推論にタイムアウトがありません")
+    require("withTimeout(personMaskWithOverlay(" in html and "segmentStillImage(imageSegmenter,image)" in html, "人物分離推論にタイムアウトがありません")
     require("withTimeout(createPoseLandmarker()" in html, "姿勢検出モデル読込にタイムアウトがありません")
     print("PASS: segmentation/pose model load and inference timeouts")
     print("PASS: settings panel visibility toggle and accessibility")

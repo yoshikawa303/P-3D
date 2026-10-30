@@ -59,7 +59,11 @@ viewX / viewY / viewZ → WebGL parallax + near/far view
 
 一枚絵はMediaPipeの人物自動分離結果、または黒背景・白対象の任意マスクを`subjectMaskCanvas`へ保持する。透過PNGをマスクとして読んだ場合はalphaを白黒マスクへ正規化する。`transparentForegroundFromMask`は元画像へこのalphaを掛け、最大1536pxの透過前景を作る。
 
-`pseudoInpaintBackground`は処理負荷を抑えるため最大768pxで動く。人物分離マスク（256px級）は階段状で髪・肩の縁を取りこぼすため、`refinedSubjectAlpha`が元画像の輝度をガイドにしたガイデッドフィルタ（`boxBlurFloat`で実装）で輪郭を画像エッジへ吸着させ、smoothstepの半透明alphaにする。前景（`transparentForegroundFromMask`）と背景補完は同じalphaを使う。補完範囲は精密化輪郭を画像長辺の1.8%（最小6px）だけ`dilateHoleByDistance`で円形に広げ、広げすぎによるぼけた帯を避ける。補完範囲の縁は元画素へ滑らかに混ぜる。欠損画素は`pushPullFill`で、確定背景を粗い解像度へ集約して穴へ補間で戻すpush-pull方式により、周囲から滑らかに連続させる（境界色の方向伝播による格子状の滲みを避ける）。確定背景画素は変更しない。
+`pseudoInpaintBackground`は処理負荷を抑えるため最大768pxで動く。人物分離マスク（256px級）は階段状で髪・肩の縁を取りこぼすため、`refinedSubjectAlpha`が元画像の輝度をガイドにしたガイデッドフィルタ（`boxBlurFloat`で実装）で輪郭を画像エッジへ吸着させ、smoothstepの半透明alphaにする。前景（`transparentForegroundFromMask`）と背景補完は同じalphaを使う。補完範囲は精密化輪郭を画像長辺の0.8%（最小3px）だけ`dilateHoleByDistance`で円形に広げ、広げすぎによるぼけた帯を避ける。補完範囲の縁は元画素へ滑らかに混ぜ、`addFillDetail`が穴の境界の質感（元画素−平滑、±14に制限）を反転コピーしてのっぺり感を抑える。
+
+#### 手前レイヤー（雑誌の文字・図形）
+
+人物の手前に文字・図形がかかると人物分離モデルが人物を分断する。`personMaskWithOverlay`は、1回目の分離結果を人物の事前情報として`detectGraphicOverlay`で「平坦な単色・境界が鋭い・細い・モデルが人物と見なさなかった」連結成分を文字・図形として検出し、`removeOverlayFromSource`で周囲から補完して取り除いた画像で再分離する。`combinePersonMasks`は1回目と2回目のマスクの和を取り、人物の閉処理範囲に入る手前要素は人物層へ戻す。`buildLayerSet`は背景（手前要素を除去）、人物前景（遮蔽下は補完色）、手前レイヤー`front`の3つを返し、shaderは`u_frontTex`を背景と同じUVで読んで人物の上へ重ねる（人物だけが誌面の奥で動く）。手動マスク・デモ読込では手前レイヤーを使わない。画質は`scripts/qc/layer_quality.html`と`Docs/QC/ImageQuality/REPORT.md`の定量計測で評価する。欠損画素は`pushPullFill`で、確定背景を粗い解像度へ集約して穴へ補間で戻すpush-pull方式により、周囲から滑らかに連続させる（境界色の方向伝播による格子状の滲みを避ける）。確定背景画素は変更しない。
 
 これは画像の意味を推論する生成AI Inpaintingではなく、端末内の決定的な近傍色補完である。文字、建物、家具、反復模様などを被写体の背後へ正しく再構成する保証はなく、広い欠損や大きな視差ではぼけ・伸びが見える。画像データは外部サーバーへ送信しない。将来、実生成AIを使う場合は、送信先、利用規約、画像保持、資格情報、オプトインUIを別仕様として承認する。
 
@@ -199,6 +203,7 @@ GPUでFaceLandmarker生成
 - `recognitionBounds` / `recognitionGuideCanvas` / `subjectMaskCanvas`: 人物／物体マスクから得た確認用ガイドと、任意画像を2層化するため端末内に保持する白黒マスク。
 - `guideHandles` / `guideDragTarget`: キャラ中心・光源の画面座標とドラッグ対象。
 - `undoStack` / `redoStack`: 非破壊編集値の履歴。画像、Depth、マスク本体は含めない。
+- `rigSessionId`: 個別読込・人物自動分離（`activeDemoIndex=-1`）のたびに増やす画像世代。履歴のリグ復元は`demoIndex`に加えこの値の一致を条件とし、別画像のリグ混入を防ぐ。部位・ボーン編集ボタンは解析レイヤ表示のON/OFFに依存しない。
 - `DEMO_ASSETS` / `activeDemoIndex`: 完成絵、背景、透過立ち絵のURL、表示名、推奨中心・範囲・立体強度と現在の選択状態。
 - `hasLayeredDemo`: 背景と透過立ち絵の独立テクスチャを使う状態。バンドル済みデモと、一枚絵から端末内生成した2層の両方で有効にする。無効時は従来の単一画像経路を使う。
 - `activeRigProfile` / `activeRigParts` / `activeMotionRange`: 全2層デモの基準影響域、編集可能な最大12部位と親子・モーション設定、接地点、背景内の許容稼働範囲。

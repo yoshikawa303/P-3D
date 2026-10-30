@@ -42,8 +42,8 @@ button:disabled{opacity:.58}
 button.secondary{background:#303038;color:#fff}
 input[type=file]{display:none}
 .row{display:grid;grid-template-columns:76px 1fr;align-items:center;gap:6px;font-size:var(--fs-main)}
-.row.withValue{grid-template-columns:76px minmax(0,1fr) 40px}
-.row output{text-align:right;color:#c7f5ff;font-variant-numeric:tabular-nums}
+.row.withValue{grid-template-columns:76px minmax(0,1fr) auto}
+.row output{text-align:right;color:#c7f5ff;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:3.4em}
 input[type=range]{width:100%}
 select{width:100%;min-height:32px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:4px 8px;background:#303038;color:#fff;font:inherit;font-size:var(--fs-main)}
 input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:7px 9px;background:#303038;color:#fff;font:inherit}
@@ -435,6 +435,8 @@ uniform sampler2D u_subjectMaskTex;
 uniform sampler2D u_backgroundTex;
 uniform sampler2D u_foregroundTex;
 uniform sampler2D u_cameraBackgroundTex;
+uniform sampler2D u_frontTex;
+uniform float u_hasFront;
 uniform vec2 u_view;
 uniform vec2 u_viewNear;
 uniform vec2 u_viewMid;
@@ -1023,6 +1025,11 @@ void main(){
   }else{
     c=foregroundColor;
   }
+  // 人物の手前にかかる文字・図形。背景と同じUVで読み、人物だけが誌面の奥で動くように人物の上へ重ねる。
+  if(u_hasFront>0.5&&u_hasLayeredDemo>0.5){
+    vec4 frontColor=texture2D(u_frontTex,backgroundUV);
+    c.rgb=mix(c.rgb,frontColor.rgb,frontColor.a);
+  }
 
 
   // 2層素材（写真・イラスト背景＋透過キャラ）では額縁と暗い外壁を描かない。背景の上へ灰色の半透明帯が重なって見え、
@@ -1180,21 +1187,24 @@ const subjectMaskTex=createMapTexture(gl.TEXTURE2,0);
 const backgroundTex=createMapTexture(gl.TEXTURE3,0);
 const foregroundTex=createMapTexture(gl.TEXTURE4,0);
 const cameraBackgroundTex=createMapTexture(gl.TEXTURE5,0);
+const frontTex=createMapTexture(gl.TEXTURE6,0);
 gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_coreShape","u_extraShape","u_extraShape2","u_extraHair","u_extraHair2","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_hairWave","u_faceBands","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_coreShape","u_extraShape","u_extraShape2","u_extraHair","u_extraHair2","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_hairWave","u_faceBands","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
 gl.uniform1i(U.u_backgroundTex,3);
 gl.uniform1i(U.u_foregroundTex,4);
 gl.uniform1i(U.u_cameraBackgroundTex,5);
+gl.uniform1i(U.u_frontTex,6);
 
 let imgAspect=1,imgWidth=1,imgHeight=1,hasImage=false,sourceImage=null;
 let hasDepthMap=false,hasSubjectMask=false,depthSource="中心近似",maskSource="中心近似";
-let hasLayeredDemo=false,demoLoadSerial=0,backgroundLayerSource=null,foregroundLayerSource=null;
+let hasFrontLayer=false,currentSubjectOverlay=null,hasLayeredDemo=false,demoLoadSerial=0,backgroundLayerSource=null,foregroundLayerSource=null;
+let rigSessionId=0;
 let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeBonePoints=[],inferredBonePoints=[],activeStandee=false;
 let activeMotionRange=[0.018,0.012];
 const rigSprings={};
@@ -2350,11 +2360,11 @@ function wouldCreateRigCycle(partId,parentId){
 function syncRigEditor(){
   const part=rigPartById(selectedRigPart());
   document.querySelectorAll("#rigLayerList .layerRow[data-id]").forEach(row=>row.classList.toggle("selected",row.dataset.id===selectedRigPart()));
-  const available=Boolean(part&&$("#rigDebug").checked);
+  const available=Boolean(part);
   for(const id of ["rigPartList","rigPartName","deleteRigPart","duplicateRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
     $("#"+id).disabled=!available;
   }
-  $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS||!$("#rigDebug").checked;
+  $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS; 
   $("#duplicateRigPart").disabled=!available||activeRigParts.length>=MAX_RIG_PARTS;
   if(!part)return;
   $("#rigPartName").value=part.label;
@@ -2477,10 +2487,10 @@ function syncBonePointList(preferredId=selectedBonePoint()){
 
 function syncBoneEditor(){
   const point=bonePointById(selectedBonePoint());
-  const available=Boolean(point&&$("#rigDebug").checked);
+  const available=Boolean(point);
   const segmentPoint=bonePointById(selectedBoneSegmentId);
   for(const id of ["bonePointList","bonePointName","bonePointType","bonePointParent","bonePointPart","boneFollowAmount","deleteBonePoint"]){$("#"+id).disabled=!available}
-  $("#addBoneRoot").disabled=!activeRigProfile||!$("#rigDebug").checked||activeBonePoints.length>=MAX_BONE_POINTS;
+  $("#addBoneRoot").disabled=!activeRigProfile||activeBonePoints.length>=MAX_BONE_POINTS;
   $("#addBoneChild").disabled=!available||activeBonePoints.length>=MAX_BONE_POINTS;
   $("#splitBoneSegment").disabled=!available||!segmentPoint?.parentId||activeBonePoints.length>=MAX_BONE_POINTS;
   if(!point)return;
@@ -2993,6 +3003,7 @@ async function loadDemo(index,{hidePanel=true,recordHistory=true}={}){
     backgroundLayerSource=background;
     foregroundLayerSource=displayedForeground;
     hasLayeredDemo=true;
+    hasFrontLayer=false;
     hasSubjectMask=true;
     applySceneLook(background,displayedForeground,{sceneMatched:demo.sceneMatched===true,standee:Boolean(demo.standee)});
     activeRigProfile=prepared?.rig||inferRigProfile(displayedForeground);
@@ -3106,10 +3117,12 @@ async function activateIndependentLayers(label="個別レイヤー",{preserveCha
   subjectMaskCanvas=copyMaskCanvas(foregroundLayerSource);
   uploadMapImage(subjectMaskTex,gl.TEXTURE2,subjectMaskCanvas);
   hasLayeredDemo=true;
+  hasFrontLayer=false;
   hasSubjectMask=true;
   applySceneLook(backgroundLayerSource,foregroundLayerSource);
   activeDemoIndex=-1;
   updateDemoSelection();
+  rigSessionId++;
   activeRigProfile=inferRigProfile(foregroundLayerSource);
   activeRigProfile.rigType="generic";
   activeRigProfile.rigSource="separate-files";
@@ -3159,6 +3172,9 @@ function clearMaps({announce=true,preserveCharacterPlacement=false}={}){
   resetMapTexture(subjectMaskTex,gl.TEXTURE2);
   resetMapTexture(backgroundTex,gl.TEXTURE3);
   resetMapTexture(foregroundTex,gl.TEXTURE4);
+  resetMapTexture(frontTex,gl.TEXTURE6);
+  hasFrontLayer=false;
+  currentSubjectOverlay=null;
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D,tex);
   hasDepthMap=false;
@@ -3317,6 +3333,7 @@ function loadMapFile(file,kind){
       depthSource=file.name;
     }else{
       subjectMaskCanvas=copyMaskCanvas(img);
+      currentSubjectOverlay=null;
       uploadMapImage(subjectMaskTex,gl.TEXTURE2,subjectMaskCanvas);
       hasSubjectMask=true;
       maskSource=file.name;
@@ -3693,8 +3710,57 @@ function refinedSubjectAlpha(source,maskSource,maxDimension){
   return {alpha,width,height};
 }
 
-function pseudoInpaintBackground(source,maskSource){
-  const {alpha,width,height}=refinedSubjectAlpha(source,maskSource,768);
+// push-pullの補完は低周波だけでのっぺりぼけるため、穴の境界に最も近い確定画素を軸に反転した位置の高周波成分(元画素-平滑)を
+// 距離に応じて減衰させて加え、周囲の質感(葉・板目・ボケの粒)を連続させる。
+function addFillDetail(pixels,original,hole,width,height){
+  const total=width*height,valid=Float32Array.from(hole,value=>value?0:1);
+  const radius=Math.max(2,Math.round(Math.max(width,height)*.005));
+  const weight=boxBlurFloat(valid,width,height,radius);
+  const low=[0,1,2].map(channel=>{
+    const plane=new Float32Array(total);
+    for(let index=0;index<total;index++)plane[index]=valid[index]?original[index*4+channel]:0;
+    const blurred=boxBlurFloat(plane,width,height,radius);
+    for(let index=0;index<total;index++)blurred[index]=weight[index]>.02?blurred[index]/weight[index]:original[index*4+channel];
+    return blurred;
+  });
+  const originX=new Int16Array(total),originY=new Int16Array(total),distance=new Float32Array(total).fill(1e9);
+  for(let index=0;index<total;index++)if(valid[index]){originX[index]=index%width;originY[index]=(index/width)|0;distance[index]=0}
+  const relax=(index,x,y,neighbor)=>{
+    if(distance[neighbor]>=1e8)return;
+    const ox=originX[neighbor],oy=originY[neighbor],candidate=Math.hypot(x-ox,y-oy);
+    if(candidate<distance[index]){distance[index]=candidate;originX[index]=ox;originY[index]=oy}
+  };
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const index=y*width+x;if(valid[index])continue;
+    if(x>0)relax(index,x,y,index-1);
+    if(y>0){relax(index,x,y,index-width);if(x>0)relax(index,x,y,index-width-1);if(x+1<width)relax(index,x,y,index-width+1)}
+  }
+  for(let y=height-1;y>=0;y--)for(let x=width-1;x>=0;x--){
+    const index=y*width+x;if(valid[index])continue;
+    if(x+1<width)relax(index,x,y,index+1);
+    if(y+1<height){relax(index,x,y,index+width);if(x+1<width)relax(index,x,y,index+width+1);if(x>0)relax(index,x,y,index+width-1)}
+  }
+  const falloff=Math.max(width,height)*.06;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const index=y*width+x;
+    if(!hole[index]||distance[index]>=1e8)continue;
+    const ox=originX[index],oy=originY[index];
+    let sx=ox,sy=oy;
+    for(let scale=1;scale>=.125;scale*=.5){
+      const mx=Math.round(ox+(ox-x)*scale),my=Math.round(oy+(oy-y)*scale);
+      if(mx>=0&&mx<width&&my>=0&&my<height&&valid[my*width+mx]){sx=mx;sy=my;break}
+    }
+    const source=sy*width+sx,gain=Math.exp(-distance[index]/falloff)*.9;
+    for(let channel=0;channel<3;channel++){
+      // 文字や縁の強い段差は質感ではないため、写真の粒状・ボケ程度の振幅だけを移す。
+      const detail=Math.max(-14,Math.min(14,original[source*4+channel]-low[channel][source]));
+      pixels[index*4+channel]=Math.max(0,Math.min(255,pixels[index*4+channel]+detail*gain));
+    }
+  }
+}
+
+function pseudoInpaintBackground(source,maskSource,guideSource=source,overlay=null,MARGIN_RATIO=0.008){
+  const {alpha,width,height}=refinedSubjectAlpha(guideSource,maskSource,768);
   const canvas=document.createElement("canvas");
   canvas.width=width;canvas.height=height;
   const context=canvas.getContext("2d",{willReadFrequently:true});
@@ -3704,9 +3770,13 @@ function pseudoInpaintBackground(source,maskSource){
   let hole=new Uint8Array(width*height);
   for(let index=0;index<hole.length;index++)hole[index]=alpha[index]>.08?1:0;
   // 補完範囲は精密化した輪郭の外へ最小限だけ広げる。広げすぎると人物を動かした時にぼけた帯が目立つ。
-  hole=dilateHoleByDistance(hole,width,height,Math.max(6,Math.round(Math.max(width,height)*0.018)));
+  hole=dilateHoleByDistance(hole,width,height,Math.max(3,Math.round(Math.max(width,height)*MARGIN_RATIO)));
+  // 手前要素は手前レイヤーが描き直すため背景からは取り除く（人物の隣に残る文字が補完の参照画素へ混ざる文字化けも防ぐ）。
+  // 手前レイヤーが覆う範囲(overlay.mask)だけを加え、人物用に広げた範囲と混ぜない。
+  if(overlay&&overlay.width===width&&overlay.height===height)for(let index=0;index<hole.length;index++)if(overlay.mask[index])hole[index]=1;
   // 境界色の4方向平均ではなく、周囲の確定背景から滑らかに連続させるpush-pull補完を使う。
   pushPullFill(image.data,hole,width,height);
+  addFillDetail(image.data,original,hole,width,height);
   // 補完範囲の縁は元画素へ滑らかにつなぎ、ぼけた補完の輪郭線が見えないようにする。
   const softHole=new Float32Array(hole);
   const blend=boxBlurFloat(boxBlurFloat(softHole,width,height,3),width,height,3);
@@ -3719,8 +3789,8 @@ function pseudoInpaintBackground(source,maskSource){
   return canvas;
 }
 
-function transparentForegroundFromMask(source,maskSource){
-  const {alpha,width,height}=refinedSubjectAlpha(source,maskSource,1536);
+function transparentForegroundFromMask(source,maskSource,guideSource=source){
+  const {alpha,width,height}=refinedSubjectAlpha(guideSource,maskSource,1536);
   const foreground=document.createElement("canvas");
   foreground.width=width;foreground.height=height;
   const context=foreground.getContext("2d",{willReadFrequently:true});
@@ -3729,6 +3799,228 @@ function transparentForegroundFromMask(source,maskSource){
   for(let index=0;index<alpha.length;index++)image.data[index*4+3]=Math.round(alpha[index]*255);
   context.putImageData(image,0,0);
   return foreground;
+}
+
+// ---- 手前オーバーレイ（雑誌の文字・図形など、人物の手前にかかる平面要素）----
+// 人物分離モデルは手前の文字を人物の一部と認識できず、人物が分断される。先に文字・図形を検出して取り除いた画像で人物を認識し、
+// 検出した要素は人物の手前レイヤーとして別に持つ。
+function readScaledPixels(source,maxDimension){
+  const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
+  const scale=Math.min(1,maxDimension/Math.max(sourceWidth,sourceHeight));
+  const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
+  const canvas=document.createElement("canvas");
+  canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";
+  context.drawImage(source,0,0,width,height);
+  return {data:context.getImageData(0,0,width,height).data,width,height};
+}
+
+// 平坦な単色領域で、境界が鋭く、細く、人物モデルが人物と見なさなかった連結成分を文字・図形として検出する。
+function detectGraphicOverlay(source,personMaskSource,debug=null){
+  const {data,width,height}=readScaledPixels(source,768),total=width*height,maxDim=Math.max(width,height);
+  // 平坦判定: 3x3の各チャンネル幅と、成分の種画素からの色差。緩めると背景のボケ領域まで文字と誤検出する。
+  const FLAT_RANGE=12,SEED_TOLERANCE=16;
+  const mask=readScaledPixels(personMaskSource,768);
+  const person=new Uint8Array(total);
+  if(mask.width===width&&mask.height===height){
+    for(let index=0;index<total;index++)person[index]=(mask.data[index*4]+mask.data[index*4+1]+mask.data[index*4+2])/3>127?1:0;
+  }else{
+    const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+    const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(personMaskSource,0,0,width,height);
+    const resized=context.getImageData(0,0,width,height).data;
+    for(let index=0;index<total;index++)person[index]=(resized[index*4]+resized[index*4+1]+resized[index*4+2])/3>127?1:0;
+  }
+  let personCount=0;for(let index=0;index<total;index++)personCount+=person[index];
+  if(personCount<total*.02)return null;
+  const near=dilateHoleByDistance(person,width,height,Math.round(maxDim*.12));
+  const flat=new Uint8Array(total);
+  for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){
+    let low0=255,high0=0,low1=255,high1=0,low2=255,high2=0;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const offset=((y+dy)*width+x+dx)*4,r=data[offset],g=data[offset+1],b=data[offset+2];
+      if(r<low0)low0=r;if(r>high0)high0=r;if(g<low1)low1=g;if(g>high1)high1=g;if(b<low2)low2=b;if(b>high2)high2=b;
+    }
+    if(high0-low0<=FLAT_RANGE&&high1-low1<=FLAT_RANGE&&high2-low2<=FLAT_RANGE)flat[y*width+x]=1;
+  }
+  const label=new Int32Array(total).fill(-1),queue=new Int32Array(total),overlay=new Uint8Array(total),outlineCandidates=[];
+  const diff=(offset,seed)=>Math.max(Math.abs(data[offset]-data[seed]),Math.abs(data[offset+1]-data[seed+1]),Math.abs(data[offset+2]-data[seed+2]));
+  let component=0,area=0;
+  for(let start=0;start<total;start++){
+    if(!flat[start]||label[start]!==-1)continue;
+    const seed=start*4;let head=0,tail=0;
+    queue[tail++]=start;label[start]=component;
+    while(head<tail){
+      const index=queue[head++],x=index%width,y=(index-x)/width;
+      for(const next of [x>0?index-1:-1,x+1<width?index+1:-1,y>0?index-width:-1,y+1<height?index+width:-1]){
+        if(next<0||!flat[next]||label[next]!==-1||diff(next*4,seed)>SEED_TOLERANCE)continue;
+        label[next]=component;queue[tail++]=next;
+      }
+    }
+    let boundary=0,sharp=0,outside=0,touchesNear=false;
+    for(let item=0;item<tail;item++){
+      const index=queue[item],x=index%width,y=(index-x)/width;
+      if(!person[index])outside++;
+      if(near[index])touchesNear=true;
+      for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){
+        const nx=x+dx,ny=y+dy;
+        if(nx<0||nx>=width||ny<0||ny>=height||label[ny*width+nx]===component)continue;
+        boundary++;
+        // 平坦判定は3x3の幅があるため、境界の外側1〜3画素先までの最大色差で段差の鋭さを測る。
+        let step=0;
+        for(let reach=1;reach<=3;reach++){
+          const rx=x+dx*reach,ry=y+dy*reach;
+          if(rx<0||rx>=width||ry<0||ry>=height)break;
+          step=Math.max(step,diff((ry*width+rx)*4,seed));
+        }
+        if(step>=56)sharp++;
+      }
+    }
+    const strokeWidth=2*tail/Math.max(1,boundary);
+    if(debug&&tail>=10)debug.push({area:tail,strokeWidth:+strokeWidth.toFixed(1),sharp:+(sharp/Math.max(1,boundary)).toFixed(2),outside:+(outside/tail).toFixed(2),near:touchesNear,x:seed/4%width|0,y:(seed/4/width)|0,rgb:[data[seed],data[seed+1],data[seed+2]]});
+    // 人物モデルが人物と見なした画素でも、黒や鮮やかな色で十分大きく鋭い要素は文字と判断する（瞳・睫毛は小さいため除く）。
+    const seedChroma=Math.max(data[seed],data[seed+1],data[seed+2])-Math.min(data[seed],data[seed+1],data[seed+2]);
+    const graphicColor=Math.max(data[seed],data[seed+1],data[seed+2])<50||seedChroma>110;
+    const bigGraphic=graphicColor&&tail>=total*.002&&strokeWidth>=4&&boundary>0&&sharp/boundary>=.6;
+    if(tail>=10&&tail<=total*.12&&strokeWidth<=maxDim*.05&&boundary>0&&sharp/boundary>=.45&&(outside/tail>=.35||bigGraphic)&&touchesNear){
+      for(let item=0;item<tail;item++)overlay[queue[item]]=1;
+      area+=tail;
+    }else if(tail>=6&&tail<=total*.01&&strokeWidth<=maxDim*.02&&boundary>0&&sharp/boundary>=.45&&touchesNear){
+      outlineCandidates.push(Int32Array.from(queue.subarray(0,tail)));
+    }
+    component++;
+  }
+  if(area<total*.008)return null;
+  // 文字の白い縁取りなど、検出済みの文字に接する細い平坦成分も手前要素へ含める。
+  const nearGlyph=dilateHoleByDistance(overlay,width,height,3);
+  for(const members of outlineCandidates){
+    let touching=0;for(const index of members)if(nearGlyph[index])touching++;
+    if(touching>=members.length*.3)for(const index of members)overlay[index]=1;
+  }
+  // 太い文字は印刷の網点で細かい成分に割れるため、閉処理で連結してから縁のアンチエイリアス画素まで含める。
+  const bridged=dilateHoleByDistance(overlay,width,height,3);
+  const outsideBridge=dilateHoleByDistance(Uint8Array.from(bridged,value=>value?0:1),width,height,3);
+  const closed=Uint8Array.from(outsideBridge,value=>value?0:1);
+  const grown=dilateHoleByDistance(closed,width,height,2);
+  let grownArea=0;for(let index=0;index<total;index++)grownArea+=grown[index];
+  return {mask:grown,width,height,area:grownArea};
+}
+
+function overlayAlphaCanvas(overlay,width,height){
+  const soft=boxBlurFloat(Float32Array.from(overlay.mask),overlay.width,overlay.height,1);
+  const canvas=document.createElement("canvas");canvas.width=overlay.width;canvas.height=overlay.height;
+  const context=canvas.getContext("2d");
+  const image=context.createImageData(overlay.width,overlay.height);
+  for(let index=0;index<soft.length;index++){
+    image.data[index*4]=image.data[index*4+1]=image.data[index*4+2]=255;
+    image.data[index*4+3]=Math.round(Math.min(1,soft[index]*1.4)*255);
+  }
+  context.putImageData(image,0,0);
+  const scaled=document.createElement("canvas");scaled.width=width;scaled.height=height;
+  const scaledContext=scaled.getContext("2d");scaledContext.imageSmoothingEnabled=true;scaledContext.drawImage(canvas,0,0,width,height);
+  return scaled;
+}
+
+// 手前要素を周囲の画素から補完して取り除いた画像（人物認識用・人物前景の遮蔽下の色用）。
+function removeOverlayFromSource(source,overlay){
+  const {data,width,height}=readScaledPixels(source,768);
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  const image=context.createImageData(width,height);
+  image.data.set(data);
+  pushPullFill(image.data,dilateHoleByDistance(overlay.mask,width,height,1),width,height);
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
+function cleanSourceAtSize(source,clean,overlay,maxDimension){
+  const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
+  const scale=Math.min(1,maxDimension/Math.max(sourceWidth,sourceHeight));
+  const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d");
+  context.drawImage(source,0,0,width,height);
+  const patch=document.createElement("canvas");patch.width=width;patch.height=height;
+  const patchContext=patch.getContext("2d");
+  patchContext.drawImage(clean,0,0,width,height);
+  patchContext.globalCompositeOperation="destination-in";
+  patchContext.drawImage(overlayAlphaCanvas(overlay,width,height),0,0);
+  context.drawImage(patch,0,0);
+  return canvas;
+}
+
+function overlayFrontCanvas(source,overlay,maxDimension){
+  const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
+  const scale=Math.min(1,maxDimension/Math.max(sourceWidth,sourceHeight));
+  const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d");
+  context.drawImage(source,0,0,width,height);
+  context.globalCompositeOperation="destination-in";
+  context.drawImage(overlayAlphaCanvas(overlay,width,height),0,0);
+  return canvas;
+}
+
+function personMaskCanvasFromCategories(categories,width,height){
+  const subject=fillEnclosedSubjectHoles(includeAttachedOtherRegions(filterSubjectComponents(categories,width,height),categories,width,height),width,height);
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d");
+  const image=context.createImageData(width,height);
+  for(let index=0;index<subject.length;index++){
+    const value=subject[index]?255:0;
+    image.data[index*4]=image.data[index*4+1]=image.data[index*4+2]=value;image.data[index*4+3]=255;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
+// 手前要素を除いた再分離は遮蔽下の人物を拾い、元画像の分離は補完の滲みに惑わされない。両方の和をとり、
+// 人物を閉処理した範囲に入る手前要素(人物の上に乗った文字)は人物の一部として人物層へ戻す。
+function combinePersonMasks(firstMask,secondMask,overlay){
+  const {width,height}=overlay,total=width*height;
+  const read=canvas=>{
+    const data=readScaledPixels(canvas,768).data,out=new Uint8Array(total);
+    for(let index=0;index<total;index++)out[index]=(data[index*4]+data[index*4+1]+data[index*4+2])/3>127?1:0;
+    return out;
+  };
+  const first=read(firstMask),second=read(secondMask),union=new Uint8Array(total);
+  for(let index=0;index<total;index++)union[index]=first[index]|second[index];
+  const radius=Math.max(3,Math.round(Math.max(width,height)*.045));
+  const grown=dilateHoleByDistance(union,width,height,radius);
+  const shrunk=dilateHoleByDistance(Uint8Array.from(grown,value=>value?0:1),width,height,radius);
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d");
+  const image=context.createImageData(width,height);
+  for(let index=0;index<total;index++){
+    const hull=shrunk[index]?0:1;
+    const value=union[index]||(overlay.mask[index]&&hull)?255:0;
+    image.data[index*4]=image.data[index*4+1]=image.data[index*4+2]=value;image.data[index*4+3]=255;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
+// 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
+async function personMaskWithOverlay(source,segmentFn){
+  const first=await segmentFn(source);
+  const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
+  const overlay=detectGraphicOverlay(source,firstMask);
+  if(!overlay)return {result:first,maskCanvas:firstMask,overlay:null};
+  first.categoryMask.close();
+  const result=await segmentFn(removeOverlayFromSource(source,overlay));
+  const secondMask=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
+  return {result,maskCanvas:combinePersonMasks(firstMask,secondMask,overlay),overlay};
+}
+
+// 人物マスクから背景補完・人物前景(・手前レイヤー)を作る。画像品質計測ハーネス(scripts/qc)も同じ関数で評価する。
+function buildLayerSet(source,maskSource,overlay=null){
+  if(!overlay)return {background:pseudoInpaintBackground(source,maskSource),foreground:transparentForegroundFromMask(source,maskSource),front:null};
+  const clean=removeOverlayFromSource(source,overlay);
+  return {
+    background:pseudoInpaintBackground(source,maskSource,clean,overlay),
+    foreground:transparentForegroundFromMask(cleanSourceAtSize(source,clean,overlay,1536),maskSource,clean),
+    front:overlayFrontCanvas(source,overlay,1536)
+  };
 }
 
 async function createLayeredSceneFromMask(){
@@ -3748,10 +4040,11 @@ async function createLayeredSceneFromMask(){
   errEl.textContent="";
   await new Promise(resolve=>requestAnimationFrame(resolve));
   try{
-    const background=pseudoInpaintBackground(sourceImage,subjectMaskCanvas);
-    const foreground=transparentForegroundFromMask(sourceImage,subjectMaskCanvas);
+    const {background,foreground,front}=buildLayerSet(sourceImage,subjectMaskCanvas,currentSubjectOverlay);
     uploadMapImage(backgroundTex,gl.TEXTURE3,background);
     uploadForegroundImage(foregroundTex,gl.TEXTURE4,foreground);
+    if(front)uploadForegroundImage(frontTex,gl.TEXTURE6,front);
+    hasFrontLayer=Boolean(front);
     backgroundLayerSource=background;
     foregroundLayerSource=foreground;
     hasLayeredDemo=true;
@@ -3759,6 +4052,7 @@ async function createLayeredSceneFromMask(){
     applySceneLook(background,foreground,{sceneMatched:true});
     activeDemoIndex=-1;
     updateDemoSelection();
+    rigSessionId++;
     activeRigProfile=inferRigProfile(foreground);
     activeRigProfile.rigType="generic";
     activeRigProfile.rigSource="segmented-silhouette";
@@ -3803,7 +4097,7 @@ async function createLayeredSceneFromMask(){
   }
 }
 
-function personMapsFromResult(result){
+function personMapsFromResult(result,overrideMaskCanvas=null){
   const categoryMask=result.categoryMask;
   const categories=result.categoryMask.getAsUint8Array();
   const width=categoryMask.width;
@@ -3831,10 +4125,12 @@ function personMapsFromResult(result){
   }
   maskContext.putImageData(maskPixels,0,0);
   depthContext.putImageData(depthPixels,0,0);
-  uploadMapImage(subjectMaskTex,gl.TEXTURE2,maskCanvas);
+  // 手前要素を考慮して合成した人物マスクがあれば、そちらを人物領域として使う（Depthは部位カテゴリのまま）。
+  const finalMask=overrideMaskCanvas||maskCanvas;
+  uploadMapImage(subjectMaskTex,gl.TEXTURE2,finalMask);
   uploadMapImage(depthTex,gl.TEXTURE1,depthCanvas);
-  updateRecognitionGuide(maskCanvas);
-  subjectMaskCanvas=maskCanvas;
+  updateRecognitionGuide(finalMask);
+  subjectMaskCanvas=finalMask;
   categoryMask.close();
   hasSubjectMask=true;
   hasDepthMap=true;
@@ -3843,7 +4139,7 @@ function personMapsFromResult(result){
   updateMapStatus("端末内AI");
   syncContourCropAvailability();
   syncLayeringControls();
-  return maskCanvas;
+  return finalMask;
 }
 
 async function autoSegmentPerson({closePanelOnSuccess=false}={}){
@@ -3862,8 +4158,11 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
   try{
     if(!imageSegmenter)imageSegmenter=await withTimeout(createImageSegmenter(),45000,"人物分離モデルの読込");
     statusEl.textContent="人物と背景を分離中…";
-    const result=await withTimeout(segmentStillImage(imageSegmenter,sourceImage),30000,"人物分離の推論");
-    personMapsFromResult(result);
+    // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
+    currentSubjectOverlay=null;
+    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image)),60000,"人物分離の推論");
+    currentSubjectOverlay=separated.overlay;
+    personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
     await createLayeredSceneFromMask();
     statusEl.textContent="人物分離・背景補完済み／2層立体表示";
     if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
@@ -4002,9 +4301,9 @@ const EDIT_CONTROL_IDS=[
 
 function captureEditState(){
   const state={
-    rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,profile:cloneRigProfile(activeRigProfile)} : null,
-    rigParts:activeRigProfile ? {demoIndex:activeDemoIndex,parts:cloneRigParts(activeRigParts)} : null,
-    bonePoints:activeRigProfile ? {demoIndex:activeDemoIndex,points:cloneBonePoints(activeBonePoints)} : null
+    rigProfile:activeRigProfile ? {demoIndex:activeDemoIndex,session:rigSessionId,profile:cloneRigProfile(activeRigProfile)} : null,
+    rigParts:activeRigProfile ? {demoIndex:activeDemoIndex,session:rigSessionId,parts:cloneRigParts(activeRigParts)} : null,
+    bonePoints:activeRigProfile ? {demoIndex:activeDemoIndex,session:rigSessionId,points:cloneBonePoints(activeBonePoints)} : null
   };
   for(const id of EDIT_CONTROL_IDS){
     const control=$("#"+id);
@@ -4012,6 +4311,9 @@ function captureEditState(){
   }
   return state;
 }
+
+// 個別読込・自動分離の画像はdemoIndexが常に-1のため、読込ごとのsessionも一致したときだけ復元する。
+function rigStateMatches(entry){return Boolean(entry)&&entry.demoIndex===activeDemoIndex&&(activeDemoIndex>=0||entry.session===rigSessionId)}
 
 function applyEditState(state){
   for(const id of EDIT_CONTROL_IDS){
@@ -4023,15 +4325,15 @@ function applyEditState(state){
   syncSpatialControls();
   syncContourCropAvailability();
   syncCharacterPlacementControls();
-  if(state.rigProfile&&state.rigProfile.demoIndex===activeDemoIndex){
+  if(rigStateMatches(state.rigProfile)){
     activeRigProfile=cloneRigProfile(state.rigProfile.profile);
   }
-  if(state.rigParts&&state.rigParts.demoIndex===activeDemoIndex){
+  if(rigStateMatches(state.rigParts)){
     activeRigParts=cloneRigParts(state.rigParts.parts);
     for(const part of activeRigParts)if(!rigSprings[part.id])rigSprings[part.id]=newRigSpring();
     syncProfileFromParts();
   }
-  if(state.bonePoints&&state.bonePoints.demoIndex===activeDemoIndex)activeBonePoints=cloneBonePoints(state.bonePoints.points);
+  if(rigStateMatches(state.bonePoints))activeBonePoints=cloneBonePoints(state.bonePoints.points);
   syncRigDebugControls();
   syncRigPartList();
   syncBonePointList();
@@ -5177,6 +5479,7 @@ function render(now){
   gl.uniform1f(U.u_hasDepthMap,hasDepthMap ? 1 : 0);
   gl.uniform1f(U.u_hasSubjectMask,hasSubjectMask ? 1 : 0);
   gl.uniform1f(U.u_hasLayeredDemo,hasLayeredDemo ? 1 : 0);
+  gl.uniform1f(U.u_hasFront,hasFrontLayer&&hasLayeredDemo ? 1 : 0);
   const characterPlacement=characterPlacementValues();
   gl.uniform1f(U.u_bgLayerStrength,parseFloat($("#bgLayerStrength").value));
   gl.uniform1f(U.u_characterScale,characterPlacement.scale);

@@ -1,0 +1,142 @@
+{
+  "trial": "T1_guided_filter",
+  "src": "/index.html",
+  "date": "2026-10-30T18:06:53.497Z",
+  "cases": {
+    "magazine": {
+      "proxy": {
+        "personArea": 0.5001,
+        "edgeAlign": 2.531,
+        "roughness": 1.097,
+        "skinMissRatio": 0.0421,
+        "bgFarDrift": 3.266,
+        "frontArea": 0
+      },
+      "ms": 579
+    },
+    "heroine": {
+      "proxy": {
+        "personArea": 0.5174,
+        "edgeAlign": 1.934,
+        "roughness": 1.24,
+        "skinMissRatio": 0.276,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 883,
+      "gt": {
+        "iou": 0.8874,
+        "alphaMAE": 0.0674,
+        "bgHolePSNR": 13.27,
+        "shiftPSNR": 18.81,
+        "shiftChangedPSNR": 17.53,
+        "recompPSNR": 25.77,
+        "score": 35.5
+      }
+    },
+    "heroine_overlay": {
+      "proxy": {
+        "personArea": 0.229,
+        "edgeAlign": 2.207,
+        "roughness": 1.202,
+        "skinMissRatio": 0.2186,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 383,
+      "gt": {
+        "iou": 0.394,
+        "alphaMAE": 0.3403,
+        "bgHolePSNR": 10.65,
+        "shiftPSNR": 16.7,
+        "shiftChangedPSNR": 13.78,
+        "recompPSNR": 27.11,
+        "overlayIoU": 0,
+        "score": 15.8
+      }
+    },
+    "city_camisole": {
+      "proxy": {
+        "personArea": 0.2178,
+        "edgeAlign": 3.772,
+        "roughness": 1.203,
+        "skinMissRatio": 0.0704,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 407,
+      "gt": {
+        "iou": 0.973,
+        "alphaMAE": 0.0091,
+        "bgHolePSNR": 14.18,
+        "shiftPSNR": 21.9,
+        "shiftChangedPSNR": 19.63,
+        "recompPSNR": 29.55,
+        "score": 41.8
+      }
+    },
+    "city_camisole_overlay": {
+      "proxy": {
+        "personArea": 0.1901,
+        "edgeAlign": 2.697,
+        "roughness": 1.232,
+        "skinMissRatio": 0.2406,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 352,
+      "gt": {
+        "iou": 0.842,
+        "alphaMAE": 0.0374,
+        "bgHolePSNR": 13.01,
+        "shiftPSNR": 19.25,
+        "shiftChangedPSNR": 17.22,
+        "recompPSNR": 25.12,
+        "overlayIoU": 0,
+        "score": 33.7
+      }
+    },
+    "mint_ponytail": {
+      "proxy": {
+        "personArea": 0.198,
+        "edgeAlign": 3.649,
+        "roughness": 1.149,
+        "skinMissRatio": 0.1401,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 1241,
+      "gt": {
+        "iou": 0.9414,
+        "alphaMAE": 0.0138,
+        "bgHolePSNR": 18.16,
+        "shiftPSNR": 23.3,
+        "shiftChangedPSNR": 21.34,
+        "recompPSNR": 32.85,
+        "score": 47.3
+      }
+    },
+    "navy_pixie_overlay": {
+      "proxy": {
+        "personArea": 0.1833,
+        "edgeAlign": 2.438,
+        "roughness": 1.151,
+        "skinMissRatio": 0.4114,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 434,
+      "gt": {
+        "iou": 0.8968,
+        "alphaMAE": 0.0222,
+        "bgHolePSNR": 15.49,
+        "shiftPSNR": 20.79,
+        "shiftChangedPSNR": 18.14,
+        "recompPSNR": 27.57,
+        "overlayIoU": 0,
+        "score": 37.8
+      }
+    }
+  },
+  "meanScore": 35.3
+}

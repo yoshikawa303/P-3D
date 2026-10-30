@@ -1,0 +1,209 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>人物分離・2層化 品質計測</title>
+<body style="font:12px monospace;background:#222;color:#ddd;margin:8px">
+<!-- 使い方: python3 scripts/qc/serve.py 8140 → http://127.0.0.1:8140/scripts/qc/layer_quality.html?trial=T1&src=/index.html
+     index.html 内の人物分離・補完関数を抽出して実モデル(MediaPipe)で評価し、Docs/QC/ImageQuality/<trial>/ へ結果を保存する。 -->
+<pre id="log"></pre>
+<script type="module">
+const q=new URLSearchParams(location.search);
+const SRC=q.get("src")||"/index.html",TRIAL=q.get("trial")||"dev",W=640;
+const log=t=>{document.getElementById("log").textContent+=t+"\n"};
+const html=await (await fetch(SRC,{cache:"no-store"})).text();
+
+// ---- index.html から関数を名前で抽出（波括弧対応）----
+function extractFn(name){
+  const m=new RegExp("(?:async )?function "+name+"\\(").exec(html);
+  if(!m)return null;
+  let i=html.indexOf("{",html.indexOf(")",m.index)),depth=0;
+  for(let j=i;j<html.length;j++){
+    const c=html[j];
+    if(c==="{")depth++;else if(c==="}"){depth--;if(depth===0)return html.slice(m.index,j+1)}
+  }
+  return null;
+}
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","personMaskCanvasFromCategories","combinePersonMasks","personMaskWithOverlay"];
+const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
+// 新しい補助関数（NAMESに無いもの）も名前規則 qcHelper_ で拾えるよう、index.html側の追加関数を明示列挙する
+const EXTRA=(q.get("extra")||"").split(",").filter(Boolean).map(n=>[n,extractFn(n)]).filter(([,b])=>b);
+const lib=new Function(found.concat(EXTRA).map(([,b])=>b).join("\n")+"\nreturn {"+found.concat(EXTRA).map(([n])=>n).join(",")+"}")();
+window.QC_LIB=lib;log("抽出関数: "+found.concat(EXTRA).map(([n])=>n).join(", "));
+const hasBuild=!!lib.buildLayerSet;
+const buildLayers=(img,mask,overlay)=>hasBuild?lib.buildLayerSet(img,mask,overlay):{background:lib.pseudoInpaintBackground(img,mask),foreground:lib.transparentForegroundFromMask(img,mask),front:null};
+
+// ---- セグメンタ ----
+const VISION="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
+const MODEL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
+const mod=await import(VISION+"/vision_bundle.mjs");
+const vision=await mod.FilesetResolver.forVisionTasks(VISION+"/wasm");
+let segmenter;
+try{segmenter=await mod.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL,delegate:"GPU"},runningMode:"IMAGE",outputCategoryMask:true,outputConfidenceMasks:false})}
+catch(e){segmenter=await mod.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL},runningMode:"IMAGE",outputCategoryMask:true,outputConfidenceMasks:false})}
+log("モデル読込完了");
+
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("load "+src));i.src=src});
+function segment(img){
+  return new Promise((resolve,reject)=>{
+    let done=false;const fin=r=>{if(!done){done=true;resolve(r)}};
+    try{const p=segmenter.segment(img,fin);if(p&&p.then)p.then(r=>{if(r)fin(r)}).catch(reject)}catch(e){reject(e)}
+  });
+}
+function maskFromResult(result){
+  const cm=result.categoryMask,cat=cm.getAsUint8Array(),w=cm.width,h=cm.height;
+  const f=lib.fillEnclosedSubjectHoles(lib.includeAttachedOtherRegions(lib.filterSubjectComponents(cat,w,h),cat,w,h),w,h);
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d"),id=x.createImageData(w,h);
+  for(let i=0;i<f.length;i++){const v=f[i]?255:0;id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}
+  x.putImageData(id,0,0);cm.close();return c;
+}
+
+// ---- 画素ユーティリティ ----
+const sizeOf=img=>{const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,s=Math.min(1,W/Math.max(w,h));return [Math.max(1,Math.round(w*s)),Math.max(1,Math.round(h*s))]};
+function canvasOf(img,w,h){const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);return c}
+const pix=(img,w,h)=>canvasOf(img,w,h).getContext("2d").getImageData(0,0,w,h).data;
+const lum=(d,i)=>(d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
+function psnr(a,b,sel){let se=0,n=0;for(let i=0;i<a.length;i+=4){if(sel&&!sel[i>>2])continue;for(let c=0;c<3;c++){const e=a[i+c]-b[i+c];se+=e*e}n+=3}return n?10*Math.log10(255*255/Math.max(1e-9,se/n)):99}
+function composite(bg,fg,front,shift,w,h){
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{willReadFrequently:true});
+  x.drawImage(bg,0,0,w,h);if(fg)x.drawImage(fg,shift,0,w,h);if(front)x.drawImage(front,0,0,w,h);return c;
+}
+const alphaOf=(img,w,h)=>{const d=pix(img,w,h),a=new Float32Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3]/255;return a};
+function dilate(mask,w,h,r){const out=new Uint8Array(mask.length);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let on=0;for(let dy=-r;dy<=r&&!on;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h&&mask[ny*w+nx]){on=1;break}}out[y*w+x]=on}return out}
+
+// ---- 合成テスト用の手前オーバーレイ（誌面の文字・図形を模擬。位置は正解人物の外接矩形から決める）----
+function makeOverlay(w,h,gtAlpha){
+  let x0=w,x1=0,y0=h,y1=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(gtAlpha[y*w+x]>.5){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  const bw=x1-x0,bh=y1-y0,c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");
+  g.textBaseline="top";g.font=`900 ${Math.round(bh*.16)}px sans-serif`;g.fillStyle="#111";g.strokeStyle="#fff";g.lineWidth=Math.max(2,bh*.008);
+  const t1="見出し";g.strokeText(t1,x0+bw*.52,y0+bh*.30);g.fillText(t1,x0+bw*.52,y0+bh*.30);
+  g.save();g.translate(x0+bw*.08,y0+bh*.55);g.rotate(-.12);g.font=`900 ${Math.round(bh*.09)}px sans-serif`;g.fillStyle="#e6007e";g.strokeStyle="#fff";
+  g.strokeText("ピンク文字",0,0);g.fillText("ピンク文字",0,0);g.restore();
+  g.fillStyle="#00a0e9";g.fillRect(x0+bw*.60,y0+bh*.62,bw*.30,bh*.035);
+  g.fillStyle="#f5d000";g.beginPath();g.arc(x0+bw*.2,y0+bh*.2,bh*.04,0,7);g.fill();
+  return c;
+}
+
+// ---- 比例指標（正解なしの画像にも使える）----
+const dilate0=(m,i,w,h)=>false;
+function proxyMetrics(layers,img,w,h){
+  const fgA=alphaOf(layers.foreground,w,h),frA=layers.front?alphaOf(layers.front,w,h):new Float32Array(w*h);
+  const src=pix(img,w,h),m=new Uint8Array(w*h);let area=0;
+  for(let i=0;i<m.length;i++){m[i]=fgA[i]>.5?1:0;area+=m[i]}
+  let per=0,grad=0,gn=0,all=0;
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+    const i=y*w+x,gx=lum(src,(i+1)*4)-lum(src,(i-1)*4),gy=lum(src,(i+w)*4)-lum(src,(i-w)*4),g=Math.hypot(gx,gy);all+=g;
+    if(m[i]&&(!m[i-1]||!m[i+1]||!m[i-w]||!m[i+w])){per++;grad+=g;gn++}
+  }
+  const meanG=all/((w-2)*(h-2));
+  // 輪郭の粗さ: 周長 / 平滑化後の周長
+  const blur=lib.boxBlurFloat?lib.boxBlurFloat(Float32Array.from(m),w,h,Math.max(2,Math.round(Math.max(w,h)*.008))):null;
+  let per2=0;if(blur){for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x,b=blur[i]>.5;if(b&&!(blur[i-1]>.5&&blur[i+1]>.5&&blur[i-w]>.5&&blur[i+w]>.5))per2++}}
+  // 人物外接の取りこぼし: 肌色画素のうち人物にも手前層にも属さない割合（外接矩形内）
+  let bx0=w,bx1=0,by0=h,by1=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(m[y*w+x]){bx0=Math.min(bx0,x);bx1=Math.max(bx1,x);by0=Math.min(by0,y);by1=Math.max(by1,y)}
+  let skin=0,skinMiss=0;
+  for(let y=by0;y<=by1;y++)for(let x=bx0;x<=bx1;x++){const i=y*w+x,r=src[i*4],g=src[i*4+1],b=src[i*4+2];
+    if(r>95&&g>40&&b>20&&Math.max(r,g,b)-Math.min(r,g,b)>15&&Math.abs(r-g)>15&&r>g&&r>b){skin++;if(fgA[i]<.5&&frA[i]<.5)skinMiss++}}
+  // 補完背景と元画像の差: 人物外(補完されないはず)の画素が変わっていないか
+  const bg=pix(layers.background,w,h);let drift=0,dn=0;const near=dilate(m,w,h,Math.max(6,Math.round(Math.max(w,h)*.03)));
+  for(let i=0;i<m.length;i++)if(!near[i]){drift+=Math.abs(bg[i*4]-src[i*4])+Math.abs(bg[i*4+1]-src[i*4+1])+Math.abs(bg[i*4+2]-src[i*4+2]);dn++}
+  // 補完のぼけ度: 補完領域のラプラシアン平均 / 周囲リング(補完外)の平均。1に近いほど周囲と質感が揃い、0に近いほどのっぺり。
+  const bgLum=new Float32Array(w*h);for(let i=0;i<bgLum.length;i++)bgLum[i]=lum(bg,i*4);
+  const holeArea=dilate(m,w,h,3),ringOuter=dilate(m,w,h,Math.round(Math.max(w,h)*.04)),ringInner=dilate(m,w,h,Math.round(Math.max(w,h)*.012));
+  let hs=0,hn=0,rs=0,rn=0;
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+    const i=y*w+x,lap=Math.abs(4*bgLum[i]-bgLum[i-1]-bgLum[i+1]-bgLum[i-w]-bgLum[i+w]);
+    if(holeArea[i]&&!dilate0(m,i,w,h)){hs+=lap;hn++}else if(ringOuter[i]&&!ringInner[i]){rs+=lap;rn++}
+  }
+  const sharpRatio=hn&&rn&&rs>0?(hs/hn)/(rs/rn):0;
+  return {
+    fillSharpRatio:+sharpRatio.toFixed(3),
+    personArea:+(area/m.length).toFixed(4),
+    edgeAlign:+(gn&&meanG?(grad/gn)/meanG:0).toFixed(3),
+    roughness:+(per2?per/per2:0).toFixed(3),
+    skinMissRatio:+(skin?skinMiss/skin:0).toFixed(4),
+    bgFarDrift:+(dn?drift/dn/3:0).toFixed(3),
+    frontArea:+(frA.reduce((a,b)=>a+(b>.5?1:0),0)/m.length).toFixed(4)
+  };
+}
+
+// ---- 正解あり指標 ----
+function gtMetrics(layers,img,gt,w,h){
+  const fgA=alphaOf(layers.foreground,w,h),frA=layers.front?alphaOf(layers.front,w,h):new Float32Array(w*h),gtA=alphaOf(gt.fg,w,h);
+  let inter=0,uni=0,mae=0;for(let i=0;i<fgA.length;i++){const a=fgA[i]>.5,b=gtA[i]>.5;if(a&&b)inter++;if(a||b)uni++;mae+=Math.abs(fgA[i]-gtA[i])}
+  const gtB=pix(gt.bg,w,h),myB=pix(layers.background,w,h);
+  const hole=dilate(Uint8Array.from(gtA,v=>v>.05?1:0),w,h,3);
+  const gtBin=Uint8Array.from(gtA,v=>v>.05?1:0),ringOuter=dilate(gtBin,w,h,6),ringInner=dilate(gtBin,w,h,1),ring=Uint8Array.from(ringOuter,(v,i)=>v&&!ringInner[i]?1:0);
+  const shift=Math.round(w*.05);
+  const ideal=composite(gt.bg,gt.fg,gt.front||null,shift,w,h),mine=composite(layers.background,layers.foreground,layers.front,shift,w,h);
+  const iP=pix(ideal,w,h),mP=pix(mine,w,h);
+  const chg=new Uint8Array(w*h);const z=pix(composite(gt.bg,gt.fg,gt.front||null,0,w,h),w,h);
+  for(let i=0;i<chg.length;i++)chg[i]=(Math.abs(iP[i*4]-z[i*4])+Math.abs(iP[i*4+1]-z[i*4+1])+Math.abs(iP[i*4+2]-z[i*4+2])>24)?1:0;
+  const flat=pix(composite(layers.background,layers.foreground,layers.front,0,w,h),w,h),inP=pix(img,w,h);
+  const out={
+    iou:+(inter/uni).toFixed(4),alphaMAE:+(mae/fgA.length).toFixed(4),
+    bgHolePSNR:+psnr(myB,gtB,hole).toFixed(2),ringPSNR:+psnr(myB,gtB,ring).toFixed(2),
+    shiftPSNR:+psnr(mP,iP).toFixed(2),shiftChangedPSNR:+psnr(mP,iP,chg).toFixed(2),
+    recompPSNR:+psnr(flat,inP).toFixed(2)
+  };
+  if(gt.front){const gF=alphaOf(gt.front,w,h);let i2=0,u2=0;for(let i=0;i<gF.length;i++){const a=frA[i]>.5,b=gF[i]>.5;if(a&&b)i2++;if(a||b)u2++}out.overlayIoU=+(u2?i2/u2:0).toFixed(4)}
+  const clamp=v=>Math.max(0,Math.min(1,v));
+  out.score=+(100*(.4*out.iou+.3*clamp((out.bgHolePSNR-15)/20)+.3*clamp((out.shiftPSNR-20)/20))).toFixed(1);
+  return {m:out,ideal,mine};
+}
+
+// ---- テストケース ----
+const A="/assets/demos/";
+const CASES=[
+  {id:"magazine",src:"/test_img/Sample1.png"},
+  {id:"heroine",src:A+"demo-heroine.jpg",gt:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-heroine-background.jpg"}},
+  {id:"heroine_overlay",src:A+"demo-heroine.jpg",gt:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-heroine-background.jpg"},overlay:true},
+  {id:"city_camisole",src:A+"demo-auto-city-camisole.png",gt:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-city-camisole-background.png"}},
+  {id:"city_camisole_overlay",src:A+"demo-auto-city-camisole.png",gt:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-city-camisole-background.png"},overlay:true},
+  {id:"navy_pixie",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"}},
+  {id:"mint_ponytail",src:A+"demo-auto-mint-ponytail.png",gt:{fg:A+"demo-auto-mint-ponytail-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png"}},
+  {id:"navy_pixie_overlay",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"},overlay:true}
+];
+window.QC_SEGMENT=segment;window.QC_LOADIMG=loadImg;window.QC_MAKEOVERLAY=makeOverlay;window.QC_ALPHA=alphaOf;window.QC_COMPOSITE=composite;
+const only=(q.get("only")||"").split(",").filter(Boolean);
+const results={trial:TRIAL,src:SRC,date:new Date().toISOString(),cases:{}};
+const save=async(path,body,dataurl)=>fetch("/save/"+path,{method:"POST",body,headers:dataurl?{"X-Encoding":"dataurl"}:{}});
+
+for(const cs of CASES){
+  if(only.length&&!only.includes(cs.id))continue;
+  try{
+    let img=await loadImg(cs.src),gt=null;
+    const [w,h]=sizeOf(img);
+    if(cs.gt){
+      gt={fg:await loadImg(cs.gt.fg),bg:await loadImg(cs.gt.bg)};
+      if(cs.overlay){
+        const gtA=alphaOf(gt.fg,w,h),ov=makeOverlay(w,h,gtA);gt.front=ov;
+        const base=composite(gt.bg,gt.fg,null,0,w,h);base.getContext("2d").drawImage(ov,0,0);img=base;
+      }
+    }
+    const t0=performance.now();
+    let mask,overlay=null;
+    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
+    else mask=maskFromResult(await segment(img));
+    const layers=buildLayers(img,mask,overlay);
+    const ms=Math.round(performance.now()-t0);
+    const r={proxy:proxyMetrics(layers,img,w,h),ms};
+    let ideal=null,mine=null;
+    if(gt){const g=gtMetrics(layers,img,gt,w,h);r.gt=g.m;ideal=g.ideal;mine=g.mine}
+    r.overlayArea=overlay?+(overlay.area/(overlay.width*overlay.height)).toFixed(4):0;
+    results.cases[cs.id]=r;
+    log(cs.id+": "+JSON.stringify(r));
+    // 画像保存: 入力 / 分離結果の並び（マスク・前景・補完背景・手前層・ずらし合成）
+    const strip=document.createElement("canvas");strip.width=w*5+40;strip.height=h;const sx=strip.getContext("2d");sx.fillStyle="#555";sx.fillRect(0,0,strip.width,h);
+    const put=(cv,i)=>{if(cv)sx.drawImage(cv,i*(w+10),0,w,h)};
+    put(canvasOf(img,w,h),0);put(mask,1);put(layers.foreground,2);put(layers.background,3);
+    put(composite(layers.background,layers.foreground,layers.front,Math.round(w*.05),w,h),4);
+    await save(TRIAL+"/"+cs.id+".png",strip.toDataURL("image/png"),true);
+    if(layers.front){const fc=document.createElement("canvas");fc.width=w;fc.height=h;const fx=fc.getContext("2d");fx.fillStyle="#888";fx.fillRect(0,0,w,h);fx.drawImage(layers.front,0,0,w,h);await save(TRIAL+"/"+cs.id+"_front.png",fc.toDataURL("image/png"),true)}
+  }catch(e){results.cases[cs.id]={error:String(e&&e.stack||e)};log(cs.id+" ERROR "+e)}
+}
+// 集計
+const scores=Object.values(results.cases).map(c=>c.gt&&c.gt.score).filter(v=>typeof v==="number");
+results.meanScore=scores.length?+(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):null;
+await save(TRIAL+"/result.json",JSON.stringify(results,null,2));
+log("平均スコア(正解あり): "+results.meanScore);
+window.QC_DONE=results;
+</script>
