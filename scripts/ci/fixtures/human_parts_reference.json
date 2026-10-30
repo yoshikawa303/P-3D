@@ -1,0 +1,871 @@
+{
+ "description": "P-3D human part reference. Visually annotated on a 10% grid overlay (2026-10-27). Shapes are normalized [cx, cy, rx, ry]; kind is the shape that best matches the real object (ellipse|rect). hair is the bounding envelope of all hair pixels. Annotation tolerance is about +-0.015. 2026-10-27: 7 photo-real auto demos added (10 assets total).",
+ "assets": {
+  "demo-heroine-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.46,
+     0.167,
+     0.067,
+     0.055
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.525,
+     0.392,
+     0.4,
+     0.328
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.46,
+     0.585,
+     0.105,
+     0.04
+    ]
+   },
+   "chest": [],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.565,
+     0.445,
+     0.285,
+     0.175
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.56,
+     0.765,
+     0.37,
+     0.165
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.29,
+      0.447,
+      0.072,
+      0.031
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.63,
+      0.14,
+      0.058,
+      0.05
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.575,
+      0.325,
+      0.065,
+      0.03
+     ]
+    }
+   ]
+  },
+  "demo-standee-girl-celestial.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.5,
+     0.114,
+     0.052,
+     0.034
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.503,
+     0.215,
+     0.436,
+     0.205
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.49,
+     0.335,
+     0.085,
+     0.035
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.435,
+      0.25,
+      0.058,
+      0.05
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.585,
+      0.25,
+      0.058,
+      0.05
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.5,
+     0.25,
+     0.2,
+     0.09
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.54,
+     0.485,
+     0.26,
+     0.115
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.645,
+      0.435,
+      0.055,
+      0.045
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.545,
+      0.047,
+      0.037,
+      0.025
+     ]
+    }
+   ]
+  },
+  "demo-standee-girl-cyber.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.525,
+     0.117,
+     0.05,
+     0.038
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.48,
+     0.098,
+     0.14,
+     0.082
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.525,
+     0.31,
+     0.065,
+     0.04
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.417,
+      0.228,
+      0.062,
+      0.042
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.575,
+      0.228,
+      0.062,
+      0.042
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.5,
+     0.24,
+     0.25,
+     0.085
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.585,
+     0.388,
+     0.175,
+     0.067
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.745,
+      0.44,
+      0.037,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.455,
+      0.47,
+      0.06,
+      0.02
+     ]
+    }
+   ]
+  },
+  "demo-auto-blue-bob-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.51,
+     0.108,
+     0.058,
+     0.045
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.51,
+     0.085,
+     0.1,
+     0.054
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.52,
+     0.3,
+     0.08,
+     0.028
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.47,
+      0.24,
+      0.045,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.565,
+      0.24,
+      0.045,
+      0.04
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.508,
+     0.274,
+     0.168,
+     0.113
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.522,
+     0.439,
+     0.136,
+     0.061
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.383,
+      0.906,
+      0.038,
+      0.045
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.529,
+      0.855,
+      0.066,
+      0.032
+     ]
+    }
+   ]
+  },
+  "demo-auto-brutalist-couture-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.49,
+     0.1,
+     0.04,
+     0.04
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.498,
+     0.093,
+     0.082,
+     0.057
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.505,
+     0.325,
+     0.095,
+     0.02
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.45,
+      0.245,
+      0.045,
+      0.035
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.55,
+      0.245,
+      0.045,
+      0.035
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.494,
+     0.281,
+     0.114,
+     0.086
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.477,
+     0.439,
+     0.143,
+     0.095
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.49,
+      0.834,
+      0.057,
+      0.044
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.706,
+      0.869,
+      0.039,
+      0.047
+     ]
+    }
+   ]
+  },
+  "demo-auto-city-camisole-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.5,
+     0.105,
+     0.052,
+     0.045
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.506,
+     0.109,
+     0.136,
+     0.096
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.462,
+     0.335,
+     0.105,
+     0.025
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.41,
+      0.25,
+      0.04,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.517,
+      0.25,
+      0.04,
+      0.04
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.449,
+     0.26,
+     0.143,
+     0.093
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.496,
+     0.448,
+     0.179,
+     0.095
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.448,
+      0.926,
+      0.052,
+      0.05
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.523,
+      0.858,
+      0.027,
+      0.042
+     ]
+    }
+   ]
+  },
+  "demo-auto-mint-ponytail-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.508,
+     0.097,
+     0.055,
+     0.042
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.494,
+     0.088,
+     0.103,
+     0.079
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.5,
+     0.31,
+     0.092,
+     0.022
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.45,
+      0.235,
+      0.04,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.545,
+      0.235,
+      0.04,
+      0.04
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.518,
+     0.292,
+     0.148,
+     0.128
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.51,
+     0.457,
+     0.14,
+     0.046
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.457,
+      0.929,
+      0.044,
+      0.043
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.522,
+      0.879,
+      0.045,
+      0.032
+     ]
+    }
+   ]
+  },
+  "demo-auto-navy-pixie-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.47,
+     0.1,
+     0.046,
+     0.039
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.446,
+     0.074,
+     0.096,
+     0.065
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.5,
+     0.317,
+     0.09,
+     0.017
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.445,
+      0.24,
+      0.04,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.54,
+      0.24,
+      0.04,
+      0.04
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.488,
+     0.284,
+     0.154,
+     0.125
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.495,
+     0.444,
+     0.143,
+     0.072
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.413,
+      0.915,
+      0.046,
+      0.043
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.508,
+      0.843,
+      0.062,
+      0.035
+     ]
+    }
+   ]
+  },
+  "demo-auto-rose-wavy-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.496,
+     0.1,
+     0.046,
+     0.039
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.527,
+     0.11,
+     0.106,
+     0.09
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.531,
+     0.33,
+     0.094,
+     0.02
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.475,
+      0.272,
+      0.042,
+      0.038
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.575,
+      0.272,
+      0.042,
+      0.038
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.525,
+     0.263,
+     0.112,
+     0.091
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.504,
+     0.431,
+     0.154,
+     0.086
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.489,
+      0.869,
+      0.064,
+      0.031
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.575,
+      0.929,
+      0.05,
+      0.04
+     ]
+    }
+   ]
+  },
+  "demo-auto-teal-halfup-foreground.png": {
+   "face": {
+    "kind": "ellipse",
+    "shape": [
+     0.493,
+     0.128,
+     0.056,
+     0.039
+    ]
+   },
+   "hair": {
+    "kind": "rect",
+    "shape": [
+     0.489,
+     0.13,
+     0.114,
+     0.098
+    ]
+   },
+   "waist": {
+    "kind": "rect",
+    "shape": [
+     0.533,
+     0.325,
+     0.092,
+     0.018
+    ]
+   },
+   "chest": [
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.49,
+      0.262,
+      0.04,
+      0.04
+     ]
+    },
+    {
+     "kind": "ellipse",
+     "shape": [
+      0.583,
+      0.262,
+      0.04,
+      0.04
+     ]
+    }
+   ],
+   "top": {
+    "kind": "rect",
+    "shape": [
+     0.536,
+     0.3,
+     0.128,
+     0.122
+    ]
+   },
+   "bottom": {
+    "kind": "rect",
+    "shape": [
+     0.518,
+     0.465,
+     0.119,
+     0.055
+    ]
+   },
+   "accessories": [
+    {
+     "kind": "rect",
+     "shape": [
+      0.471,
+      0.883,
+      0.066,
+      0.033
+     ]
+    },
+    {
+     "kind": "rect",
+     "shape": [
+      0.56,
+      0.878,
+      0.06,
+      0.028
+     ]
+    }
+   ]
+  }
+ },
+ "validation": [
+  "demo-heroine-foreground.png",
+  "demo-auto-brutalist-couture-foreground.png",
+  "demo-auto-rose-wavy-foreground.png",
+  "demo-auto-navy-pixie-foreground.png"
+ ]
+}

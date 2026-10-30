@@ -185,7 +185,7 @@ def main() -> int:
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
     require("naturalBlinkPulse(now,autoRigActive)" in html and "const breathMotion=" in html, "不規則な自動瞬き・呼吸がありません")
     require("nextBlinkAt=now+2400+Math.random()*3500" in html, "瞬き間隔が完全周期のままです")
-    require("const mouthMotion=0;" in html, "無発話時の周期的な口パクが残っています")
+    require("const mouthMotion=naturalMouthPulse(now,autoRigActive);" in html and "nextMouthAt=now+3000+Math.random()*5000" in html, "口の自動開閉が不規則間隔ではありません（周期的な口パク禁止）")
     require("const respiration=Math.sin(seconds*1.38);" in html, "体幹と胸で共有する呼吸位相がありません")
     require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
     require("*0.00135*scale" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
@@ -194,18 +194,17 @@ def main() -> int:
         ("image", "画像"),
         ("live2d", "Live2D"),
         ("lighting", "照明"),
-        ("crop", "背景削除"),
-        ("effects", "立体表示"),
-        ("device", "デバイス"),
+        ("effects", "立体"),
+        ("device", "入力"),
     ]:
         require(f'id="tab-{tab_id}"' in html, f"設定タブがありません: {label}")
         require(f'data-tab-panel="{tab_id}"' in html, f"設定タブ画面がありません: {label}")
     require('id="settingsTabs"' in html, "設定タブのタブリストがありません")
-    require('data-tab="crop">背景削除</button>' in html, "トリミングタブが背景削除へ改名されていません")
+    require('id="tab-crop"' not in html and 'id="contourCrop"' in html, "切抜UIは画像タブへ統合し、独立タブは廃止します")
     require("function switchSettingsTab(" in html, "設定タブの切替処理がありません")
     require(
-        html.index('id="file"') > html.index('id="demoGallery"'),
-        "画像選択ボタンをデモ画像の下へ配置してください",
+        html.index('id="file"') < html.index('id="demoGallery"'),
+        "画像選択ボタンをデモ画像の前へ配置してください",
     )
     for element_id, label in [
         ("rigDebug", "Live2D解析デバッグ切替"),
@@ -243,7 +242,7 @@ def main() -> int:
         ("boneRigStatus", "ボーン構造検証表示"),
         ("splitBoneSegment", "選択ボーン分割"),
         ("exportRig", "リグJSON保存"),
-        ("importRig", "リグJSON読込"),
+        ("rigProjectFile", "リグJSON読込（選択で自動読込）"),
         ("rigProjectFile", "リグJSON入力"),
         ("resetRig", "リグ全体リセット"),
         ("rigDebugStatus", "解析状態表示"),
@@ -345,7 +344,7 @@ def main() -> int:
     require("function splitSelectedBoneSegment(" in html, "選択ボーンを中点分割できません")
     require("guideHandles.rotations" in html, "部位楕円の回転ハンドルがありません")
     require("function boneSelectionScale(" in html, "高解像度画面に応じたボーン強調倍率がありません")
-    require('id="debugShowTags" type="checkbox">認識タグ番号' in html, "認識タグ番号が初期OFFではありません")
+    require('id="debugShowTags" type="checkbox">タグ番号' in html, "認識タグ番号が初期OFFではありません")
     require('id="stopCamera"' in html and "function stopCamera(" in html, "デバイスタブからカメラを停止できません")
     require("float cleanLayerAlphaAt(vec2 uv)" in html, "透過立ち絵の低alpha色かぶりを除く境界処理がありません")
     require("float displacedForegroundMask=softSubjectMaskAt(foregroundUV);" in html, "移動後マスクを最終合成へ使用していません")
@@ -498,9 +497,15 @@ def main() -> int:
     require("multiSourceFill(" not in html, "境界色の方向伝播による格子状の補完が残っています")
     require("function dilateHoleByDistance(" in html, "人物マスク外周を距離で広げる背景補完範囲がありません")
     require(
-        "dilateHoleByDistance(hole,width,height,Math.max(10,Math.round(Math.max(width,height)*0.04)))" in html,
-        "背景側へ人物の輪郭が残らない補完範囲(画像長辺の4%以上)がありません",
+        "dilateHoleByDistance(hole,width,height,Math.max(6,Math.round(Math.max(width,height)*0.018)))" in html,
+        "背景側へ人物の輪郭が残らず、ぼけた帯も広げない補完範囲(画像長辺の1.8%)がありません",
     )
+    require(
+        "function refinedSubjectAlpha(" in html and "function boxBlurFloat(" in html
+        and html.count("refinedSubjectAlpha(source,maskSource") >= 3,
+        "粗い人物マスクを画像エッジへ吸着させるガイデッドフィルタ精密化が前景・背景補完の両方で使われていません",
+    )
+    require("const blend=boxBlurFloat(" in html, "補完範囲の縁を元画素へなじませる処理がありません")
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
     require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
     require("uniform float u_time;" in html, "フレーム同期時刻のshader uniformがありません")
@@ -641,6 +646,13 @@ def main() -> int:
     require("カメラは起動しましたが、顔検出の準備に失敗しました" in start_body, "失敗境界の表示がありません")
     require("顔追跡を再試行" in start_body, "顔追跡だけを再試行する導線がありません")
 
+    for icon_id in ("cameraToggle", "rigDebugToggle", "moveCharacter", "demoNext", "panelToggle"):
+        m = re.search(r'<button id="%s"[^>]*>(.*?)</button>' % icon_id, html, re.S)
+        require(bool(m) and "<svg" in m.group(1), f"右上ボタンがアイコン化されていません: {icon_id}")
+        require("aria-label=" in m.group(0), f"右上アイコンボタンにaria-labelがありません: {icon_id}")
+    require('$("#cameraToggle").addEventListener("click"' in html and "syncCameraToggle()" in html, "カメラON/OFFアイコンの処理がありません")
+    require('$("#rigDebugToggle").addEventListener("click"' in html and "syncRigDebugToggle()" in html, "解析レイヤON/OFFアイコンの処理がありません")
+    require('panelToggle.textContent' not in html and '$("#moveCharacter").textContent' not in html, "アイコンボタンのtextContent上書きが残っています")
     require('id="panelToggle"' in html, "設定パネルの切替ボタンがありません")
     require('aria-controls="panel"' in html, "設定パネル切替のaria-controlsがありません")
     require('aria-expanded="false"' in html, "設定パネル切替の初期aria-expandedが不正です")
@@ -829,17 +841,20 @@ def main() -> int:
                 extract_js_function(html, "poseDistance"),
                 extract_js_function(html, "humanPoseBones"),
                 extract_js_function(html, "orientedRigRegion"),
+                re.search(r"^const HUMAN_PARTS_PARAMS=.*$", html, re.M).group(0),
+                extract_js_function(html, "humanTorsoShapes"),
                 extract_js_function(html, "buildHumanRigParts"),
                 extract_js_function(html, "buildRigPartsFromProfile"),
                 extract_js_function(html, "buildHumanBoneRig"),
                 extract_js_function(html, "buildBoneRigFromParts"),
                 'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
                 "const humanParts=buildRigPartsFromProfile(human);",
-                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪"];',
+                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪","腰"];',
                 'if(JSON.stringify(humanParts.map(part=>part.label))!==JSON.stringify(expected))throw new Error("人物部位の分類・順序が不正です");',
-                'if(humanParts.some(part=>part.label==="胸"))throw new Error("胸部許可のない人物へ胸部モーションを追加しています");',
+                'if(humanParts.some(part=>part.label.startsWith("胸")))throw new Error("胸部許可のない人物へ胸部モーションを追加しています");',
                 'const femaleParts=buildRigPartsFromProfile({...human,chestMotion:true});',
-                'if(femaleParts.length!==10||femaleParts.find(part=>part.label==="胸")?.preset!=="chest")throw new Error("明示した女性デモへ胸部モーションを追加できません");',
+                'if(femaleParts.length!==12||femaleParts.find(part=>part.label==="胸 左")?.preset!=="chest"||femaleParts.find(part=>part.label==="胸 右")?.preset!=="chest")throw new Error("明示した女性デモへ左右の胸部モーションを個別に追加できません");',
+                'if(femaleParts.find(part=>part.label==="腰")?.shape!=="rect"||femaleParts.find(part=>part.label==="髪")?.shape!=="ellipse")throw new Error("部位ごとの形状（腰=矩形）が設定されていません");',
                 'if(humanParts.find(part=>part.label==="髪")?.preset!=="hair"||humanParts.find(part=>part.label==="手 左")?.preset!=="hand")throw new Error("人体の髪・手へ専用アルゴリズムが設定されていません");',
                 'if(humanParts.find(part=>part.label==="手 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="脚 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
                 "const humanBones=buildBoneRigFromParts(humanParts,human);",
@@ -851,7 +866,7 @@ def main() -> int:
             ]
         )
         subprocess.run([node, "-e", human_rig_test], check=True)
-        print("PASS: human 9/10-part rig and articulated bone hierarchy")
+        print("PASS: human 10/12-part rig (waist, left/right chest) and articulated bone hierarchy")
         scene_look_test = "\n".join(
             [
                 "const NEUTRAL_SCENE_LOOK={gain:[1,1,1],lightColor:[1,1,1],lightDir:[-0.4,0.6],directional:0,backlit:0,harmonize:0,shadow:0,foot:[0.5,0.05,0.1,0.8],shadowDir:[0.3,0.12],label:\"\"};",
@@ -895,6 +910,39 @@ def main() -> int:
     require(final_accuracy["bone_error_percent"] < baseline_accuracy["bone_error_percent"] * .1, "人物ボーン誤差を90%以上削減できていません")
     print("PASS: fixed five-asset human rig accuracy benchmark")
 
+    parts = subprocess.run([sys.executable, str(ROOT / "scripts/ci/human_parts_accuracy.py")], check=True, capture_output=True, text=True, cwd=ROOT / "scripts/ci")
+    parts_metrics = json.loads(parts.stdout)
+    parts_base, parts_final = parts_metrics[0], parts_metrics[-1]
+    held_out = parts_final["splits"]["held_out"]["final"]
+    require(parts_final["face"] >= 48.0 and parts_final["hair"] >= 60.0, "顔・髪の範囲IoUが基準未満です（10素材）")
+    require(held_out["face"] >= 40.0 and held_out["waist"] >= 40.0, "未学習素材の顔・腰IoUが基準未満です")
+    require(parts_final["hair_face_leak"] <= 10.0, "髪アニメーション範囲が顔へ10%超かかっています")
+    require(parts_final["waist"] >= 45.0 and parts_final["chest"] >= 40.0, "腰・左右の胸のIoUが基準未満です")
+    require(parts_final["top"] >= 45.0 and parts_final["bottom"] >= 50.0, "服（上衣・下衣）のIoUが基準未満です")
+    require(parts_final["accessory_recall"] >= 40.0, "小物（足元を含む）の再現率が40%未満です")
+    require(parts_final["hair_face_leak"] < parts_base["hair_face_leak"] * .2, "髪→顔の漏れを80%以上削減できていません")
+    subprocess.run([sys.executable, str(ROOT / "scripts/ci/human_parts_js_parity.py")], check=True, cwd=ROOT / "scripts/ci")
+    print("PASS: hair/face/waist/chest/garment/accessory part accuracy and JS-Python parity")
+
+    require('id="rigLayerList"' in html and "function layerRowModel(" in html and "function setLayerParent(" in html, "レイヤー風の部位リスト（字下げ・親子ドラッグ）がありません")
+    require("rotationFlip" in html and "guideResize" in html and "guideResize.fixed" in html, "対向点固定リサイズまたは画面外ハンドル反転がありません")
+    require("u_hairWave" in html and "u_coreLayer" in html and "naturalMouthPulse" in html, "髪なびき・レイヤー前後・口の自動アニメがありません")
+    print("PASS: layer-style part list, opposite-point resize, off-screen handle flip, auto hair/mouth")
+    # 輪郭二重化・目の二重表示の回帰: 変位を元シルエットでマスクしない／瞬きは目の線へ向かう圧縮。
+    rig_uv = extract_js_function(html, "riggedForegroundUV") if False else html[html.index("vec2 riggedForegroundUV("):html.index("float softSubjectMaskAt(")]
+    require("return uv-displacement*enabled;" in rig_uv and "subjectMaskAt(uv)*enabled" not in rig_uv, "部位変位が元シルエットでマスクされ、動いた輪郭が二重になります")
+    require("displacement.y-=(headPoint.y-u_faceBands.x)*eyeBand*u_live2dMotion.x" in rig_uv, "瞬きの符号が逆で、目が縦に伸びて二重にずれます")
+    # デモ・取込の部位初期値: 実測シルエット解析、人物以外へ人体テンプレートを当てない、レイヤー前後関係。
+    require("grid-template-rows:auto minmax(0,1fr) auto" in html, "設定パネルの行数が子要素数と合わず、タブ列が欠けます（タブ＋本文＋フッタ＝3行。グリップは絶対配置）")
+    require("float eyeSides=" in rig_uv and "exp(-pow(headPoint.x*3.2,2.0))" in rig_uv, "瞬き・口の変形が頭の幅全体に掛かり、顔が定期的に歪みます")
+    require("float faceGuard=" in rig_uv and "min(1.0-headInfluence,faceGuard)" in rig_uv, "髪の動きが顔の中心（瞳・まつ毛）へ及び、目が二重にずれます")
+    require("function analyzeSilhouetteParts(" in html and "analyzeSilhouetteParts(source)" in html, "シルエット実測による部位認識がありません")
+    require('activeRigProfile.rigType="human";\n    activeRigProfile.rigSource="segmented-silhouette";' not in html, "取込画像へ姿勢検出前から人体リグを固定しています")
+    require("visibleKeypoints<7" in html, "人物らしくない画像への人体リグ抑止がありません")
+    order = 'const frontToBack=["hand-left","hand-right","arm-left","arm-right","hair","head","chest-left","chest-right","waist","leg-left","leg-right","upper-body"];'
+    require(order in html, "人物部位のレイヤー前後関係（手・腕＞髪＞頭＞胸＞腰＞脚＞胴）が崩れています")
+    require("const faceUsable=" in html and "unseenParts.has(spec.id)" in html, "顔範囲の妥当性チェック／フレーム外部位の動きOFFがありません（近接ポートレートで頭が極小・存在しない脚が動く）")
+    print("PASS: no double contour on part motion, blink compression sign, measured silhouette parts, layer order")
     print("PASS: image aspect ratio preservation across portrait and landscape screens")
     print("PASS: six effect modes including Depth Map layered and Trick Portal 3D")
     print("PASS: stackable effects, common contour cleanup, and near-depth hologram control")
@@ -914,6 +962,38 @@ def main() -> int:
     print("PASS: nine demos, stage-fit placement, silhouette auto-rig, and Live2D-style motion")
     print("PASS: Live2D debug layers, editable tagged rig parts, and motion-following wireframe/bones")
     print("PASS: layered scenes without portal ghost/gray band, ground shadows, color harmony, unified fonts")
+    require("antialias:false" in html, "全画面1枚絵のWebGLでMSAAが有効です（GPU帯域の無駄）")
+    require("MAX_RENDER_PIXELS" in html and "renderScale" in html, "描画画素数の上限／適応解像度がありません")
+    require("data-src" in html and "hydrateDemoThumbs" in html, "ギャラリー縮小画像の遅延読込がありません")
+    for demo in ("mascot", "heroine", "fluffy"):
+        thumb = ROOT / "assets" / "demos" / f"demo-{demo}-thumb.jpg"
+        require(thumb.exists() and thumb.stat().st_size < 80_000, f"{thumb.name} がない、または軽量ではありません")
+        require(f'src="assets/demos/demo-{demo}.jpg" alt=""' not in html, f"ギャラリーが{demo}の原寸JPEGを参照しています")
+    print("PASS: render pixel budget, adaptive resolution, MSAA off, lazy gallery thumbnails")
+    require('id="autoSegmentOnPick" type="checkbox" checked' in html, "画像選択後の自動分離の既定がONではありません")
+    require("autoSegmentPerson({closePanelOnSuccess:true})" in html and "autoSegmentOnPickEnabled()" in html, "画像選択後の自動分離が接続されていません")
+    require("p3d.autoSegmentOnPick.v1" in html, "自動分離の設定が保存されません")
+    print("PASS: auto person segmentation after image pick (opt-out, failure keeps manual path)")
+    for element_id in ("layoutToggle", "helpToggle", "helpDialog", "gripW", "gripH"):
+        require(f'id="{element_id}"' in html, f"レイアウト／ヘルプUIがありません: {element_id}")
+    require("function applyPanelLayout(" in html and "p3d.panelLayout.v1" in html, "パネル配置（左右ドック／フロート／幅高さ）の処理・保存がありません")
+    require("canvas.clientWidth" in html and "innerWidth*dpr" not in html, "canvas寸法がドック配置後の実寸ではなくウィンドウ寸法です")
+    require("function initHelpDots(" in html and 'class="hint">' in html, "項目別ヘルプ（?アイコン）がありません")
+    require('class="appInfo" id="appInfo"' in html and html.index('id="helpDialog"') < html.index('id="appInfo"') < html.index('id="panel"'), "アプリ名・版数がヘルプ内にありません")
+    require('id="help"' not in html, "常時表示のヘルプ説明が残っています")
+    require("[data-tip]::after" in html and "title=" not in html[html.index('<div id="stage">'):html.index("<script>")], "アイコンのフローティング名（data-tip）が未整備、または title が残っています")
+    for label in ("画像選択", "人物自動分離", "設定初期化"):
+        require(label in html, f"簡潔なボタン名がありません: {label}")
+    for verbose in ("画像を選択<", "スライダを初期値へ戻す", "選択後に人物を自動分離して2層化", "選択したJSONを読込"):
+        require(verbose not in html, f"冗長なボタン名が残っています: {verbose}")
+    require("@media (max-width:480px)" in html and "max-height:min(62dvh,540px)" in html and "flex:0 0 64px" in html, "狭い画面の省スクロール配置がありません")
+    print("PASS: split/dock layout with resizable panel, help icons, tooltips, concise labels, compact mobile sheet")
+    for element_id in ("previewFit", "previewZoomIn", "previewZoomOut"):
+        require(f'id="{element_id}"' in html, f"プレビューの拡大縮小／フィットUIがありません: {element_id}")
+    require("function applyPreviewView(" in html and "function fitPreviewView(" in html and "function zoomPreviewAt(" in html, "プレビューの表示変換（左寄せ・拡縮・フィット）の処理がありません")
+    require("const leftAlign=floatQuery.matches&&panelVisible" in html, "広い画面で設定表示中にプレビューを左寄せする処理がありません")
+    require("e.ctrlKey||e.metaKey||!characterMoveAvailable()" in html, "ホイール／ピンチでのプレビュー拡縮が接続されていません")
+    print("PASS: preview left-aligned on wide screens with zoom, pan and fit-to-window")
     print("PASS: Cross-AI governance documents")
     return 0
 
