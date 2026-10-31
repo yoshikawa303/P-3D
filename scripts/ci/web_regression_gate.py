@@ -134,6 +134,12 @@ def main() -> int:
     for element_id, label in [
         ("autoMotion", "アクスタ自動モーション切替"),
         ("motionStrength", "簡易重力モーション強度"),
+        ("motionStyle", "動きの大きさ"),
+        ("windStrength", "風・なびき"),
+        ("expression", "表情"),
+        ("talkMode", "会話口パク"),
+        ("blinkRate", "瞬き回数"),
+        ("blinkSpeed", "瞬きの速さ"),
     ]:
         require(f'id="{element_id}"' in html, f"{label}のUIがありません")
     for uniform in [
@@ -184,8 +190,20 @@ def main() -> int:
     require("clamp(offset,-u_motionRange,u_motionRange)" in html, "前景と背景の稼働範囲制限がありません")
     require("float eyeBand=" in html and "float mouthBand=" in html, "顔領域の自動モーションがありません")
     require("naturalBlinkPulse(now,autoRigActive)" in html and "const breathMotion=" in html, "不規則な自動瞬き・呼吸がありません")
-    require("nextBlinkAt=now+2400+Math.random()*3500" in html, "瞬き間隔が完全周期のままです")
-    require("const mouthMotion=naturalMouthPulse(now,autoRigActive);" in html and "nextMouthAt=now+3000+Math.random()*5000" in html, "口の自動開閉が不規則間隔ではありません（周期的な口パク禁止）")
+    require("nextBlinkAt=now+nextBlinkInterval(rate)" in html and "Math.exp(0.5*gaussianRandom())" in html, "瞬き間隔が固定周期のままです（対数正規の揺らぎがありません）")
+    require("blinkQueued" in html and "blinkPeak=Math.random()<0.15" in html, "二度瞬き・浅い瞬きがありません")
+    require("const closeEnd=0.38" in html or "closeEnd=0.38" in html, "瞬きの閉じ速度と開き速度が非対称ではありません")
+    for control_id in ("motionStyle", "windStrength", "expression", "talkMode", "blinkRate", "blinkSpeed"):
+        require(f'id="{control_id}"' in html, f"表情・動きの大きさ操作 {control_id} がありません")
+    for style in ("calm", "lively", "dynamic"):
+        require(f'value="{style}"' in html, f"動きの大きさ {style} がありません")
+    for expr in ("normal", "smile", "serious"):
+        require(f'value="{expr}"' in html, f"表情 {expr} がありません")
+    for part_id in ("eye-left", "eye-right", "mouth", "cloth"):
+        require(f'id:"{part_id}",role:"feature"' in html, f"特徴部位 {part_id} が部位リストにありません")
+    require(all(name in html for name in ("u_eyeL", "u_eyeR", "u_mouthR", "u_clothR", "u_featureGain", "u_legacyFace")), "目・口・服の個別範囲ユニフォームがありません")
+    require("talkingMouthOpen" in html and "drift:.17" in html, "会話の口パク・視点の自動ゆらぎがありません")
+    require("naturalMouthPulse(now,autoRigActive)" in html and "const mouthMotion=" in html and "nextMouthAt=now+3000+Math.random()*5000" in html, "口の自動開閉が不規則間隔ではありません（周期的な口パク禁止）")
     require("const respiration=Math.sin(seconds*1.38);" in html, "体幹と胸で共有する呼吸位相がありません")
     require('id="motionStrength" type="range" min="0" max="1" step="0.01" value="0.75"' in html, "Live2D風モーションの初期強度が視認可能な値ではありません")
     require("*0.00135*scale" in html and "*0.00620" in html, "ON/OFF差を視認できる部位別振幅がありません")
@@ -263,7 +281,7 @@ def main() -> int:
     require('id="rigPartList" size="6"' in html, "編集部位はドロップダウンでなく一覧選択にしてください")
     for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
         require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
-    require("const MAX_RIG_PARTS=12;" in html, "髪・胸を含む12部位上限がありません")
+    require("const MAX_RIG_PARTS=16;" in html, "目・口・服を含む16部位上限がありません")
     require('length>8)issues.push("追加部位は8件までです")' in html, "追加8部位の構造検証上限が更新されていません")
     for human_part in ["頭", "腕 左", "腕 右", "手 左", "手 右", "上半身", "脚 左", "脚 右"]:
         require(f'label:"{human_part}"' in html, f"人物向けLive2D部位がありません: {human_part}")
@@ -520,6 +538,10 @@ def main() -> int:
         "手前レイヤーを人物の上へ重ねるshaderがありません",
     )
     require("function addFillDetail(" in html and "addFillDetail(image.data,original,hole,width,height)" in html, "補完背景の質感移植がありません")
+    require("function decontaminateEdgeColors(" in html and "decontaminateEdgeColors(image.data,alpha,width,height" in html, "人物の縁の色（背景混じり）の除去がありません")
+    require("function smoothMaskShape(" in html and "smoothMaskShape(filled,width,height" in html, "人物マスクの開閉処理がありません")
+    require("function detectFaceFeatures(" in html and "runningMode:\"IMAGE\",numFaces:1" in html and "measured?.eyeL||" in html, "顔ランドマークによる目・口の実測配置がありません")
+    require("min(abs(eyePL.y)*(1.0+4.0*closeL),1.15)" in html.replace("sign(eyePL.y)*",""), "瞬きの閉じ量（目の縦圧縮）が不足しています")
     require("const blend=boxBlurFloat(" in html, "補完範囲の縁を元画素へなじませる処理がありません")
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
     require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
@@ -827,7 +849,7 @@ def main() -> int:
         }
         rig_test = "\n".join(
             [
-                "const MAX_RIG_PARTS=12,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
+                "const MAX_RIG_PARTS=16,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
                 'const RIG_PARTS={body:{},head:{},material:{},prop:{}};',
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
                 'const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};',
@@ -852,7 +874,7 @@ def main() -> int:
             [
                 'const RIG_PARTS={body:{tag:"01",label:"胴体",color:"#69f0ae"},head:{tag:"02",label:"頭部・顔",color:"#ffdf6e"},material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},prop:{tag:"04",label:"付属部位",color:"#ff86c8"}};',
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
-                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},face:{strength:.55,gravity:0,stiffness:34,damping:10.5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},hand:{strength:.62,gravity:-.00018,stiffness:30,damping:10.2},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2},propRigid:{strength:.72,gravity:-.00018,stiffness:35,damping:11.5}};",
+                "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},face:{strength:.55,gravity:0,stiffness:34,damping:10.5},eyes:{strength:.28,gravity:0,stiffness:42,damping:12.5},mouth:{strength:.34,gravity:0,stiffness:38,damping:11.2},cloth:{strength:1,gravity:-.0004,stiffness:12,damping:5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},hand:{strength:.62,gravity:-.00018,stiffness:30,damping:10.2},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2},propRigid:{strength:.72,gravity:-.00018,stiffness:35,damping:11.5}};",
                 "const rigSprings={};",
                 extract_js_function(html, "newRigSpring"),
                 extract_js_function(html, "poseMidpoint"),
@@ -867,11 +889,11 @@ def main() -> int:
                 extract_js_function(html, "buildBoneRigFromParts"),
                 'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
                 "const humanParts=buildRigPartsFromProfile(human);",
-                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪","腰"];',
+                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪","腰","目 左","目 右","口","服（なびき）"];',
                 'if(JSON.stringify(humanParts.map(part=>part.label))!==JSON.stringify(expected))throw new Error("人物部位の分類・順序が不正です");',
                 'if(humanParts.some(part=>part.label.startsWith("胸")))throw new Error("胸部許可のない人物へ胸部モーションを追加しています");',
                 'const femaleParts=buildRigPartsFromProfile({...human,chestMotion:true});',
-                'if(femaleParts.length!==12||femaleParts.find(part=>part.label==="胸 左")?.preset!=="chest"||femaleParts.find(part=>part.label==="胸 右")?.preset!=="chest")throw new Error("明示した女性デモへ左右の胸部モーションを個別に追加できません");',
+                'if(femaleParts.length!==16||femaleParts.find(part=>part.label==="胸 左")?.preset!=="chest"||femaleParts.find(part=>part.label==="胸 右")?.preset!=="chest")throw new Error("明示した女性デモへ左右の胸部モーションを個別に追加できません");',
                 'if(femaleParts.find(part=>part.label==="腰")?.shape!=="rect"||femaleParts.find(part=>part.label==="髪")?.shape!=="ellipse")throw new Error("部位ごとの形状（腰=矩形）が設定されていません");',
                 'if(humanParts.find(part=>part.label==="髪")?.preset!=="hair"||humanParts.find(part=>part.label==="手 左")?.preset!=="hand")throw new Error("人体の髪・手へ専用アルゴリズムが設定されていません");',
                 'if(humanParts.find(part=>part.label==="手 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="脚 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
@@ -957,7 +979,7 @@ def main() -> int:
     require("function analyzeSilhouetteParts(" in html and "analyzeSilhouetteParts(source)" in html, "シルエット実測による部位認識がありません")
     require('activeRigProfile.rigType="human";\n    activeRigProfile.rigSource="segmented-silhouette";' not in html, "取込画像へ姿勢検出前から人体リグを固定しています")
     require("visibleKeypoints<7" in html, "人物らしくない画像への人体リグ抑止がありません")
-    order = 'const frontToBack=["hand-left","hand-right","arm-left","arm-right","hair","head","chest-left","chest-right","waist","leg-left","leg-right","upper-body"];'
+    order = 'const frontToBack=["eye-left","eye-right","mouth","hand-left","hand-right","arm-left","arm-right","hair","head","chest-left","chest-right","waist","cloth","leg-left","leg-right","upper-body"];'
     require(order in html, "人物部位のレイヤー前後関係（手・腕＞髪＞頭＞胸＞腰＞脚＞胴）が崩れています")
     require("const faceUsable=" in html and "unseenParts.has(spec.id)" in html, "顔範囲の妥当性チェック／フレーム外部位の動きOFFがありません（近接ポートレートで頭が極小・存在しない脚が動く）")
     print("PASS: no double contour on part motion, blink compression sign, measured silhouette parts, layer order")

@@ -1,0 +1,21 @@
+{
+  "trial": "T10_user_report",
+  "src": "/index.html",
+  "date": "2026-10-31T04:40:00.331Z",
+  "cases": {
+    "magazine": {
+      "proxy": {
+        "fillSharpRatio": 0.116,
+        "personArea": 0.5006,
+        "edgeAlign": 2.482,
+        "roughness": 1.08,
+        "skinMissRatio": 0.0403,
+        "bgFarDrift": 15.68,
+        "frontArea": 0.0506
+      },
+      "ms": 1277,
+      "overlayArea": 0.0469
+    }
+  },
+  "meanScore": null
+}
