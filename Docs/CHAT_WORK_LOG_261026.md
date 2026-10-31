@@ -558,3 +558,11 @@ pushする
 pushして
 ```
 - モデル: Fable 5.1（動的切替なし）。対象工程: scratchへclone→差分反映→回帰検査→commit→main push→SHA確認。
+
+### 2026-10-31 23:40 JST - Claude Code (Fable 5.1) - 種別: 作業結果 - レビュー改善分のpush（概算8分）
+- 当フォルダはGit管理外のためscratchへ `--depth 1` でcloneし、clone と差分のあった5ファイル（index.html、CHANGELOG.md、Docs/ARCHITECTURE.md、Docs/CHAT_WORK_LOG_261026.md、scripts/ci/web_regression_gate.py）のみ反映。他に差分のある追跡ファイルなし。
+- index.html には別セッション由来とみられる小修正1件（画像読込失敗時の `URL.revokeObjectURL` と対応形式を含む文言）が混在しており、無害と判断して同梱。
+- clone上で `web_regression_gate.py` PASS（exit 0）。`cdd30f1` → `6686168`（`668616866f1b96f3d6928cd7223b1ae398ed4a85`）を `main` へpush、`git ls-remote` で到達確認。force pushなし、ファイル削除なし。
+- Pages: `https://yoshikawa303.github.io/P-3D/` が 404、`GET /repos/yoshikawa303/P-3D/pages` も 404（Pagesサイト未構成またはPrivate化に伴い停止している可能性）。配信確認は不可。
+- 未検証: iPhone Safari実機、Pages配信。
+- モデル: Fable 5.1（動的切替なし）。
