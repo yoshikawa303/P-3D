@@ -1034,6 +1034,20 @@ def main() -> int:
     require("const leftAlign=floatQuery.matches&&panelVisible" in html, "広い画面で設定表示中にプレビューを左寄せする処理がありません")
     require("e.ctrlKey||e.metaKey||!characterMoveAvailable()" in html, "ホイール／ピンチでのプレビュー拡縮が接続されていません")
     print("PASS: preview left-aligned on wide screens with zoom, pan and fit-to-window")
+    require("leftPan=e.button===0&&e.pointerType===\"mouse\"&&previewView.zoom>1.001" in html, "拡大中のマウス左ドラッグでの画面移動がありません")
+    require("limX=Math.max(base.areaW,w)/2" in html and "limY=Math.max(base.areaH,h)/2" in html, "拡大時に画像の端まで移動できるパン範囲になっていません")
+    for element_id in ("viewAssistToggle", "viewAssist", "viewAssistCanvas"):
+        require(f'id="{element_id}"' in html, f"画像ミニビュー／拡大鏡のUIがありません: {element_id}")
+    require(html.index('id="previewZoomIn"') < html.index('id="viewAssistToggle"') < html.index('id="previewFit"'), "虫めがねボタンが拡大ボタンの右にありません")
+    require('VIEW_ASSIST_MODES=["mini","loupe","off"]' in html, "ミニビュー→拡大鏡→OFF の切替順になっていません")
+    require("function centerPreviewOn(" in html and "function drawViewAssist(" in html, "ミニビューでの表示位置選択／拡大鏡の描画がありません")
+    for element_id in ("faceEditor", "feCanvas", "openFaceEditor", "feCells", "fePlay"):
+        require(f'id="{element_id}"' in html, f"顔パーツ拡大編集のUIがありません: {element_id}")
+    require("#faceEditor[hidden]{display:none}" in html, "顔パーツ編集ウィンドウのhiddenがIDセレクタのdisplayに負けます")
+    require("ArrowRight" in html and "FE_FRAMES" in html and "facePose" in html, "矢印キーのコマ送り（瞬き・口・表情）がありません")
+    require("uniform vec4 u_featureAngle;" in html and "u_featureAngle" in html[html.index("gl.uniform4f(U.u_featureAngle"):html.index("gl.uniform4f(U.u_featureAngle")+80], "目・口の角度がシェーダへ渡されていません")
+    require("e.target instanceof Element&&e.target.closest" in html, "キー操作でdocumentが対象のとき例外になります")
+    print("PASS: left-drag pan to image edges, mini-view/magnifier toggle, face-part zoom editor with frame stepping and angle")
     print("PASS: Cross-AI governance documents")
     return 0
 

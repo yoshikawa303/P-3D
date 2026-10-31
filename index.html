@@ -132,6 +132,31 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 #rigDebug:not(:checked)~#rigDebugLayers,#rigDebug:not(:checked)~#rigDebugStatus{display:none}
 .helpDialog{position:absolute;z-index:4;top:calc(max(10px,env(safe-area-inset-top)) + 50px);right:calc(10px + var(--dock-r));width:min(300px,calc(100% - 20px - var(--dock-r)));padding:10px 12px;border-radius:12px;background:rgba(20,20,24,.94);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(14px);font-size:12px;line-height:1.5}
 .helpDialog[hidden]{display:none}
+#gl.canPan{cursor:grab}#gl.canPan.panning{cursor:grabbing}
+.floatWin{position:absolute;z-index:5;box-sizing:border-box;border-radius:12px;background:rgba(20,20,24,.95);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);color:#fff;font-size:12px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.floatWin[hidden]{display:none}
+.floatHead{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:move;touch-action:none;user-select:none;font-weight:800;color:#c7f5ff}
+.floatHead .grow{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.winBtn{min-width:28px;height:26px;padding:0 7px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.winBtn[aria-pressed="true"],.winBtn.on{background:#d9f8ff;color:#102128;border-color:#79e7ff}
+#viewAssist{top:62px;right:calc(10px + var(--dock-r));padding-bottom:6px}
+#viewAssistCanvas{display:block;margin:0 6px;border-radius:6px;background:#000;touch-action:none;cursor:crosshair}
+#viewAssist[data-mode=mini] #viewAssistCanvas{cursor:pointer}
+#viewAssist .loupeOnly{display:none}#viewAssist[data-mode=loupe] .loupeOnly{display:inline-block}
+#faceEditor[hidden]{display:none}
+#faceEditor{top:62px;left:calc(10px + var(--dock-l));width:480px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
+#faceEditor>*:not(.floatHead){margin:0 8px}
+.feRow{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.feView{position:relative;height:250px;min-height:140px;resize:vertical;overflow:hidden;border-radius:8px;background:#000}
+#feCanvas{display:block;width:100%;height:100%;touch-action:none;outline:none;cursor:crosshair}
+#feCanvas:focus-visible{box-shadow:inset 0 0 0 2px #79e7ff}
+.feCells{display:flex;gap:2px}.feCell{flex:1 1 0;min-width:0;height:24px;padding:0;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#cfe;font-size:10px;cursor:pointer}
+.feCell.on{background:#79e7ff;color:#102128;font-weight:800}
+.feFields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.feFields label{display:grid;gap:1px;font-size:10px;color:#9fb4c0}
+.feFields input{width:100%;box-sizing:border-box;min-width:0;padding:3px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.4);color:#fff;font:inherit}
+#feMsg{color:#ffd37d;font-size:11px;min-height:14px}
+#feHint{color:#9fb4c0;font-size:10px;line-height:1.35}
 .helpDialog p{margin:6px 0 0}
 .helpDialog .appInfo{margin:0}
 [data-tip]{position:relative}
@@ -153,6 +178,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
       <div id="fps" class="pill">-- fps</div>
       <button id="previewZoomOut" class="iconBtn" type="button" aria-label="プレビューを縮小" data-tip="縮小" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2M8.5 11h5"/></svg></button>
       <button id="previewZoomIn" class="iconBtn" type="button" aria-label="プレビューを拡大" data-tip="拡大" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2M11 8.5v5M8.5 11h5"/></svg></button>
+      <button id="viewAssistToggle" class="iconBtn" type="button" aria-pressed="false" aria-label="画像ミニビュー／拡大鏡（クリックで切替）" data-tip="ミニビュー／拡大鏡: OFF" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6"/><path d="m20 20-5.5-5.5"/></svg></button>
       <button id="previewFit" class="iconBtn" type="button" aria-label="プレビューをウィンドウに合わせる" data-tip="ウィンドウに合わせる" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path d="M9 9h6v6H9z"/></svg></button>
       <button id="cameraToggle" class="iconBtn" type="button" aria-pressed="false" aria-label="カメラをONにする" data-tip="カメラ"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.4"/></svg></button>
       <button id="rigDebugToggle" class="iconBtn" type="button" aria-pressed="false" aria-label="解析レイヤの表示・修正をONにする" data-tip="解析レイヤ"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/></svg></button>
@@ -164,6 +190,36 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
     </div>
   </div>
 
+  <div id="viewAssist" class="floatWin" data-mode="off" hidden>
+    <div class="floatHead" id="viewAssistHead"><span class="grow" id="viewAssistLabel">ミニビュー</span><button id="loupeZoom2" class="winBtn loupeOnly" type="button">×2</button><button id="loupeZoom4" class="winBtn loupeOnly on" type="button">×4</button><button id="loupeZoom8" class="winBtn loupeOnly" type="button">×8</button></div>
+    <canvas id="viewAssistCanvas" width="168" height="168"></canvas>
+  </div>
+  <div id="faceEditor" class="floatWin" role="dialog" aria-label="顔パーツ編集" hidden>
+    <div class="floatHead" id="feHead"><span class="grow">顔パーツ編集（拡大）</span><button id="feClose" class="winBtn" type="button" aria-label="閉じる">×</button></div>
+    <div class="feRow" id="fePartTabs">
+      <button class="winBtn" type="button" data-fe-part="eye-left">左目</button><button class="winBtn" type="button" data-fe-part="eye-right">右目</button><button class="winBtn" type="button" data-fe-part="mouth">口</button>
+      <span style="flex:1"></span>
+      <button id="feFitFace" class="winBtn" type="button">顔全体</button><button id="feFitPart" class="winBtn" type="button">選択パーツ</button>
+    </div>
+    <div class="feView" id="feView"><canvas id="feCanvas" tabindex="0" aria-label="顔パーツの拡大表示。ドラッグで移動・端で拡縮・上の丸で回転、矢印キーでコマ送り"></canvas></div>
+    <div class="feRow" id="feTrackTabs">
+      <button class="winBtn" type="button" data-fe-track="blink">瞬き</button><button class="winBtn" type="button" data-fe-track="mouth">口</button><button class="winBtn" type="button" data-fe-track="smile">表情</button>
+      <span style="flex:1"></span>
+      <label class="feRow" style="gap:3px"><input id="feManual" type="checkbox" checked>手動ポーズ</label>
+      <button id="fePlay" class="winBtn" type="button" aria-pressed="false">▶ 再生</button>
+    </div>
+    <div class="feCells" id="feCells" role="group" aria-label="コマ"></div>
+    <div class="feFields">
+      <label>中心X<input id="feX" type="number" min="0" max="1" step="0.001"></label>
+      <label>中心Y<input id="feY" type="number" min="0" max="1" step="0.001"></label>
+      <label>幅(半径)<input id="feRX" type="number" min="0.004" max="0.5" step="0.001"></label>
+      <label>高さ(半径)<input id="feRY" type="number" min="0.004" max="0.5" step="0.001"></label>
+      <label>角度(°)<input id="feAngle" type="number" min="-180" max="180" step="1"></label>
+    </div>
+    <div class="feRow"><button id="feRestore" class="winBtn" type="button">部位を復元</button><span id="feFrameLabel" style="flex:1;text-align:right;color:#c7f5ff"></span></div>
+    <div id="feMsg" aria-live="polite"></div>
+    <div id="feHint">←/→: コマ送り（Shift: 3コマ）／↑/↓: 瞬き・口・表情の切替／Home・End: 先頭・末尾／Esc: 閉じる。枠の内側ドラッグで移動、四辺の■で範囲、上の●で角度。空きをドラッグで画面移動、ホイールで拡大縮小。</div>
+  </div>
   <div id="helpDialog" class="helpDialog" role="dialog" aria-label="ヘルプ" hidden>
     <div class="appInfo" id="appInfo"><b>Poster Pseudo 3D</b> <span id="appVersion"></span><div id="appEnv" class="envNote"></div></div>
     <p>画像選択またはデモ選択 → ドラッグ・カメラ・端末傾きで視点を動かします。</p>
@@ -266,6 +322,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="layerGroup" class="ibtn secondary" type="button" data-tip="グループ化" aria-label="グループ化"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg></button>
         <button id="layerUngroup" class="ibtn secondary" type="button" data-tip="グループ解除" aria-label="グループ解除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 13.5h5"/></svg></button>
       </div>
+      <button id="openFaceEditor" class="ibtn" type="button" data-tip="顔パーツ拡大編集" aria-label="顔パーツ拡大編集"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/><path d="M8.5 10.5c1-1 4-1 5 0"/></svg><span>顔パーツ拡大編集（目・口）</span></button>
       <div id="rigLayerList" class="layerList" role="tree" aria-label="部位レイヤー（上が手前、下が奥）"></div>
       <div class="iconRow">
         <button id="addRigPart" class="ibtn " type="button" data-tip="部位追加" aria-label="部位追加"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -524,6 +581,7 @@ uniform vec4 u_eyeR;
 uniform vec4 u_mouthR;
 uniform vec4 u_clothR;
 uniform vec4 u_featureGain;
+uniform vec4 u_featureAngle;
 uniform vec2 u_legacyFace;
 uniform vec4 u_featureExpr;
 uniform vec4 u_rigCenters;
@@ -764,8 +822,12 @@ vec2 riggedForegroundUV(vec2 uv){
   displacement.y-=(headPoint.y-u_faceBands.x)*eyeBand*u_live2dMotion.x*0.035*u_legacyFace.x;
   displacement.y-=(headPoint.y-u_faceBands.y)*mouthBand*u_live2dMotion.y*0.030*u_legacyFace.y;
   // 目・口・服は部位ごとの範囲と強度で個別に動かす。目は目の線へ縦圧縮して瞬き、口は上下に開いて口角を上下、服は裾ほど大きく風でなびく。
-  vec2 eyePL=(uv-u_eyeL.xy)/max(u_eyeL.zw,vec2(0.002));
-  vec2 eyePR=(uv-u_eyeR.xy)/max(u_eyeR.zw,vec2(0.002));
+  // 目・口の範囲は部位の角度（u_featureAngle: 左目・右目・口）だけ傾けた楕円。角度0では従来と同じ。
+  mat2 rotEL=mat2(cos(u_featureAngle.x),sin(u_featureAngle.x),-sin(u_featureAngle.x),cos(u_featureAngle.x));
+  mat2 rotER=mat2(cos(u_featureAngle.y),sin(u_featureAngle.y),-sin(u_featureAngle.y),cos(u_featureAngle.y));
+  mat2 rotM=mat2(cos(u_featureAngle.z),sin(u_featureAngle.z),-sin(u_featureAngle.z),cos(u_featureAngle.z));
+  vec2 eyePL=(rotEL*(uv-u_eyeL.xy))/max(u_eyeL.zw,vec2(0.002));
+  vec2 eyePR=(rotER*(uv-u_eyeR.xy))/max(u_eyeR.zw,vec2(0.002));
   float eyeWL=(1.0-smoothstep(0.7,1.25,length(eyePL)))*u_featureGain.x;
   float eyeWR=(1.0-smoothstep(0.7,1.25,length(eyePR)))*u_featureGain.y;
   // 瞬きは目の中心線から離れた位置を読む（縦に最大5倍へ圧縮）。以前の係数（約1.4倍）では最大でも3割しか閉じず、瞬きに見えなかった。
@@ -773,13 +835,12 @@ vec2 riggedForegroundUV(vec2 uv){
   float closeL=min(1.0,u_featureGain.x*3.6)*u_live2dMotion.x,closeR=min(1.0,u_featureGain.y*3.6)*u_live2dMotion.x;
   float shapeL=eyeWL/max(u_featureGain.x,0.001),shapeR=eyeWR/max(u_featureGain.y,0.001);
   float readL=sign(eyePL.y)*min(abs(eyePL.y)*(1.0+4.0*closeL),1.15),readR=sign(eyePR.y)*min(abs(eyePR.y)*(1.0+4.0*closeR),1.15);
-  displacement.y-=(max(abs(readL),abs(eyePL.y))*sign(eyePL.y)-eyePL.y)*u_eyeL.w*shapeL;
-  displacement.y-=(max(abs(readR),abs(eyePR.y))*sign(eyePR.y)-eyePR.y)*u_eyeR.w*shapeR;
+  displacement+=vec2(0.0,-(max(abs(readL),abs(eyePL.y))*sign(eyePL.y)-eyePL.y)*u_eyeL.w*shapeL)*rotEL;
+  displacement+=vec2(0.0,-(max(abs(readR),abs(eyePR.y))*sign(eyePR.y)-eyePR.y)*u_eyeR.w*shapeR)*rotER;
   displacement.x+=(u_eyeL.z*eyeWL+u_eyeR.z*eyeWR)*u_featureExpr.y*0.12;
-  vec2 mouthP=(uv-u_mouthR.xy)/max(u_mouthR.zw,vec2(0.002));
+  vec2 mouthP=(rotM*(uv-u_mouthR.xy))/max(u_mouthR.zw,vec2(0.002));
   float mouthW=(1.0-smoothstep(0.75,1.3,length(mouthP)))*u_featureGain.z;
-  displacement.y+=mouthW*u_mouthR.w*(u_live2dMotion.y*(0.35*mouthP.y+0.9*min(mouthP.y,0.0))+u_featureExpr.x*0.7*(mouthP.x*mouthP.x-0.25));
-  displacement.x+=mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x;
+  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.35*mouthP.y+0.9*min(mouthP.y,0.0))+u_featureExpr.x*0.7*(mouthP.x*mouthP.x-0.25)))*rotM;
   vec2 clothP=(uv-u_clothR.xy)/max(u_clothR.zw,vec2(0.002));
   float clothW=(1.0-smoothstep(0.8,1.3,length(clothP)))*u_featureGain.w;
   float clothTip=smoothstep(-0.7,1.0,-clothP.y);
@@ -1241,7 +1302,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_coreShape","u_extraShape","u_extraShape2","u_extraHair","u_extraHair2","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_coreShape","u_extraShape","u_extraShape2","u_extraHair","u_extraHair2","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir","u_featureAngle"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -1260,7 +1321,7 @@ const rigSprings={};
 let recognitionBounds=null,recognitionGuideCanvas=null,subjectMaskCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rotations:{},rotationFlip:{},bones:{},boneSegments:[],rayLength:0,dpr:1},guideDragTarget=null,selectedBoneSegmentId=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
-let testMotionOverride=null;
+let testMotionOverride=null,facePose=null,viewAssistHook=null,facePartsHook=null;
 let blinkStartedAt=-Infinity,nextBlinkAt=performance.now()+2400;
 let targetX=0,targetY=0,targetZ=0,viewX=0,viewY=0,viewZ=0,nearViewX=0,nearViewY=0,midViewX=0,midViewY=0,farViewX=0,farViewY=0;
 let pointerTargetX=0,pointerTargetY=0,gazeTargetX=0,gazeTargetY=0,tiltTargetX=0,tiltTargetY=0;
@@ -1338,10 +1399,11 @@ function previewBaseBox(){
 }
 function previewBox(){
   const base=previewBaseBox(),z=previewView.zoom,w=base.w*z,h=base.h*z;
-  // 画像が完全に画面外へ出ないよう、中心を表示領域内へ収める。
+  // 表示領域の中心が画像の内側に残る範囲でパンできる。画像中心を領域内に限る従来の制限では、拡大時に画像の端側が見られなかった。
   const cx0=base.x+base.w/2,cy0=base.y+base.h/2;
-  previewView.panX=Math.max(base.areaL-cx0,Math.min(previewView.panX,base.areaL+base.areaW-cx0));
-  previewView.panY=Math.max(-cy0,Math.min(previewView.panY,base.areaH-cy0));
+  const areaCx=base.areaL+base.areaW/2,areaCy=base.areaH/2,limX=Math.max(base.areaW,w)/2,limY=Math.max(base.areaH,h)/2;
+  previewView.panX=Math.max(areaCx-limX-cx0,Math.min(previewView.panX,areaCx+limX-cx0));
+  previewView.panY=Math.max(areaCy-limY-cy0,Math.min(previewView.panY,areaCy+limY-cy0));
   const cx=cx0+previewView.panX,cy=cy0+previewView.panY;
   return {left:cx-w/2,top:cy-h/2,width:w,height:h,cx,cy,base};
 }
@@ -1352,6 +1414,7 @@ function applyPreviewView(){
   $("#previewZoomIn").hidden=!hasImage||!wide;$("#previewZoomOut").hidden=!hasImage||!wide;
   const percent=Math.round(previewView.zoom*100)+"%";
   fitBtn.dataset.tip="ウィンドウに合わせる（"+percent+"）";
+  canvas.classList.toggle("canPan",previewView.zoom>1.001);
   for(const el of [canvas,guideCanvas]){
     if(!hasImage){for(const k of ["left","top","width","height","bottom"])el.style[k]="";continue}
     const box=previewBox();
@@ -1375,8 +1438,11 @@ $("#previewZoomOut").addEventListener("click",()=>zoomPreviewAt(0.8));
 // Shift+ドラッグ／中ボタンドラッグでパン、2本指のピンチで拡縮とパン（キャラ移動中は除く）。
 const previewPointers=new Map();let previewPan=null,previewPinch=null;
 canvas.addEventListener("pointerdown",e=>{
-  if(e.button===1||(e.shiftKey&&e.pointerType==="mouse")){
+  // 拡大中（キャラ移動OFF）はマウス左ボタンのドラッグでも画面全体を移動する。
+  const leftPan=e.button===0&&e.pointerType==="mouse"&&previewView.zoom>1.001&&!characterMoveAvailable();
+  if(e.button===1||(e.shiftKey&&e.pointerType==="mouse")||leftPan){
     e.preventDefault();e.stopImmediatePropagation();
+    canvas.classList.add("panning");
     previewPan={id:e.pointerId,x:e.clientX,y:e.clientY};
     try{canvas.setPointerCapture(e.pointerId)}catch(error){}
     return;
@@ -1406,7 +1472,7 @@ function pinchState(){
   return {cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)};
 }
 function endPreviewPointer(e){
-  if(previewPan&&previewPan.id===e.pointerId)previewPan=null;
+  if(previewPan&&previewPan.id===e.pointerId){previewPan=null;canvas.classList.remove("panning")}
   previewPointers.delete(e.pointerId);previewPinch=null;
 }
 canvas.addEventListener("pointerup",endPreviewPointer,true);
@@ -5491,6 +5557,386 @@ canvas.addEventListener("wheel",e=>{
   canvas.wheelHistoryTimer=setTimeout(pushEditHistory,350);
 },{passive:false});
 
+// ---- 浮動ウィンドウ共通: ヘッダのドラッグで移動 ----
+function makeWindowDraggable(win,handle){
+  let drag=null;
+  handle.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button"))return;
+    const stageRect=stage.getBoundingClientRect(),rect=win.getBoundingClientRect();
+    drag={id:e.pointerId,dx:e.clientX-rect.left,dy:e.clientY-rect.top,stageRect,w:rect.width,h:rect.height};
+    handle.setPointerCapture(e.pointerId);e.preventDefault();
+  });
+  handle.addEventListener("pointermove",e=>{
+    if(!drag||drag.id!==e.pointerId)return;
+    const x=Math.max(0,Math.min(drag.stageRect.width-drag.w,e.clientX-drag.stageRect.left-drag.dx));
+    const y=Math.max(0,Math.min(drag.stageRect.height-Math.min(drag.h,60),e.clientY-drag.stageRect.top-drag.dy));
+    win.style.left=x+"px";win.style.top=y+"px";win.style.right="auto";
+  });
+  const end=e=>{if(drag&&drag.id===e.pointerId)drag=null};
+  handle.addEventListener("pointerup",end);handle.addEventListener("pointercancel",end);
+}
+
+// ---- 画像ミニビュー／拡大鏡（上部の虫めがねボタンで ミニビュー → 拡大鏡 → OFF を切替）----
+const VIEW_ASSIST_MODES=["mini","loupe","off"];
+const VIEW_ASSIST_LABELS={off:"OFF",mini:"ミニビュー",loupe:"拡大鏡"};
+const viewAssist={mode:"off",loupeX:.5,loupeY:.5,loupeZoom:4,tick:0,miniDrag:null};
+const viewAssistEl=$("#viewAssist"),viewAssistCanvas=$("#viewAssistCanvas"),viewAssistCtx=viewAssistCanvas.getContext("2d");
+// WebGLキャンバス（描画バッファ）内で画像が占める矩形。
+function glImageRect(){
+  const r=guideImageRect(),sx=canvas.width/Math.max(1,guideCanvas.width),sy=canvas.height/Math.max(1,guideCanvas.height);
+  return {x:r.x*sx,y:r.y*sy,width:r.width*sx,height:r.height*sy};
+}
+function centerPreviewOn(u,v){
+  const box=previewBox(),b=box.base;
+  previewView.panX=b.areaL+b.areaW/2+(.5-u)*box.width-(b.x+b.w/2);
+  previewView.panY=b.areaH/2+(.5-v)*box.height-(b.y+b.h/2);
+  applyPreviewView();
+}
+function sizeViewAssistCanvas(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  let cssW=168,cssH=168;
+  if(viewAssist.mode==="mini"){cssW=Math.min(168,220*imgAspect);cssH=cssW/imgAspect}
+  else if(viewAssist.mode==="loupe"){cssW=cssH=200}
+  const w=Math.round(cssW*dpr),h=Math.round(cssH*dpr);
+  if(viewAssistCanvas.width!==w||viewAssistCanvas.height!==h){viewAssistCanvas.width=w;viewAssistCanvas.height=h}
+  viewAssistCanvas.style.width=cssW+"px";viewAssistCanvas.style.height=cssH+"px";
+  viewAssistCanvas.dataset.aspect=String(imgAspect);
+}
+function setViewAssistMode(mode){
+  viewAssist.mode=mode;
+  viewAssistEl.dataset.mode=mode;viewAssistEl.hidden=mode==="off"||!hasImage;
+  const toggle=$("#viewAssistToggle");
+  toggle.setAttribute("aria-pressed",String(mode!=="off"));
+  toggle.dataset.tip="ミニビュー／拡大鏡: "+VIEW_ASSIST_LABELS[mode];
+  toggle.setAttribute("aria-label","画像ミニビュー／拡大鏡（現在: "+VIEW_ASSIST_LABELS[mode]+"。クリックで切替）");
+  $("#viewAssistLabel").textContent=mode==="loupe"?"拡大鏡":"ミニビュー";viewAssistCanvas.title=mode==="loupe"?"カーソル（タッチは触れた位置）の周辺を拡大表示":"クリック／ドラッグで表示位置を選択";
+  viewAssistHook=mode==="off"?null:drawViewAssist;
+  if(mode!=="off")sizeViewAssistCanvas();
+}
+$("#viewAssistToggle").addEventListener("click",()=>setViewAssistMode(VIEW_ASSIST_MODES[(VIEW_ASSIST_MODES.indexOf(viewAssist.mode)+1)%VIEW_ASSIST_MODES.length]));
+// 本体の表示切替（画像なしでは非表示）に合わせる。
+function syncViewAssistVisibility(){
+  $("#viewAssistToggle").hidden=!hasImage;
+  viewAssistEl.hidden=viewAssist.mode==="off"||!hasImage;
+}
+for(const z of [2,4,8])$("#loupeZoom"+z).addEventListener("click",()=>{
+  viewAssist.loupeZoom=z;
+  for(const k of [2,4,8])$("#loupeZoom"+k).classList.toggle("on",k===z);
+});
+makeWindowDraggable(viewAssistEl,$("#viewAssistHead"));
+function viewAssistPoint(e){
+  const r=viewAssistCanvas.getBoundingClientRect();
+  return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};
+}
+viewAssistCanvas.addEventListener("pointerdown",e=>{
+  if(viewAssist.mode!=="mini")return;
+  viewAssist.miniDrag=e.pointerId;viewAssistCanvas.setPointerCapture(e.pointerId);
+  const p=viewAssistPoint(e);centerPreviewOn(p.x,p.y);e.preventDefault();
+});
+viewAssistCanvas.addEventListener("pointermove",e=>{
+  if(viewAssist.miniDrag!==e.pointerId)return;
+  const p=viewAssistPoint(e);centerPreviewOn(p.x,p.y);
+});
+const endMiniDrag=e=>{if(viewAssist.miniDrag===e.pointerId)viewAssist.miniDrag=null};
+viewAssistCanvas.addEventListener("pointerup",endMiniDrag);viewAssistCanvas.addEventListener("pointercancel",endMiniDrag);
+// 拡大鏡の位置: 本体画像の上のカーソル（タッチは触れた位置）。
+function trackLoupe(e){
+  if(viewAssist.mode!=="loupe"||e.target!==canvas)return;
+  const r=canvas.getBoundingClientRect();
+  viewAssist.loupeX=(e.clientX-r.left)/Math.max(1,r.width);viewAssist.loupeY=(e.clientY-r.top)/Math.max(1,r.height);
+}
+stage.addEventListener("pointermove",trackLoupe,true);stage.addEventListener("pointerdown",trackLoupe,true);
+function drawViewAssist(){
+  if(!hasImage||viewAssistEl.hidden)return;
+  if(viewAssistCanvas.dataset.aspect!==String(imgAspect))sizeViewAssistCanvas();
+  viewAssist.tick++;
+  const ctx=viewAssistCtx,W=viewAssistCanvas.width,H=viewAssistCanvas.height,dpr=W/Math.max(1,parseFloat(viewAssistCanvas.style.width)||W);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  if(viewAssist.mode==="mini"){
+    if(viewAssist.tick%3!==1&&!viewAssist.miniDrag)return;
+    const r=glImageRect();
+    ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);
+    ctx.drawImage(canvas,r.x,r.y,r.width,r.height,0,0,W,H);
+    const box=previewBox(),b=box.base;
+    const u0=Math.max(0,(b.areaL-box.left)/box.width),u1=Math.min(1,(b.areaL+b.areaW-box.left)/box.width);
+    const v0=Math.max(0,-box.top/box.height),v1=Math.min(1,(b.areaH-box.top)/box.height);
+    const x0=u0*W,x1=u1*W,y0=v0*H,y1=v1*H;
+    ctx.fillStyle="rgba(0,0,0,.5)";
+    ctx.beginPath();ctx.rect(0,0,W,H);ctx.rect(x0,y0,Math.max(0,x1-x0),Math.max(0,y1-y0));ctx.fill("evenodd");
+    ctx.strokeStyle="#79e7ff";ctx.lineWidth=2*dpr;ctx.strokeRect(x0,y0,Math.max(0,x1-x0),Math.max(0,y1-y0));
+  }else{
+    const sw=canvas.width*(W/dpr/Math.max(1,canvas.clientWidth))/viewAssist.loupeZoom,sh=sw*H/W;
+    const gx=viewAssist.loupeX*canvas.width,gy=viewAssist.loupeY*canvas.height;
+    ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);
+    ctx.drawImage(canvas,gx-sw/2,gy-sh/2,sw,sh,0,0,W,H);
+    ctx.strokeStyle="rgba(121,231,255,.9)";ctx.lineWidth=dpr;
+    ctx.beginPath();ctx.moveTo(W/2-8*dpr,H/2);ctx.lineTo(W/2+8*dpr,H/2);ctx.moveTo(W/2,H/2-8*dpr);ctx.lineTo(W/2,H/2+8*dpr);ctx.stroke();
+  }
+}
+setInterval(syncViewAssistVisibility,400);
+syncViewAssistVisibility();
+
+// ---- 顔パーツ拡大編集（目・口の範囲／角度とコマ送りアニメーション確認）----
+const FE_PART_IDS=["eye-left","eye-right","mouth"];
+const FE_FRAMES=12;
+const FE_TRACKS={
+  blink:{label:"瞬き",value:f=>f/FE_FRAMES,rest:0},
+  mouth:{label:"口",value:f=>f/FE_FRAMES,rest:0},
+  smile:{label:"表情",value:f=>-.5+1.5*f/FE_FRAMES,rest:4}
+};
+const faceEditor={open:false,part:"eye-left",track:"blink",frames:{blink:0,mouth:0,smile:4},view:{cx:.5,cy:.5,k:1},drag:null,hit:null,playing:false,playStart:0};
+const feEl=$("#faceEditor"),feCanvas=$("#feCanvas"),feCtx=feCanvas.getContext("2d");
+function fePartDef(id){return rigPartById(id||faceEditor.part)}
+function feDpr(){return feCanvas.width/Math.max(1,feCanvas.clientWidth)}
+function fePx(x,y){const v=faceEditor.view;return [feCanvas.width/2+(x-v.cx)*imgWidth*v.k,feCanvas.height/2+(y-v.cy)*imgHeight*v.k]}
+function feNorm(px,py){const v=faceEditor.view;return {x:v.cx+(px-feCanvas.width/2)/(imgWidth*v.k),y:v.cy+(py-feCanvas.height/2)/(imgHeight*v.k)}}
+function fePartPoint(def,lx,ly){
+  const a=def.angle||0,c=Math.cos(a),s=Math.sin(a);
+  return {x:def.region[0]+lx*c-ly*s,y:def.region[1]+lx*s+ly*c};
+}
+function feEventPx(e){
+  const r=feCanvas.getBoundingClientRect();
+  return [(e.clientX-r.left)*feCanvas.width/r.width,(e.clientY-r.top)*feCanvas.height/r.height];
+}
+function feSizeCanvas(){
+  const dpr=Math.min(devicePixelRatio||1,2),w=Math.max(2,Math.round(feCanvas.clientWidth*dpr)),h=Math.max(2,Math.round(feCanvas.clientHeight*dpr));
+  if(feCanvas.width!==w||feCanvas.height!==h){
+    const old=feCanvas.width,v=faceEditor.view;
+    feCanvas.width=w;feCanvas.height=h;
+    if(old>2&&faceEditor.open)v.k*=w/old;
+  }
+}
+function feFit(mode){
+  feSizeCanvas();
+  const defs=(mode==="part"?[fePartDef()]:FE_PART_IDS.map(id=>fePartDef(id))).filter(Boolean);
+  if(!defs.length)return;
+  let x0=1,y0=1,x1=0,y1=0;
+  for(const d of defs){
+    const r=Math.max(d.region[2],d.region[3])*(mode==="part"?2.4:1.5);
+    x0=Math.min(x0,d.region[0]-r);x1=Math.max(x1,d.region[0]+r);y0=Math.min(y0,d.region[1]-r);y1=Math.max(y1,d.region[1]+r);
+  }
+  const bw=Math.max(.01,x1-x0),bh=Math.max(.01,y1-y0),v=faceEditor.view;
+  v.cx=(x0+x1)/2;v.cy=(y0+y1)/2;
+  v.k=Math.min(feCanvas.width/(bw*imgWidth),feCanvas.height/(bh*imgHeight));
+}
+function feSyncPose(){
+  if(!faceEditor.open||!$("#feManual").checked||!activeRigProfile){facePose=null;return}
+  facePose={blink:FE_TRACKS.blink.value(faceEditor.frames.blink),mouth:FE_TRACKS.mouth.value(faceEditor.frames.mouth),smile:FE_TRACKS.smile.value(faceEditor.frames.smile)};
+}
+function feSyncUi(){
+  const f=faceEditor;
+  for(const b of document.querySelectorAll("#fePartTabs [data-fe-part]"))b.classList.toggle("on",b.dataset.fePart===f.part);
+  for(const b of document.querySelectorAll("#feTrackTabs [data-fe-track]"))b.classList.toggle("on",b.dataset.feTrack===f.track);
+  [...$("#feCells").children].forEach((cell,i)=>cell.classList.toggle("on",i===f.frames[f.track]));
+  const track=FE_TRACKS[f.track];
+  $("#feFrameLabel").textContent=`${track.label}: コマ ${f.frames[f.track]}/${FE_FRAMES}（値 ${track.value(f.frames[f.track]).toFixed(2)}）`;
+  feSyncFields();
+}
+function feSyncFields(){
+  const def=fePartDef();
+  for(const id of ["feX","feY","feRX","feRY","feAngle"])$("#"+id).disabled=!def;
+  if(!def)return;
+  const set=(id,v)=>{const el=$("#"+id);if(document.activeElement!==el)el.value=v};
+  set("feX",def.region[0].toFixed(3));set("feY",def.region[1].toFixed(3));
+  set("feRX",def.region[2].toFixed(3));set("feRY",def.region[3].toFixed(3));
+  set("feAngle",Math.round((def.angle||0)*180/Math.PI));
+}
+function feSetFrame(frame,track){
+  const f=faceEditor,name=track||f.track;
+  f.frames[name]=Math.max(0,Math.min(FE_FRAMES,Math.round(frame)));
+  feSyncPose();feSyncUi();
+}
+function feSelectPart(id){
+  faceEditor.part=id;
+  const list=$("#rigPartList");
+  if(list&&[...list.options].some(o=>o.value===id)){list.value=id;syncRigEditor()}
+  feSyncUi();
+}
+function feAfterEdit(commit){
+  syncProfileFromParts();feSyncFields();
+  if(commit)pushEditHistory();
+}
+function feOpen(){
+  if(!hasImage){statusEl.textContent="先に画像を選択してください。";return}
+  faceEditor.open=true;feEl.hidden=false;
+  const missing=FE_PART_IDS.filter(id=>!fePartDef(id));
+  $("#feMsg").textContent=!activeRigProfile?"リグ未解析です。人物の2層化／リグ解析後に目・口を編集できます。":missing.length?"未検出の部位: "+missing.join("、")+"（部位追加はLive2Dタブ）":"";
+  if(!fePartDef(faceEditor.part)){const first=FE_PART_IDS.find(id=>fePartDef(id));if(first)faceEditor.part=first}
+  faceEditor.needFit="face";feSyncPose();feSyncUi();facePartsHook=feTick;feCanvas.focus({preventScroll:true});stage.scrollTop=0;
+}
+function feClose(){
+  faceEditor.open=false;faceEditor.playing=false;feEl.hidden=true;facePose=null;facePartsHook=null;
+  $("#fePlay").setAttribute("aria-pressed","false");$("#fePlay").textContent="▶ 再生";
+}
+$("#openFaceEditor").addEventListener("click",feOpen);
+$("#feClose").addEventListener("click",feClose);
+makeWindowDraggable(feEl,$("#feHead"));
+$("#feCells").replaceChildren(...Array.from({length:FE_FRAMES+1},(_,i)=>{
+  const b=document.createElement("button");b.type="button";b.className="feCell";b.textContent=String(i);b.setAttribute("aria-label","コマ "+i);
+  b.addEventListener("click",()=>feSetFrame(i));return b;
+}));
+for(const b of document.querySelectorAll("#fePartTabs [data-fe-part]"))b.addEventListener("click",()=>{feSelectPart(b.dataset.fePart);if(faceEditor.fitPart)faceEditor.needFit="part"});
+for(const b of document.querySelectorAll("#feTrackTabs [data-fe-track]"))b.addEventListener("click",()=>{faceEditor.track=b.dataset.feTrack;feSyncUi()});
+$("#feFitFace").addEventListener("click",()=>{faceEditor.fitPart=false;faceEditor.needFit="face"});
+$("#feFitPart").addEventListener("click",()=>{faceEditor.fitPart=true;faceEditor.needFit="part"});
+$("#feManual").addEventListener("change",()=>{feSyncPose()});
+$("#fePlay").addEventListener("click",()=>{
+  faceEditor.playing=!faceEditor.playing;faceEditor.playStart=performance.now();
+  $("#fePlay").setAttribute("aria-pressed",String(faceEditor.playing));$("#fePlay").textContent=faceEditor.playing?"■ 停止":"▶ 再生";
+  if(faceEditor.playing)$("#feManual").checked=true;
+});
+$("#feRestore").addEventListener("click",()=>{feSelectPart(faceEditor.part);$("#resetRigPart").click();feSyncUi()});
+for(const id of ["feX","feY","feRX","feRY","feAngle"])$("#"+id).addEventListener("input",()=>{
+  const def=fePartDef(),value=parseFloat($("#"+id).value);
+  if(!def||!Number.isFinite(value))return;
+  if(id==="feX")def.region[0]=Math.max(0,Math.min(1,value));
+  else if(id==="feY")def.region[1]=Math.max(0,Math.min(1,value));
+  else if(id==="feRX")def.region[2]=Math.max(.004,Math.min(.5,value));
+  else if(id==="feRY")def.region[3]=Math.max(.004,Math.min(.5,value));
+  else def.angle=Math.max(-180,Math.min(180,value))*Math.PI/180;
+  syncProfileFromParts();
+});
+for(const id of ["feX","feY","feRX","feRY","feAngle"])$("#"+id).addEventListener("change",()=>{feAfterEdit(true)});
+// キー操作: ←/→ コマ送り、↑/↓ トラック切替（入力欄の編集中は除く）。
+document.addEventListener("keydown",e=>{
+  if(!faceEditor.open||(e.target instanceof Element&&e.target.closest("input,select,textarea"))||e.metaKey||e.ctrlKey||e.altKey)return;
+  const f=faceEditor,tracks=Object.keys(FE_TRACKS);
+  let handled=true;
+  if(e.key==="ArrowRight")feSetFrame(f.frames[f.track]+(e.shiftKey?3:1));
+  else if(e.key==="ArrowLeft")feSetFrame(f.frames[f.track]-(e.shiftKey?3:1));
+  else if(e.key==="ArrowDown"||e.key==="ArrowUp"){f.track=tracks[(tracks.indexOf(f.track)+(e.key==="ArrowDown"?1:tracks.length-1))%tracks.length];feSyncUi()}
+  else if(e.key==="Home")feSetFrame(0);
+  else if(e.key==="End")feSetFrame(FE_FRAMES);
+  else if(e.key==="Escape")feClose();
+  else handled=false;
+  if(handled){e.preventDefault();e.stopPropagation()}
+},true);
+// 拡大表示キャンバスの操作（範囲の移動・四辺の拡縮・回転・空き領域でパン）。
+function feHandlePositions(def){
+  const rx=def.region[2],ry=def.region[3],extra=26*feDpr()/(imgHeight*faceEditor.view.k);
+  const px=p=>fePx(p.x,p.y);
+  return {
+    rotate:px(fePartPoint(def,0,-ry-extra)),
+    right:px(fePartPoint(def,rx,0)),left:px(fePartPoint(def,-rx,0)),
+    bottom:px(fePartPoint(def,0,ry)),top:px(fePartPoint(def,0,-ry))
+  };
+}
+function feInside(def,point){
+  const a=def.angle||0,c=Math.cos(a),s=Math.sin(a),dx=point.x-def.region[0],dy=point.y-def.region[1];
+  const lx=dx*c+dy*s,ly=-dx*s+dy*c;
+  return (lx/def.region[2])**2+(ly/def.region[3])**2<=1.2;
+}
+feCanvas.addEventListener("pointerdown",e=>{
+  if(!faceEditor.open)return;
+  e.preventDefault();feCanvas.focus({preventScroll:true});
+  const [px,py]=feEventPx(e),point=feNorm(px,py),hitR=14*feDpr();
+  let drag=null;
+  const def=fePartDef();
+  if(def){
+    const handles=feHandlePositions(def);
+    for(const name of ["rotate","right","left","bottom","top"]){
+      const [hx,hy]=handles[name];
+      if(Math.hypot(px-hx,py-hy)<=hitR){drag={type:name==="rotate"?"rotate":"resize",edge:name};break}
+    }
+    if(!drag&&feInside(def,point))drag={type:"move",off:{x:def.region[0]-point.x,y:def.region[1]-point.y}};
+  }
+  if(!drag){
+    const other=FE_PART_IDS.map(id=>fePartDef(id)).find(d=>d&&d.id!==faceEditor.part&&feInside(d,point));
+    if(other){feSelectPart(other.id);const d=fePartDef();drag={type:"move",off:{x:d.region[0]-point.x,y:d.region[1]-point.y}}}
+  }
+  if(!drag)drag={type:"pan",x:px,y:py,cx:faceEditor.view.cx,cy:faceEditor.view.cy};
+  if(drag.type==="resize"){
+    const d=fePartDef(),horizontal=drag.edge==="left"||drag.edge==="right",sign=drag.edge==="right"||drag.edge==="bottom"?1:-1,a=d.angle||0;
+    const axis=horizontal?[Math.cos(a),Math.sin(a)]:[-Math.sin(a),Math.cos(a)],radius=d.region[horizontal?2:3];
+    drag.horizontal=horizontal;drag.sign=sign;drag.axis=axis;
+    drag.fixed={x:d.region[0]-axis[0]*sign*radius,y:d.region[1]-axis[1]*sign*radius};
+    const handle={x:d.region[0]+axis[0]*sign*radius,y:d.region[1]+axis[1]*sign*radius};
+    drag.off={x:handle.x-point.x,y:handle.y-point.y};
+  }
+  faceEditor.drag=Object.assign(drag,{id:e.pointerId,moved:false});
+  try{feCanvas.setPointerCapture(e.pointerId)}catch(error){}
+});
+feCanvas.addEventListener("pointermove",e=>{
+  const drag=faceEditor.drag;
+  if(!drag||drag.id!==e.pointerId)return;
+  const [px,py]=feEventPx(e),point=feNorm(px,py),def=fePartDef();
+  drag.moved=true;
+  if(drag.type==="pan"){
+    const v=faceEditor.view;
+    v.cx=drag.cx-(px-drag.x)/(imgWidth*v.k);v.cy=drag.cy-(py-drag.y)/(imgHeight*v.k);
+  }else if(def&&drag.type==="move"){
+    def.region[0]=Math.max(0,Math.min(1,point.x+drag.off.x));def.region[1]=Math.max(0,Math.min(1,point.y+drag.off.y));
+    feAfterEdit(false);
+  }else if(def&&drag.type==="resize"){
+    const x=point.x+drag.off.x,y=point.y+drag.off.y;
+    const along=((x-drag.fixed.x)*drag.axis[0]+(y-drag.fixed.y)*drag.axis[1])*drag.sign;
+    const radius=Math.max(.004,Math.min(.5,along/2));
+    def.region[drag.horizontal?2:3]=radius;
+    def.region[0]=drag.fixed.x+drag.axis[0]*drag.sign*radius;def.region[1]=drag.fixed.y+drag.axis[1]*drag.sign*radius;
+    feAfterEdit(false);
+  }else if(def&&drag.type==="rotate"){
+    let angle=Math.atan2(point.x-def.region[0],-(point.y-def.region[1]));
+    if(e.shiftKey)angle=Math.round(angle/(Math.PI/12))*(Math.PI/12);
+    def.angle=angle;feAfterEdit(false);
+  }
+});
+function feEndDrag(e){
+  const drag=faceEditor.drag;
+  if(!drag||drag.id!==e.pointerId)return;
+  faceEditor.drag=null;
+  if(drag.type!=="pan"&&drag.moved)feAfterEdit(true);
+}
+feCanvas.addEventListener("pointerup",feEndDrag);feCanvas.addEventListener("pointercancel",feEndDrag);
+feCanvas.addEventListener("wheel",e=>{
+  if(!faceEditor.open)return;
+  e.preventDefault();
+  const [px,py]=feEventPx(e),before=feNorm(px,py),v=faceEditor.view;
+  v.k=Math.max(.2,Math.min(80,v.k*Math.exp(-e.deltaY*.0015)));
+  const after=feNorm(px,py);
+  v.cx+=before.x-after.x;v.cy+=before.y-after.y;
+},{passive:false});
+if(typeof ResizeObserver==="function")new ResizeObserver(()=>{if(faceEditor.open)feSizeCanvas()}).observe($("#feView"));
+function feTick(now){
+  if(!faceEditor.open)return;
+  feSizeCanvas();
+  const f=faceEditor;
+  if(f.needFit&&feCanvas.clientWidth>40){feFit(f.needFit);f.needFit=false}
+  if(f.playing){
+    const phase=((now-f.playStart)%1600)/1600,frame=Math.round(FE_FRAMES*(.5-.5*Math.cos(phase*Math.PI*2)));
+    if(frame!==f.frames[f.track])feSetFrame(frame);
+  }
+  const W=feCanvas.width,H=feCanvas.height,dpr=feDpr(),v=f.view,ctx=feCtx;
+  ctx.fillStyle="#111";ctx.fillRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  const n0=feNorm(0,0),n1=feNorm(W,H),d0=characterDisplayPoint(n0.x,n0.y),d1=characterDisplayPoint(n1.x,n1.y),r=glImageRect();
+  const gw=(d1.x-d0.x)*r.width,gh=(d1.y-d0.y)*r.height;
+  if(gw>0&&gh>0)ctx.drawImage(canvas,r.x+d0.x*r.width,r.y+d0.y*r.height,gw,gh,0,0,W,H);
+  for(const id of FE_PART_IDS){
+    const def=fePartDef(id);
+    if(!def)continue;
+    const selected=id===f.part,color=def.color||"#79e7ff";
+    ctx.beginPath();
+    for(let i=0;i<=48;i++){
+      const t=i/48*Math.PI*2,[x,y]=fePx(...Object.values(fePartPoint(def,Math.cos(t)*def.region[2],Math.sin(t)*def.region[3])));
+      if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
+    }
+    ctx.closePath();
+    ctx.lineWidth=(selected?2.2:1.2)*dpr;ctx.strokeStyle=selected?color:"rgba(255,255,255,.45)";ctx.setLineDash(selected?[]:[4*dpr,3*dpr]);ctx.stroke();ctx.setLineDash([]);
+    const [cx,cy]=fePx(def.region[0],def.region[1]),[ax,ay]=fePx(...Object.values(fePartPoint(def,-def.region[2],0))),[bx,by]=fePx(...Object.values(fePartPoint(def,def.region[2],0)));
+    ctx.lineWidth=dpr;ctx.strokeStyle=selected?"rgba(255,255,255,.75)":"rgba(255,255,255,.3)";
+    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.moveTo(cx-4*dpr,cy);ctx.lineTo(cx+4*dpr,cy);ctx.moveTo(cx,cy-4*dpr);ctx.lineTo(cx,cy+4*dpr);ctx.stroke();
+    ctx.fillStyle=selected?color:"rgba(255,255,255,.6)";ctx.font=`${11*dpr}px sans-serif`;ctx.fillText(def.label||id,cx+6*dpr,cy-6*dpr-def.region[3]*imgHeight*v.k);
+    if(selected){
+      const handles=feHandlePositions(def);
+      ctx.fillStyle="#fff";ctx.strokeStyle=color;ctx.lineWidth=1.5*dpr;
+      const [rx,ry]=handles.rotate,[tx,ty]=handles.top;
+      ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(rx,ry);ctx.stroke();
+      ctx.beginPath();ctx.arc(rx,ry,6*dpr,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(const name of ["right","left","bottom","top"]){const [hx,hy]=handles[name];ctx.fillRect(hx-4*dpr,hy-4*dpr,8*dpr,8*dpr);ctx.strokeRect(hx-4*dpr,hy-4*dpr,8*dpr,8*dpr)}
+    }
+  }
+}
+
 window.addEventListener("pagehide",()=>{
   if(stream) stream.getTracks().forEach(track=>track.stop());
   if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
@@ -5692,7 +6138,7 @@ function render(now){
   gl.uniform4f(U.u_sceneLook,harmonizeAmount,cameraBackgroundActive?0:sceneLook.directional,sceneLook.backlit,shadowAmount);
   gl.uniform4f(U.u_footSpan,...sceneLook.foot);
   gl.uniform2f(U.u_shadowDir,sceneLook.shadowDir[0],sceneLook.shadowDir[1]);
-  gl.uniform1f(U.u_autoRigEnabled,autoRigActive ? 1 : 0);
+  gl.uniform1f(U.u_autoRigEnabled,autoRigActive||facePose ? 1 : 0);
   const core=Object.fromEntries(Object.keys(RIG_PARTS).map(role=>[role,activeRigParts.find(part=>part.role===role)]));
   const coreMotion=role=>core[role]&&rigSprings[core[role].id]?rigSprings[core[role].id]:newRigSpring();
   const motionBoost=testMotionOverride?testMotionOverride.boost:1;
@@ -5754,15 +6200,18 @@ function render(now){
   gl.uniform4f(U.u_eyeR,...featureRegion(eyeR,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_mouthR,...featureRegion(mouthPart,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_clothR,...featureRegion(clothPart,[.5,.5,.001,.001]));
+  gl.uniform4f(U.u_featureAngle,eyeL?.angle||0,eyeR?.angle||0,mouthPart?.angle||0,0);
   gl.uniform4f(U.u_featureGain,featureGain(eyeL),featureGain(eyeR),featureGain(mouthPart),featureGain(clothPart));
   gl.uniform2f(U.u_legacyFace,eyeL||eyeR?0:1,mouthPart?0:1);
-  gl.uniform4f(U.u_featureExpr,expressionNow.smile,Math.sin(liveSeconds*0.71)*0.5+viewX*0.8,windAmount,0);
-  const shownBlink=testMotionOverride&&autoRigActive?testMotionOverride.blink:blinkPulse;
-  const shownMouth=testMotionOverride&&autoRigActive?testMotionOverride.mouth:mouthMotion;
+  gl.uniform4f(U.u_featureExpr,facePose?facePose.smile:expressionNow.smile,Math.sin(liveSeconds*0.71)*0.5+viewX*0.8,windAmount,0);
+  // 顔パーツ編集ウィンドウの手動ポーズは、自動の瞬き・口・表情より優先する。
+  const poseActive=Boolean(facePose&&activeRigProfile);
+  const shownBlink=poseActive?facePose.blink:testMotionOverride&&autoRigActive?testMotionOverride.blink:blinkPulse;
+  const shownMouth=poseActive?facePose.mouth:testMotionOverride&&autoRigActive?testMotionOverride.mouth:mouthMotion;
   const gazeMotion=Math.sin(liveSeconds*0.71)+viewX*0.55;
   const breathMotion=Math.sin(liveSeconds*1.38);
-  live2dVisualState={blink:autoRigActive?shownBlink:0,mouth:autoRigActive?shownMouth:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
-  gl.uniform4f(U.u_live2dMotion,autoRigActive?shownBlink:0,autoRigActive?shownMouth:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
+  live2dVisualState={blink:autoRigActive||poseActive?shownBlink:0,mouth:autoRigActive||poseActive?shownMouth:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
+  gl.uniform4f(U.u_live2dMotion,autoRigActive||poseActive?shownBlink:0,autoRigActive||poseActive?shownMouth:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
   const debugLayerMode=$("#rigDebug").checked&&hasLayeredDemo;
   gl.uniform1f(U.u_debugLayerMode,debugLayerMode ? 1 : 0);
   gl.uniform1f(U.u_debugShowBackground,$("#debugShowBackground").checked ? 1 : 0);
@@ -5796,6 +6245,8 @@ function render(now){
   updateRigDebugStatus(autoRigActive);
   drawGuides(now);
 
+  if(viewAssistHook)viewAssistHook(now);
+  if(facePartsHook)facePartsHook(now);
   fpsN++;
   if(now-fpsT>=1000){
     const measuredFps=fpsN*1000/(now-fpsT),stable=!document.hidden&&now-fpsT<1500;
