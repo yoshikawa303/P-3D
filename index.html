@@ -143,6 +143,17 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 #viewAssistCanvas{display:block;margin:0 6px;border-radius:6px;background:#000;touch-action:none;cursor:crosshair}
 #viewAssist[data-mode=mini] #viewAssistCanvas{cursor:pointer}
 #viewAssist .loupeOnly{display:none}#viewAssist[data-mode=loupe] .loupeOnly{display:inline-block}
+#pjEditor[hidden]{display:none}
+#pjEditor{top:62px;left:calc(10px + var(--dock-l));width:520px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
+#pjEditor>*:not(.floatHead){margin:0 8px}
+#pjView{position:relative;height:300px;min-height:140px;resize:vertical;overflow:hidden;border-radius:8px;background:#000}
+#pjCanvas{display:block;width:100%;height:100%;touch-action:none;cursor:move;outline:none}
+#pjLayers{max-height:130px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+#pjLayers .pjItem{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:6px;background:rgba(255,255,255,.07);cursor:pointer}
+#pjLayers .pjItem.sel{background:#d9f8ff;color:#102128}
+#pjLayers .pjItem span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pjEditor input[type=number]{width:64px}
+#pjEditor input[type=file]{display:none}
 #faceEditor[hidden]{display:none}
 #faceEditor{top:62px;left:calc(10px + var(--dock-l));width:480px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
 #faceEditor>*:not(.floatHead){margin:0 8px}
@@ -193,6 +204,26 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
   <div id="viewAssist" class="floatWin" data-mode="off" hidden>
     <div class="floatHead" id="viewAssistHead"><span class="grow" id="viewAssistLabel">ミニビュー</span><button id="loupeZoom2" class="winBtn loupeOnly" type="button">×2</button><button id="loupeZoom4" class="winBtn loupeOnly on" type="button">×4</button><button id="loupeZoom8" class="winBtn loupeOnly" type="button">×8</button></div>
     <canvas id="viewAssistCanvas" width="168" height="168"></canvas>
+  </div>
+  <div id="pjEditor" class="floatWin" role="dialog" aria-label="プロジェクト・レイヤ編集" hidden>
+    <div class="floatHead" id="pjHead"><span class="grow" id="pjTitle">プロジェクト（未作成）</span><button id="pjClose" class="winBtn" type="button" aria-label="閉じる">×</button></div>
+    <div class="feRow">
+      <input id="pjW" type="number" min="64" max="4096" value="1024" aria-label="幅"><span>×</span><input id="pjH" type="number" min="64" max="4096" value="1536" aria-label="高さ">
+      <button id="pjNew" class="winBtn" type="button">新規</button>
+      <button id="pjSave" class="winBtn" type="button">保存</button>
+      <label class="winBtn" style="display:inline-flex;align-items:center">読込<input id="pjLoadFile" type="file" accept="application/json,.json"></label>
+    </div>
+    <div class="feRow">
+      <label class="winBtn" style="display:inline-flex;align-items:center">画像追加<input id="pjAddFile" type="file" accept="image/*" multiple></label>
+      <button id="pjPaste" class="winBtn" type="button">貼付（⌘/Ctrl+V）</button>
+      <button id="pjUp" class="winBtn" type="button" aria-label="手前へ">↑</button><button id="pjDown" class="winBtn" type="button" aria-label="奥へ">↓</button>
+      <button id="pjDelete" class="winBtn" type="button">削除</button>
+      <span style="flex:1"></span>
+      <button id="pjApply" class="winBtn on" type="button">表示へ反映</button>
+    </div>
+    <div id="pjView"><canvas id="pjCanvas" tabindex="0" aria-label="レイヤ配置。ドラッグで移動、Shiftで垂直・水平に固定、矢印キーで微調整"></canvas></div>
+    <div id="pjLayers" role="listbox" aria-label="レイヤ一覧（上が手前）"></div>
+    <div class="hint" id="pjStatus" aria-live="polite">「新規」で空のキャンバスを作り、画像追加か貼付（⌘/Ctrl+V）で部品を重ねます。Shift+ドラッグで垂直・水平に固定。画像は端末内だけで処理されます。</div>
   </div>
   <div id="faceEditor" class="floatWin" role="dialog" aria-label="顔パーツ編集" hidden>
     <div class="floatHead" id="feHead"><span class="grow">顔パーツ編集（拡大）</span><button id="feClose" class="winBtn" type="button" aria-label="閉じる">×</button></div>
@@ -322,6 +353,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="layerGroup" class="ibtn secondary" type="button" data-tip="グループ化" aria-label="グループ化"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg></button>
         <button id="layerUngroup" class="ibtn secondary" type="button" data-tip="グループ解除" aria-label="グループ解除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 13.5h5"/></svg></button>
       </div>
+      <button id="openProjectEditor" class="ibtn" type="button" data-tip="プロジェクト・レイヤ編集" aria-label="プロジェクト・レイヤ編集"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><span>空画像から部品で作成（プロジェクト）</span></button>
       <button id="openFaceEditor" class="ibtn" type="button" data-tip="顔パーツ拡大編集" aria-label="顔パーツ拡大編集"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/><path d="M8.5 10.5c1-1 4-1 5 0"/></svg><span>顔パーツ拡大編集（目・口）</span></button>
       <div id="rigLayerList" class="layerList" role="tree" aria-label="部位レイヤー（上が手前、下が奥）"></div>
       <div class="iconRow">
@@ -563,17 +595,22 @@ uniform vec4 u_corePartAngles;
 uniform vec4 u_corePartRigid;
 uniform vec4 u_extraPartAngles;
 uniform vec4 u_extraPartAngles2;
+uniform vec4 u_extraPartAngles3;
 uniform vec4 u_extraPartRigid;
 uniform vec4 u_extraPartRigid2;
+uniform vec4 u_extraPartRigid3;
 uniform vec4 u_coreShape;
 uniform vec4 u_extraShape;
 uniform vec4 u_extraShape2;
+uniform vec4 u_extraShape3;
 uniform vec4 u_extraHair;
 uniform vec4 u_extraHair2;
+uniform vec4 u_extraHair3;
 uniform vec4 u_hairColor;
 uniform vec4 u_coreLayer;
 uniform vec4 u_extraLayer;
 uniform vec4 u_extraLayer2;
+uniform vec4 u_extraLayer3;
 uniform float u_hairWave;
 uniform vec2 u_faceBands;
 uniform vec4 u_eyeL;
@@ -584,6 +621,14 @@ uniform vec4 u_featureGain;
 uniform vec4 u_featureAngle;
 uniform vec2 u_legacyFace;
 uniform vec4 u_featureExpr;
+uniform vec4 u_featureMotion0;
+uniform vec4 u_featureMotion1;
+uniform vec4 u_featureMotion2;
+uniform vec4 u_featureMotion3;
+uniform vec4 u_browL;
+uniform vec4 u_browR;
+uniform vec4 u_neckR;
+uniform vec4 u_featureGain2;
 uniform vec4 u_rigCenters;
 uniform vec4 u_rigRadii;
 uniform vec4 u_bodyRegion;
@@ -596,6 +641,10 @@ uniform vec4 u_extraRegion4;
 uniform vec4 u_extraRegion5;
 uniform vec4 u_extraRegion6;
 uniform vec4 u_extraRegion7;
+uniform vec4 u_extraRegion8;
+uniform vec4 u_extraRegion9;
+uniform vec4 u_extraRegion10;
+uniform vec4 u_extraRegion11;
 uniform vec2 u_extraMotion0;
 uniform vec2 u_extraMotion1;
 uniform vec2 u_extraMotion2;
@@ -604,6 +653,10 @@ uniform vec2 u_extraMotion4;
 uniform vec2 u_extraMotion5;
 uniform vec2 u_extraMotion6;
 uniform vec2 u_extraMotion7;
+uniform vec2 u_extraMotion8;
+uniform vec2 u_extraMotion9;
+uniform vec2 u_extraMotion10;
+uniform vec2 u_extraMotion11;
 uniform float u_groundAnchor;
 uniform vec2 u_motionRange;
 uniform float u_standeeMode;
@@ -796,19 +849,24 @@ vec2 riggedForegroundUV(vec2 uv){
   float e5=rigMotionAt(uv,u_extraRegion5.xy,u_extraRegion5.zw,u_extraPartAngles2.y,u_extraPartRigid2.y,u_extraShape2.y)*mix(1.0,hairWeight,u_extraHair2.y);
   float e6=rigMotionAt(uv,u_extraRegion6.xy,u_extraRegion6.zw,u_extraPartAngles2.z,u_extraPartRigid2.z,u_extraShape2.z)*mix(1.0,hairWeight,u_extraHair2.z);
   float e7=rigMotionAt(uv,u_extraRegion7.xy,u_extraRegion7.zw,u_extraPartAngles2.w,u_extraPartRigid2.w,u_extraShape2.w)*mix(1.0,hairWeight,u_extraHair2.w);
+  float e8=rigMotionAt(uv,u_extraRegion8.xy,u_extraRegion8.zw,u_extraPartAngles3.x,u_extraPartRigid3.x,u_extraShape3.x)*mix(1.0,hairWeight,u_extraHair3.x);
+  float e9=rigMotionAt(uv,u_extraRegion9.xy,u_extraRegion9.zw,u_extraPartAngles3.y,u_extraPartRigid3.y,u_extraShape3.y)*mix(1.0,hairWeight,u_extraHair3.y);
+  float e10=rigMotionAt(uv,u_extraRegion10.xy,u_extraRegion10.zw,u_extraPartAngles3.z,u_extraPartRigid3.z,u_extraShape3.z)*mix(1.0,hairWeight,u_extraHair3.z);
+  float e11=rigMotionAt(uv,u_extraRegion11.xy,u_extraRegion11.zw,u_extraPartAngles3.w,u_extraPartRigid3.w,u_extraShape3.w)*mix(1.0,hairWeight,u_extraHair3.w);
   vec2 displacement=vec2(0.0);
   // 足元では0へ減衰させ、胴体を接地点から傾ける。
   displacement.x+=u_bodyMotion.x*bodyInfluence*anchorWeight*(0.55+0.65*abs(bodyPoint.y));
   displacement.y+=u_bodyMotion.y*bodyInfluence*anchorWeight;
   // 頭、髪／布／耳、小物は別のばね状態として遅れて追従させる。部位が重なる所は影響の合計で割り、二重加算による波打ちを防ぐ。
   // 手前のレイヤーほど重なり部で優先する（影響を最大80%増しにして、合計で割る）。
-  float hairInfluence=clamp(e0*u_extraHair.x+e1*u_extraHair.y+e2*u_extraHair.z+e3*u_extraHair.w+e4*u_extraHair2.x+e5*u_extraHair2.y+e6*u_extraHair2.z+e7*u_extraHair2.w,0.0,1.0);
+  float hairInfluence=clamp(e0*u_extraHair.x+e1*u_extraHair.y+e2*u_extraHair.z+e3*u_extraHair.w+e4*u_extraHair2.x+e5*u_extraHair2.y+e6*u_extraHair2.z+e7*u_extraHair2.w+e8*u_extraHair3.x+e9*u_extraHair3.y+e10*u_extraHair3.z+e11*u_extraHair3.w,0.0,1.0);
   float headWeight=headInfluence*(1.0+0.8*u_coreLayer.y),materialWeight=materialInfluence*(1.0+0.8*u_coreLayer.z),propWeight=propInfluence*(1.0+0.8*u_coreLayer.w);
   e0*=1.0+0.8*u_extraLayer.x;e1*=1.0+0.8*u_extraLayer.y;e2*=1.0+0.8*u_extraLayer.z;e3*=1.0+0.8*u_extraLayer.w;
   e4*=1.0+0.8*u_extraLayer2.x;e5*=1.0+0.8*u_extraLayer2.y;e6*=1.0+0.8*u_extraLayer2.z;e7*=1.0+0.8*u_extraLayer2.w;
+  e8*=1.0+0.8*u_extraLayer3.x;e9*=1.0+0.8*u_extraLayer3.y;e10*=1.0+0.8*u_extraLayer3.z;e11*=1.0+0.8*u_extraLayer3.w;
   vec2 partDisplacement=u_headMotion*headWeight*1.30+u_materialMotion*materialWeight*1.18+u_propMotion*propWeight*1.35;
-  partDisplacement+=u_extraMotion0*e0+u_extraMotion1*e1+u_extraMotion2*e2+u_extraMotion3*e3+u_extraMotion4*e4+u_extraMotion5*e5+u_extraMotion6*e6+u_extraMotion7*e7;
-  float partInfluenceSum=headWeight+materialWeight+propWeight+e0+e1+e2+e3+e4+e5+e6+e7;
+  partDisplacement+=u_extraMotion0*e0+u_extraMotion1*e1+u_extraMotion2*e2+u_extraMotion3*e3+u_extraMotion4*e4+u_extraMotion5*e5+u_extraMotion6*e6+u_extraMotion7*e7+u_extraMotion8*e8+u_extraMotion9*e9+u_extraMotion10*e10+u_extraMotion11*e11;
+  float partInfluenceSum=headWeight+materialWeight+propWeight+e0+e1+e2+e3+e4+e5+e6+e7+e8+e9+e10+e11;
   displacement+=partDisplacement/max(1.0,partInfluenceSum);
   // 髪の自動なびき: 顔から離れた毛先ほど大きく、位相が高さ方向へ流れる波と時々強まる風。
   float hairTip=smoothstep(0.03,0.24,distance(uv,u_rigCenters.xy));
@@ -840,7 +898,7 @@ vec2 riggedForegroundUV(vec2 uv){
   displacement.x+=(u_eyeL.z*eyeWL+u_eyeR.z*eyeWR)*u_featureExpr.y*0.12;
   vec2 mouthP=(rotM*(uv-u_mouthR.xy))/max(u_mouthR.zw,vec2(0.002));
   float mouthW=(1.0-smoothstep(0.75,1.3,length(mouthP)))*u_featureGain.z;
-  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.35*mouthP.y+0.9*min(mouthP.y,0.0))+u_featureExpr.x*0.7*(mouthP.x*mouthP.x-0.25)))*rotM;
+  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.5*mouthP.y+1.4*min(mouthP.y,0.0))+u_featureExpr.x*1.1*(mouthP.x*mouthP.x-0.25)))*rotM;
   vec2 clothP=(uv-u_clothR.xy)/max(u_clothR.zw,vec2(0.002));
   float clothW=(1.0-smoothstep(0.8,1.3,length(clothP)))*u_featureGain.w;
   float clothTip=smoothstep(-0.7,1.0,-clothP.y);
@@ -848,6 +906,22 @@ vec2 riggedForegroundUV(vec2 uv){
   float clothGust=0.6+0.4*sin(u_time*0.5+1.7);
   displacement.x+=clothW*clothTip*u_featureExpr.z*(0.0030*(sin(clothPhase)+0.4*sin(clothPhase*1.9+0.8))*clothGust-u_bodyMotion.x*0.6);
   displacement.y+=clothW*clothTip*u_featureExpr.z*0.0009*sin(u_time*2.7+uv.x*9.0);
+  // 特徴部位それぞれのばね（部位パネルの重力・ばね・減衰）による平行移動。親の動きは頭／胴体の変位で既に掛かるため、部位自身のばね成分だけを足す。
+  displacement+=u_featureMotion0.xy*eyeWL+u_featureMotion0.zw*eyeWR+u_featureMotion1.xy*mouthW+u_featureMotion1.zw*clothW;
+  // 眉: 笑顔で上がり、真面目で下がって内側へ寄る。瞬きに少し連動して下がる。
+  vec2 browPL=(uv-u_browL.xy)/max(u_browL.zw,vec2(0.002)),browPR=(uv-u_browR.xy)/max(u_browR.zw,vec2(0.002));
+  float browWL=(1.0-smoothstep(0.75,1.3,length(browPL)))*u_featureGain2.x,browWR=(1.0-smoothstep(0.75,1.3,length(browPR)))*u_featureGain2.y;
+  // 前髪が眉を覆う画像では、眉の変形が髪を歪ませる。髪色の画素は眉の変形から除く（髪色が未解析なら全画素に掛ける）。
+  float browHairGuard=mix(1.0,1.0-hairColorWeight,u_hairColor.a);
+  browWL*=browHairGuard;browWR*=browHairGuard;
+  float browLift=max(0.0,u_featureExpr.x)*0.9-max(0.0,-u_featureExpr.x)*0.8-u_live2dMotion.x*0.25;
+  displacement.y+=browWL*u_browL.w*browLift+browWR*u_browR.w*browLift;
+  displacement.x+=max(0.0,-u_featureExpr.x)*0.5*(browWL*u_browL.z*sign(u_browL.x-u_rigCenters.x)+browWR*u_browR.z*sign(u_browR.x-u_rigCenters.x));
+  displacement+=u_featureMotion2.xy*browWL+u_featureMotion2.zw*browWR;
+  // 首: 頭と胴体の間を自身のばねで追従させ、頭の揺れに引きずられる境目を和らげる。
+  vec2 neckP=(uv-u_neckR.xy)/max(u_neckR.zw,vec2(0.002));
+  float neckW=(1.0-smoothstep(0.8,1.3,length(neckP)))*u_featureGain2.z;
+  displacement+=u_featureMotion3.xy*neckW;
   displacement.x-=bodyPoint.x*bodyInfluence*u_live2dMotion.w*0.0045;
   displacement.y-=bodyInfluence*anchorWeight*u_live2dMotion.w*0.0018;
   // 変位は元のシルエットでマスクしない。マスクすると動いた輪郭が元の輪郭で切られ、縁が二重に見える。
@@ -1302,7 +1376,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartRigid","u_extraPartRigid2","u_coreShape","u_extraShape","u_extraShape2","u_extraHair","u_extraHair2","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir","u_featureAngle"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartAngles3","u_extraPartRigid","u_extraPartRigid2","u_extraPartRigid3","u_coreShape","u_extraShape","u_extraShape2","u_extraShape3","u_extraHair","u_extraHair2","u_extraHair3","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_extraLayer3","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraRegion8","u_extraRegion9","u_extraRegion10","u_extraRegion11","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_extraMotion8","u_extraMotion9","u_extraMotion10","u_extraMotion11","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir","u_featureAngle","u_featureMotion0","u_featureMotion1","u_featureMotion2","u_featureMotion3","u_browL","u_browR","u_neckR","u_featureGain2"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -1673,7 +1747,8 @@ function loadURL(url,label,revoke=false,afterUpload=null){
     if(afterUpload)afterUpload();
   };
   img.onerror=()=>{
-    errEl.textContent="画像の読み込みに失敗しました: "+label;
+    if(revoke)URL.revokeObjectURL(url);
+    errEl.textContent="画像の読み込みに失敗しました（対応形式: PNG/JPEG/WebP等）: "+label;
     statusEl.textContent="画像読込失敗";
   };
   img.src=url;
@@ -1841,7 +1916,7 @@ const RIG_PARTS={
   material:{tag:"03",label:"髪・耳・布",color:"#69d9ff"},
   prop:{tag:"04",label:"付属部位",color:"#ff86c8"}
 };
-const MAX_RIG_PARTS=16;
+const MAX_RIG_PARTS=24;
 const MAX_BONE_POINTS=24;
 const RIG_PROJECT_VERSION=1;
 const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];
@@ -2114,13 +2189,20 @@ function buildHumanRigParts(profile){
       if(faceUsable)regions.head={region:face,angle:regions.head.angle,shape:analysis.face.kind};
       regions.hair={region:analysis.hair.shape,angle:0,shape:analysis.hair.kind};
     }
-    regions.armLeft=orientedRigRegion([pose.shoulderLeft,pose.elbowLeft,pose.wristLeft],.032,.045);
-    regions.armRight=orientedRigRegion([pose.shoulderRight,pose.elbowRight,pose.wristRight],.032,.045);
+    // 腕・脚は関節で上下に分ける（二の腕/前腕、太もも/膝下）。前腕・膝下が別のばねで遅れて追従できる。
+    regions.armLeft=orientedRigRegion([pose.shoulderLeft,pose.elbowLeft],.032,.045);
+    regions.armRight=orientedRigRegion([pose.shoulderRight,pose.elbowRight],.032,.045);
+    regions.forearmLeft=orientedRigRegion([pose.elbowLeft,pose.wristLeft],.030,.040);
+    regions.forearmRight=orientedRigRegion([pose.elbowRight,pose.wristRight],.030,.040);
     regions.handLeft={region:[pose.wristLeft[0],pose.wristLeft[1],.045,.058],angle:0};
     regions.handRight={region:[pose.wristRight[0],pose.wristRight[1],.045,.058],angle:0};
     regions.upperBody=orientedRigRegion([pose.shoulderLeft,pose.shoulderRight,pose.hipLeft,pose.hipRight],.035,.07);
-    regions.legLeft=orientedRigRegion([pose.hipLeft,pose.kneeLeft,pose.ankleLeft],.038,.055);
-    regions.legRight=orientedRigRegion([pose.hipRight,pose.kneeRight,pose.ankleRight],.038,.055);
+    regions.legLeft=orientedRigRegion([pose.hipLeft,pose.kneeLeft],.038,.055);
+    regions.legRight=orientedRigRegion([pose.hipRight,pose.kneeRight],.038,.055);
+    regions.shinLeft=orientedRigRegion([pose.kneeLeft,pose.ankleLeft],.034,.048);
+    regions.shinRight=orientedRigRegion([pose.kneeRight,pose.ankleRight],.034,.048);
+    const neckTop=[headCenter[0],headCenter[1]+regions.head.region[3]*.85];
+    regions.neck={region:[(neckTop[0]+pose.neck[0])*.5,(neckTop[1]+pose.neck[1])*.5,Math.max(.02,shoulderSpan*.14),Math.max(.014,Math.abs(pose.neck[1]-neckTop[1])*.6+.006)],angle:0};
   }else{
     const head=[...profile.head],body=[...profile.body];
     const centerX=body[0],bodyY=body[1],bodyRadiusX=body[2],bodyRadiusY=body[3];
@@ -2134,32 +2216,45 @@ function buildHumanRigParts(profile){
       waist:{region:[centerX,bodyY+bodyRadiusY*.30,bodyRadiusX*.62,bodyRadiusY*.14],angle:0,shape:"rect"},
       chestLeft:{region:[centerX+bodyRadiusX*.30,bodyY-bodyRadiusY*.30,bodyRadiusX*.30,bodyRadiusY*.14],angle:0},
       chestRight:{region:[centerX-bodyRadiusX*.30,bodyY-bodyRadiusY*.30,bodyRadiusX*.30,bodyRadiusY*.14],angle:0},
-      armLeft:{region:[centerX+armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],angle:0},
-      armRight:{region:[centerX-armOffset,armCenterY,Math.max(.05,bodyRadiusX*.42),Math.max(.09,(handY-shoulderY)*.62)],angle:0},
+      armLeft:{region:[centerX+armOffset,shoulderY+(handY-shoulderY)*.27,Math.max(.05,bodyRadiusX*.42),Math.max(.05,(handY-shoulderY)*.33)],angle:0},
+      armRight:{region:[centerX-armOffset,shoulderY+(handY-shoulderY)*.27,Math.max(.05,bodyRadiusX*.42),Math.max(.05,(handY-shoulderY)*.33)],angle:0},
+      forearmLeft:{region:[centerX+armOffset,shoulderY+(handY-shoulderY)*.73,Math.max(.045,bodyRadiusX*.38),Math.max(.05,(handY-shoulderY)*.33)],angle:0},
+      forearmRight:{region:[centerX-armOffset,shoulderY+(handY-shoulderY)*.73,Math.max(.045,bodyRadiusX*.38),Math.max(.05,(handY-shoulderY)*.33)],angle:0},
+      neck:{region:[head[0],head[1]+head[3]+(shoulderY-head[1]-head[3])*.5,Math.max(.03,head[2]*.5),Math.max(.014,Math.abs(shoulderY-head[1]-head[3])*.55+.006)],angle:0},
       handLeft:{region:[centerX+handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],angle:0},
       handRight:{region:[centerX-handOffset,handY,Math.max(.035,bodyRadiusX*.25),Math.max(.04,bodyRadiusY*.16)],angle:0},
       upperBody:{region:[centerX,bodyY,Math.max(.09,bodyRadiusX*.82),Math.max(.12,bodyRadiusY*.72)],angle:0},
-      legLeft:{region:[centerX+legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],angle:0},
-      legRight:{region:[centerX-legOffset,legCenterY,Math.max(.045,bodyRadiusX*.34),Math.max(.10,(groundY-hipY)*.53)],angle:0}
+      legLeft:{region:[centerX+legOffset,hipY+(groundY-hipY)*.27,Math.max(.045,bodyRadiusX*.34),Math.max(.06,(groundY-hipY)*.30)],angle:0},
+      legRight:{region:[centerX-legOffset,hipY+(groundY-hipY)*.27,Math.max(.045,bodyRadiusX*.34),Math.max(.06,(groundY-hipY)*.30)],angle:0},
+      shinLeft:{region:[centerX+legOffset,hipY+(groundY-hipY)*.74,Math.max(.04,bodyRadiusX*.30),Math.max(.06,(groundY-hipY)*.29)],angle:0},
+      shinRight:{region:[centerX-legOffset,hipY+(groundY-hipY)*.74,Math.max(.04,bodyRadiusX*.30),Math.max(.06,(groundY-hipY)*.29)],angle:0}
     };
   }
   const unseenParts=new Set();
   if(profile.poseLandmarks){
     const seen=(...names)=>names.every(name=>(profile.poseLandmarks[name]?.[2]??1)>=.35);
-    if(!seen("hipLeft","kneeLeft","ankleLeft"))unseenParts.add("leg-left");
-    if(!seen("hipRight","kneeRight","ankleRight"))unseenParts.add("leg-right");
-    if(!seen("shoulderLeft","elbowLeft","wristLeft")){unseenParts.add("arm-left");unseenParts.add("hand-left")}
-    if(!seen("shoulderRight","elbowRight","wristRight")){unseenParts.add("arm-right");unseenParts.add("hand-right")}
+    if(!seen("hipLeft","kneeLeft"))unseenParts.add("leg-left");
+    if(!seen("kneeLeft","ankleLeft"))unseenParts.add("shin-left");
+    if(!seen("hipRight","kneeRight"))unseenParts.add("leg-right");
+    if(!seen("kneeRight","ankleRight"))unseenParts.add("shin-right");
+    if(!seen("shoulderLeft","elbowLeft"))unseenParts.add("arm-left");
+    if(!seen("elbowLeft","wristLeft")){unseenParts.add("forearm-left");unseenParts.add("hand-left")}
+    if(!seen("shoulderRight","elbowRight"))unseenParts.add("arm-right");
+    if(!seen("elbowRight","wristRight")){unseenParts.add("forearm-right");unseenParts.add("hand-right")}
   }
   const specs=[
     {id:"head",role:"head",tag:"01",label:"頭",color:"#ffdf6e",...regions.head,parentId:"upper-body",inheritMotion:true,inheritAmount:.62,preset:"face"},
-    {id:"arm-left",role:"material",tag:"02",label:"腕 左",color:"#69d9ff",...regions.armLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
-    {id:"arm-right",role:"prop",tag:"03",label:"腕 右",color:"#ff86c8",...regions.armRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
-    {id:"hand-left",role:"custom",tag:"04",label:"手 左",color:EXTRA_PART_COLORS[0],...regions.handLeft,parentId:"arm-left",inheritMotion:true,inheritAmount:.86,preset:"hand"},
-    {id:"hand-right",role:"custom",tag:"05",label:"手 右",color:EXTRA_PART_COLORS[1],...regions.handRight,parentId:"arm-right",inheritMotion:true,inheritAmount:.86,preset:"hand"},
+    {id:"arm-left",role:"material",tag:"02",label:"二の腕 左",color:"#69d9ff",...regions.armLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"arm-right",role:"prop",tag:"03",label:"二の腕 右",color:"#ff86c8",...regions.armRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.72,preset:"soft"},
+    {id:"forearm-left",role:"custom",tag:"17",label:"前腕 左",color:"#8fe3ff",...regions.forearmLeft,parentId:"arm-left",inheritMotion:true,inheritAmount:.9,preset:"soft"},
+    {id:"forearm-right",role:"custom",tag:"18",label:"前腕 右",color:"#ffa6d6",...regions.forearmRight,parentId:"arm-right",inheritMotion:true,inheritAmount:.9,preset:"soft"},
+    {id:"hand-left",role:"custom",tag:"04",label:"手 左",color:EXTRA_PART_COLORS[0],...regions.handLeft,parentId:"forearm-left",inheritMotion:true,inheritAmount:.86,preset:"hand"},
+    {id:"hand-right",role:"custom",tag:"05",label:"手 右",color:EXTRA_PART_COLORS[1],...regions.handRight,parentId:"forearm-right",inheritMotion:true,inheritAmount:.86,preset:"hand"},
     {id:"upper-body",role:"body",tag:"06",label:"上半身",color:"#69f0ae",...regions.upperBody,parentId:null,inheritMotion:false,inheritAmount:0,preset:"body"},
-    {id:"leg-left",role:"custom",tag:"07",label:"脚 左",color:EXTRA_PART_COLORS[2],...regions.legLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
-    {id:"leg-right",role:"custom",tag:"08",label:"脚 右",color:EXTRA_PART_COLORS[3],...regions.legRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
+    {id:"leg-left",role:"custom",tag:"07",label:"太もも 左",color:EXTRA_PART_COLORS[2],...regions.legLeft,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
+    {id:"leg-right",role:"custom",tag:"08",label:"太もも 右",color:EXTRA_PART_COLORS[3],...regions.legRight,parentId:"upper-body",inheritMotion:true,inheritAmount:.66,preset:"body"},
+    {id:"shin-left",role:"custom",tag:"19",label:"膝下 左",color:"#a8ffe0",...regions.shinLeft,parentId:"leg-left",inheritMotion:true,inheritAmount:.85,preset:"body"},
+    {id:"shin-right",role:"custom",tag:"20",label:"膝下 右",color:"#ffe0a8",...regions.shinRight,parentId:"leg-right",inheritMotion:true,inheritAmount:.85,preset:"body"},
     {id:"hair",role:"custom",tag:"09",label:"髪",color:"#70e8ff",...regions.hair,parentId:"head",inheritMotion:true,inheritAmount:.76,preset:"hair"}
   ];
   specs.push({id:"waist",role:"custom",tag:"10",label:"腰",color:"#ffb45f",...regions.waist,parentId:"upper-body",inheritMotion:true,inheritAmount:.58,preset:"hips"});
@@ -2176,8 +2271,12 @@ function buildHumanRigParts(profile){
     const eyeSize=[Math.max(.008,hrx*.24),Math.max(.006,hry*.15)],measured=profile.faceFeatures;
     specs.push({id:"eye-left",role:"feature",tag:"13",label:"目 左",color:"#7df9ff",region:measured?.eyeL||[...onFace(.40,-.22),...eyeSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
     specs.push({id:"eye-right",role:"feature",tag:"14",label:"目 右",color:"#7dd4ff",region:measured?.eyeR||[...onFace(-.40,-.22),...eyeSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    const browSize=[Math.max(.009,hrx*.26),Math.max(.004,hry*.06)];
+    specs.push({id:"brow-left",role:"feature",tag:"21",label:"眉 左",color:"#b8f1ff",region:measured?.browL||[...onFace(.40,-.46),...browSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    specs.push({id:"brow-right",role:"feature",tag:"22",label:"眉 右",color:"#b8dcff",region:measured?.browR||[...onFace(-.40,-.46),...browSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
     specs.push({id:"mouth",role:"feature",tag:"15",label:"口",color:"#ff7d9c",region:measured?.mouth||[...onFace(0,.52),Math.max(.01,hrx*.30),Math.max(.007,hry*.11)],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"mouth"});
   }
+  if(regions.neck)specs.push({id:"neck",role:"feature",tag:"23",label:"首",color:"#ffd2a8",...regions.neck,parentId:"head",inheritMotion:true,inheritAmount:.5,preset:"face"});
   if(bodyBox){
     const [bx,by,brx,bry]=bodyBox.region;
     specs.push({id:"cloth",role:"feature",tag:"16",label:"服（なびき）",color:"#c9a7ff",region:[bx,Math.min(.9,by+bry*.75),Math.min(.48,brx*1.25),Math.min(.48,bry*.7)],angle:0,parentId:"upper-body",inheritMotion:true,inheritAmount:.6,preset:"cloth"});
@@ -2186,7 +2285,7 @@ function buildHumanRigParts(profile){
     const motion=MOTION_PRESETS[spec.preset],region=spec.role==="feature"?spec.region.map((value,index)=>index<2?Math.max(.02,Math.min(.98,value)):Math.max(.006,Math.min(.48,value))):boundedRegion(spec.region);
     const angle=Number.isFinite(spec.angle)?spec.angle:0;
     // 手前から奥へ。手・腕は胸や顔の前へ重なり、前髪（髪）は顔の前、衣装の腰は脚の前、胴体が最奥。
-    const frontToBack=["eye-left","eye-right","mouth","hand-left","hand-right","arm-left","arm-right","hair","head","chest-left","chest-right","waist","cloth","leg-left","leg-right","upper-body"];
+    const frontToBack=["eye-left","eye-right","brow-left","brow-right","mouth","hand-left","hand-right","forearm-left","forearm-right","arm-left","arm-right","hair","head","neck","chest-left","chest-right","waist","cloth","leg-left","leg-right","shin-left","shin-right","upper-body"];
     // 関節の見えていない部位（フレーム外の脚・手など）は配置だけ残し、存在しない体を動かさないよう動きをOFFにする。
     const part={...spec,region,originalRegion:[...region],angle,originalAngle:angle,shape:spec.shape==='rect'?'rect':'ellipse',layer:frontToBack.length-frontToBack.indexOf(spec.id),visible:true,group:null,motionEnabled:unseenParts.has(spec.id)?false:true,...motion,...(spec.role==="feature"?{strength:1}:{})};
     rigSprings[part.id]=newRigSpring();
@@ -2220,6 +2319,7 @@ function buildHumanBoneRig(parts,profile){
   const byId=id=>parts.find(part=>part.id===id);
   const upper=byId("upper-body"),head=byId("head"),armLeft=byId("arm-left"),armRight=byId("arm-right");
   const handLeft=byId("hand-left"),handRight=byId("hand-right"),legLeft=byId("leg-left"),legRight=byId("leg-right");
+  const shinLeft=byId("shin-left")||legLeft,shinRight=byId("shin-right")||legRight;
   if(!upper||!head||!armLeft||!armRight||!handLeft||!handRight||!legLeft||!legRight)return [];
   const pose=humanPoseBones(profile);
   if(pose){
@@ -2237,10 +2337,10 @@ function buildHumanBoneRig(parts,profile){
       ["bone-wrist-right","B11","手首 右","end",...pose.wristRight,"bone-elbow-right",handRight.id,1],
       ["bone-hip-left","B12","股関節 左","branch",...pose.hipLeft,"bone-root",legLeft.id,1],
       ["bone-knee-left","B13","膝 左","joint",...pose.kneeLeft,"bone-hip-left",legLeft.id,1],
-      ["bone-ankle-left","B14","足首 左","end",...pose.ankleLeft,"bone-knee-left",legLeft.id,1],
+      ["bone-ankle-left","B14","足首 左","end",...pose.ankleLeft,"bone-knee-left",shinLeft.id,1],
       ["bone-hip-right","B15","股関節 右","branch",...pose.hipRight,"bone-root",legRight.id,1],
       ["bone-knee-right","B16","膝 右","joint",...pose.kneeRight,"bone-hip-right",legRight.id,1],
-      ["bone-ankle-right","B17","足首 右","end",...pose.ankleRight,"bone-knee-right",legRight.id,1]
+      ["bone-ankle-right","B17","足首 右","end",...pose.ankleRight,"bone-knee-right",shinRight.id,1]
     ];
     return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
   }
@@ -2265,10 +2365,10 @@ function buildHumanBoneRig(parts,profile){
     ["bone-wrist-right","B11","手首 右","end",handRight.region[0],handRight.region[1],"bone-elbow-right",handRight.id,1],
     ["bone-hip-left","B12","股関節 左","branch",legLeft.region[0],hipY,"bone-root",legLeft.id,1],
     ["bone-knee-left","B13","膝 左","joint",legLeft.region[0],legLeft.region[1],"bone-hip-left",legLeft.id,1],
-    ["bone-ankle-left","B14","足首 左","end",legLeft.region[0],ankleY,"bone-knee-left",legLeft.id,1],
+    ["bone-ankle-left","B14","足首 左","end",legLeft.region[0],ankleY,"bone-knee-left",shinLeft.id,1],
     ["bone-hip-right","B15","股関節 右","branch",legRight.region[0],hipY,"bone-root",legRight.id,1],
     ["bone-knee-right","B16","膝 右","joint",legRight.region[0],legRight.region[1],"bone-hip-right",legRight.id,1],
-    ["bone-ankle-right","B17","足首 右","end",legRight.region[0],ankleY,"bone-knee-right",legRight.id,1]
+    ["bone-ankle-right","B17","足首 右","end",legRight.region[0],ankleY,"bone-knee-right",shinRight.id,1]
   ];
   return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
 }
@@ -2501,6 +2601,8 @@ function syncRigEditor(){
   $("#rigPartName").value=part.label;
   $("#partMotionEnabled").checked=part.motionEnabled;
   $("#partMotionPreset").value=part.preset;
+  // 目・口・眉・首・服は専用の変形を持つため、種類は固定（重力・ばね・減衰・強度は部位の平行移動に効く）。
+  $("#partMotionPreset").disabled=part.role==="feature";
   $("#partMotionStrength").value=part.strength;
   $("#partGravity").value=part.gravity;
   $("#partStiffness").value=part.stiffness;
@@ -2722,7 +2824,7 @@ function validateRigDefinition(parts=activeRigParts,bones=activeBonePoints){
   if(parts.length<1)issues.push("部位がありません");
   if(parts.length>MAX_RIG_PARTS)issues.push(`部位は${MAX_RIG_PARTS}件までです`);
   if(partIds.size!==parts.length)issues.push("部位IDが重複しています");
-  if(parts.filter(part=>part.role==="custom").length>8)issues.push("追加部位は8件までです");
+  if(parts.filter(part=>part.role==="custom").length>12)issues.push("追加部位は12件までです");
   for(const role of Object.keys(RIG_PARTS))if(parts.filter(part=>part.role===role).length>1)issues.push(`${role}: 標準部位が重複しています`);
   for(const part of parts){
     if(part.parentId&&!partIds.has(part.parentId))issues.push(`${part.label}: 親部位がありません`);
@@ -3056,7 +3158,11 @@ function faceFeaturesFromLandmarks(landmarks,aspect=1){
   };
   const mouthWidth=Math.hypot((at(61).x-at(291).x)*aspect,at(61).y-at(291).y)/aspect;
   const [mx,my]=mid(at(61),at(291));
+  // 眉は外端・内端の中点と上端で位置を決め、幅の約6割を半径にする。
+  const brow=(outer,inner,top)=>{const [cx,cy]=mid(at(outer),at(inner)),width=Math.hypot((at(outer).x-at(inner).x)*aspect,at(outer).y-at(inner).y)/aspect;return [cx,(cy+at(top).y)*.5,Math.max(.007,width*.6),Math.max(.004,width*.16)]};
   return {
+    browL:brow(300,336,334),
+    browR:brow(70,107,105),
     eyeL:eye(263,362,386,374),
     eyeR:eye(33,133,159,145),
     mouth:[(mx+at(13).x)*.5,(my+at(13).y+at(14).y)/3,Math.max(.008,mouthWidth*.62),Math.max(.006,Math.abs(at(14).y-at(13).y)*2.2,mouthWidth*.18)]
@@ -3106,7 +3212,7 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
   try{
     const raw=await detectFaceFeatures(source),sp=sourcePlacement,pl=placement;
     const mapFeature=([x,y,rx,ry])=>[pl.left+(x-sp.left)/sp.width*pl.width,pl.top+(y-sp.top)/sp.height*pl.height,rx/sp.width*pl.width,ry/sp.height*pl.height];
-    faceFeatures={eyeL:mapFeature(raw.eyeL),eyeR:mapFeature(raw.eyeR),mouth:mapFeature(raw.mouth)};
+    faceFeatures={eyeL:mapFeature(raw.eyeL),eyeR:mapFeature(raw.eyeR),mouth:mapFeature(raw.mouth),browL:raw.browL?mapFeature(raw.browL):null,browR:raw.browR?mapFeature(raw.browR):null};
   }catch(error){console.warn("顔ランドマークで目・口を実測できないため、顔の範囲から推定位置を使います。",error)}
   return {...baseProfile,poseLandmarks:mapped,humanParts,faceFeatures,rigSource:correctionCount?"pose-calibrated":"pose",poseCorrectionCount:correctionCount};
 }
@@ -3245,6 +3351,8 @@ demoNext.addEventListener("click",()=>loadDemo(activeDemoIndex+1));
 
 $("#file").addEventListener("change",e=>{
   const f=e.target.files && e.target.files[0];
+  // 同じファイルを選び直しても change が発火するよう、選択値を消す（File は保持される）。
+  e.target.value="";
   if(!f)return;
   demoLoadSerial++;
   activeDemoIndex=-1;
@@ -4729,7 +4837,7 @@ function rigPartSourceDisplayState(partId,nowSeconds){
     commonX+=Math.sin(nowSeconds*50)*0.0035*strengths.vibration*anchorWeight;
     commonY+=Math.cos(nowSeconds*50*0.79)*0.0016*strengths.vibration*anchorWeight;
   }
-  const factor={body:[0.55,1],head:[1.30,1.30],material:[1.18,1.18],prop:[1.35,1.35],custom:[1.25,1.25]}[definition.role];
+  const factor={body:[0.55,1],head:[1.30,1.30],material:[1.18,1.18],prop:[1.35,1.35],custom:[1.25,1.25],feature:[1,1]}[definition.role]||[1,1];
   let x=part[0]+commonX+(spring.effectiveX||0)*factor[0];
   let y=part[1]-commonY-(spring.effectiveY||0)*factor[1];
   let radiusX=part[2],radiusY=part[3];
@@ -5969,6 +6077,7 @@ function rigMotionTarget(part,seconds,strength){
   if(part.preset==="hand")return [(-viewX*.00175+Math.sin(seconds*.96+1.1)*.00085)*scale,(-viewY*.00055+Math.cos(seconds*1.08)*.00052)*scale];
   if(part.preset==="hips")return [(-viewX*.00135+Math.sin(seconds*.62)*.00105)*scale,Math.cos(seconds*.74)*.00072*scale];
   if(part.preset==="propRigid"||part.preset==="prop")return [(-viewX*.00215+Math.sin(seconds*.88+1.4)*.00135)*scale,(-viewY*.00065+Math.cos(seconds*.77+.9)*.00082)*scale];
+  if(part.preset==="cloth"){const wind=parseFloat($("#windStrength").value)*motionStyle().wind;return [(-viewX*0.0030+Math.sin(seconds*1.3+0.5)*0.0025*wind)*scale,Math.cos(seconds*0.9+0.3)*0.0010*wind*scale]}
   if(part.preset==="tail")return [(-viewX*0.00580+Math.sin(seconds*1.29+1.7)*0.00620)*scale,Math.cos(seconds*0.91+1.2)*0.00310*scale];
   if(part.preset==="chest"){
     const parentSpring=rigSprings[part.parentId]||newRigSpring();
@@ -6011,7 +6120,7 @@ function naturalBlinkPulse(now,active){
 }
 
 // 表情と会話。表情は滑らかに遷移し、会話中は音節リズム（4〜7Hz）×フレーズ包絡で口を開閉する。
-const EXPRESSIONS={normal:{smile:0,mouthBase:0},smile:{smile:.85,mouthBase:.12},serious:{smile:-.4,mouthBase:0}};
+const EXPRESSIONS={normal:{smile:0,mouthBase:0},smile:{smile:1,mouthBase:.12},serious:{smile:-.8,mouthBase:0}};
 let expressionState={smile:0,mouthBase:0};
 function updateExpression(deltaSeconds,active){
   const target=EXPRESSIONS[$("#expression").value]||EXPRESSIONS.normal,follow=smoothingFactor(7,deltaSeconds);
@@ -6089,7 +6198,7 @@ function render(now){
   const midFollow=smoothingFactor(7.0,deltaSeconds);
   const farFollow=smoothingFactor(2.8,deltaSeconds);
   // ダイナミック等では、操作がなくても視点をゆっくり周回させて立体感を出す（操作中は弱める）。
-  const driftAmp=motionStyle().drift*(dragging?0.35:1)*(reduceMotion.matches?0:1)*($("#autoMotion").checked?1:0);
+  const driftAmp=motionStyle().drift*(dragging?0.35:1)*(reduceMotion.matches?0:1)*($("#autoMotion").checked?1:0)*($("#viewInputMode").value==="pointer"?1:0);
   const driftX=Math.sin(now*0.00052)*driftAmp,driftY=Math.sin(now*0.00037+1.1)*driftAmp*0.55;
   viewX+=(targetX+driftX-viewX)*viewFollow;
   viewY+=(targetY+driftY-viewY)*viewFollow;
@@ -6157,29 +6266,34 @@ function render(now){
   gl.uniform4f(U.u_rigRadii,headRegion[2],headRegion[3],propRegion[2],propRegion[3]);
   gl.uniform4f(U.u_bodyRegion,bodyRegion[0],1-bodyRegion[1],bodyRegion[2],bodyRegion[3]);
   gl.uniform4f(U.u_materialRegion,materialRegion[0],1-materialRegion[1],materialRegion[2],materialRegion[3]);
-  const extras=activeRigParts.filter(part=>part.role==="custom").slice(0,8);
+  const extras=activeRigParts.filter(part=>part.role==="custom").slice(0,12);
   gl.uniform4f(U.u_extraPartAngles,...[0,1,2,3].map(index=>-(extras[index]?.angle||0)));
   gl.uniform4f(U.u_extraPartAngles2,...[4,5,6,7].map(index=>-(extras[index]?.angle||0)));
+  gl.uniform4f(U.u_extraPartAngles3,...[8,9,10,11].map(index=>-(extras[index]?.angle||0)));
   gl.uniform4f(U.u_extraPartRigid,...[0,1,2,3].map(index=>rigidFlag(extras[index])));
   gl.uniform4f(U.u_extraPartRigid2,...[4,5,6,7].map(index=>rigidFlag(extras[index])));
+  gl.uniform4f(U.u_extraPartRigid3,...[8,9,10,11].map(index=>rigidFlag(extras[index])));
   const activeHairRgb=autoRigActive?activeRigProfile?.humanParts?.hairRgb||null:null;
   const shapeFlag=part=>part?.shape==="rect"?1:0,hairFlag=part=>part?.preset==="hair"&&activeHairRgb?1:0;
   gl.uniform4f(U.u_coreShape,shapeFlag(core.body),shapeFlag(core.head),shapeFlag(core.material),shapeFlag(core.prop));
   gl.uniform4f(U.u_extraShape,...[0,1,2,3].map(index=>shapeFlag(extras[index])));
   gl.uniform4f(U.u_extraShape2,...[4,5,6,7].map(index=>shapeFlag(extras[index])));
+  gl.uniform4f(U.u_extraShape3,...[8,9,10,11].map(index=>shapeFlag(extras[index])));
   gl.uniform4f(U.u_extraHair,...[0,1,2,3].map(index=>hairFlag(extras[index])));
   gl.uniform4f(U.u_extraHair2,...[4,5,6,7].map(index=>hairFlag(extras[index])));
+  gl.uniform4f(U.u_extraHair3,...[8,9,10,11].map(index=>hairFlag(extras[index])));
   gl.uniform4f(U.u_hairColor,...(activeHairRgb||[0,0,0]),activeHairRgb?1:0);
   const layerValues=activeRigParts.map(part=>part.layer||0),layerMin=Math.min(...layerValues,0),layerSpan=Math.max(1,Math.max(...layerValues,1)-layerMin);
   const layerRank=part=>part?(((part.layer||0)-layerMin)/layerSpan):0;
   gl.uniform4f(U.u_coreLayer,layerRank(core.body),layerRank(core.head),layerRank(core.material),layerRank(core.prop));
   gl.uniform4f(U.u_extraLayer,...[0,1,2,3].map(index=>layerRank(extras[index])));
   gl.uniform4f(U.u_extraLayer2,...[4,5,6,7].map(index=>layerRank(extras[index])));
+  gl.uniform4f(U.u_extraLayer3,...[8,9,10,11].map(index=>layerRank(extras[index])));
   const windAmount=parseFloat($("#windStrength").value)*motionStyle().wind;
-  gl.uniform1f(U.u_hairWave,autoRigActive&&activeHairRgb&&extras.some(part=>part.preset==="hair"&&part.motionEnabled)?0.4+windAmount*1.2:0);
+  gl.uniform1f(U.u_hairWave,autoRigActive&&activeHairRgb&&!testMotionOverride?.freezeHair&&extras.some(part=>part.preset==="hair"&&part.motionEnabled)?0.4+windAmount*1.2:0);
   const humanFace=Boolean(activeRigProfile?.humanParts);
   gl.uniform2f(U.u_faceBands,humanFace?.22:.10,humanFace?-.52:-.34);
-  for(let index=0;index<8;index++){
+  for(let index=0;index<12;index++){
     const part=extras[index],region=part?.region||[.5,.5,.001,.001],spring=part?rigSprings[part.id]:null;
     gl.uniform4f(U[`u_extraRegion${index}`],region[0],1-region[1],region[2],region[3]);
     gl.uniform2f(U[`u_extraMotion${index}`],(spring?.effectiveX||0)*motionBoost,(spring?.effectiveY||0)*motionBoost);
@@ -6192,6 +6306,8 @@ function render(now){
   const expressionNow=updateExpression(deltaSeconds,autoRigActive);
   const talking=$("#talkMode").checked&&autoRigActive;
   const mouthMotion=Math.min(1,Math.max(expressionNow.mouthBase,talking?talkingMouthOpen(liveSeconds):naturalMouthPulse(now,autoRigActive)));
+  const gazeMotion=testMotionOverride&&Number.isFinite(testMotionOverride.gaze)?testMotionOverride.gaze:Math.sin(liveSeconds*0.71)+viewX*0.55;
+  const breathMotion=testMotionOverride&&Number.isFinite(testMotionOverride.breath)?testMotionOverride.breath:Math.sin(liveSeconds*1.38);
   const featurePart=id=>activeRigParts.find(part=>part.id===id&&part.role==="feature")||null;
   const eyeL=featurePart("eye-left"),eyeR=featurePart("eye-right"),mouthPart=featurePart("mouth"),clothPart=featurePart("cloth");
   const featureGain=part=>part&&part.motionEnabled&&part.visible!==false?part.strength:0;
@@ -6201,15 +6317,24 @@ function render(now){
   gl.uniform4f(U.u_mouthR,...featureRegion(mouthPart,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_clothR,...featureRegion(clothPart,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_featureAngle,eyeL?.angle||0,eyeR?.angle||0,mouthPart?.angle||0,0);
+  const browL=featurePart("brow-left"),browR=featurePart("brow-right"),neckPart=featurePart("neck");
+  gl.uniform4f(U.u_browL,...featureRegion(browL,[.5,.5,.001,.001]));
+  gl.uniform4f(U.u_browR,...featureRegion(browR,[.5,.5,.001,.001]));
+  gl.uniform4f(U.u_neckR,...featureRegion(neckPart,[.5,.5,.001,.001]));
+  gl.uniform4f(U.u_featureGain2,featureGain(browL),featureGain(browR),featureGain(neckPart),0);
+  // 特徴部位のばねは部位自身の成分（spring.x/y）だけ。effectiveX（親継承込み）を使うと頭の変位と二重に動き、目が顔から浮く。
+  const ownMotion=part=>{const spring=part&&part.motionEnabled?rigSprings[part.id]:null;return [(spring?.x||0)*motionBoost,(spring?.y||0)*motionBoost]};
+  gl.uniform4f(U.u_featureMotion0,...ownMotion(eyeL),...ownMotion(eyeR));
+  gl.uniform4f(U.u_featureMotion1,...ownMotion(mouthPart),...ownMotion(clothPart));
+  gl.uniform4f(U.u_featureMotion2,...ownMotion(browL),...ownMotion(browR));
+  gl.uniform4f(U.u_featureMotion3,...ownMotion(neckPart),0,0);
   gl.uniform4f(U.u_featureGain,featureGain(eyeL),featureGain(eyeR),featureGain(mouthPart),featureGain(clothPart));
   gl.uniform2f(U.u_legacyFace,eyeL||eyeR?0:1,mouthPart?0:1);
-  gl.uniform4f(U.u_featureExpr,facePose?facePose.smile:expressionNow.smile,Math.sin(liveSeconds*0.71)*0.5+viewX*0.8,windAmount,0);
+  gl.uniform4f(U.u_featureExpr,facePose?facePose.smile:expressionNow.smile,gazeMotion*0.5+viewX*0.5,windAmount,0);
   // 顔パーツ編集ウィンドウの手動ポーズは、自動の瞬き・口・表情より優先する。
   const poseActive=Boolean(facePose&&activeRigProfile);
   const shownBlink=poseActive?facePose.blink:testMotionOverride&&autoRigActive?testMotionOverride.blink:blinkPulse;
   const shownMouth=poseActive?facePose.mouth:testMotionOverride&&autoRigActive?testMotionOverride.mouth:mouthMotion;
-  const gazeMotion=Math.sin(liveSeconds*0.71)+viewX*0.55;
-  const breathMotion=Math.sin(liveSeconds*1.38);
   live2dVisualState={blink:autoRigActive||poseActive?shownBlink:0,mouth:autoRigActive||poseActive?shownMouth:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
   gl.uniform4f(U.u_live2dMotion,autoRigActive||poseActive?shownBlink:0,autoRigActive||poseActive?shownMouth:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
   const debugLayerMode=$("#rigDebug").checked&&hasLayeredDemo;
@@ -6265,8 +6390,199 @@ function render(now){
 }
 requestAnimationFrame(render);
 // 自動検証用の読み取り専用フック（?p3dTest 付きURLのときだけ公開）。
-if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());return canvas.toDataURL('image/png')},handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
+if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());const w=canvas.width,h=canvas.height,px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);ctx.putImageData(img,0,0);return c.toDataURL('image/png')},visual:()=>({...live2dVisualState}),handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
+// ===== プロジェクト（空画像から部品レイヤを重ねて作成） =====
+// レイヤは各々独立したcanvas。合成結果を「表示へ反映」で通常の画像として読み込む（端末内のみで処理）。
+const pjEl=$("#pjEditor"),pjCanvas=$("#pjCanvas"),pjCtx=pjCanvas.getContext("2d");
+const pj={open:false,name:"",w:0,h:0,layers:[],sel:-1,drag:null,seq:0,box:null};
+function pjStatus(text){$("#pjStatus").textContent=text}
+function pjHas(){return pj.w>0&&pj.layers!==null}
+function pjSelLayer(){return pj.layers[pj.sel]||null}
+function pjNew(name){
+  const w=Math.round(boundedNumber($("#pjW").value,64,4096,1024)),h=Math.round(boundedNumber($("#pjH").value,64,4096,1536));
+  pj.name=name||"新規プロジェクト";pj.w=w;pj.h=h;pj.layers=[];pj.sel=-1;pj.seq=0;
+  $("#pjW").value=w;$("#pjH").value=h;
+  pjRefresh();pjStatus(`${w}×${h} の空キャンバスを作成しました。画像追加か貼付で部品を追加してください。`);
+}
+function pjAddCanvas(src,name){
+  if(!pjHas())pjNew();
+  const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height;
+  if(!sw||!sh)throw new Error("画像サイズが0です");
+  const fit=Math.min(1,pj.w/sw,pj.h/sh),w=Math.max(1,Math.round(sw*fit)),h=Math.max(1,Math.round(sh*fit));
+  const c=document.createElement("canvas");c.width=w;c.height=h;
+  c.getContext("2d").drawImage(src,0,0,w,h);
+  pj.layers.push({id:++pj.seq,name:name||("レイヤ"+pj.seq),canvas:c,x:Math.round((pj.w-w)/2),y:Math.round((pj.h-h)/2),visible:true});
+  pj.sel=pj.layers.length-1;pjRefresh();
+  pjStatus(`レイヤを追加しました: ${pj.layers[pj.sel].name}（ドラッグで移動、Shiftで垂直・水平に固定）`);
+}
+async function pjAddBlob(blob,name){
+  try{
+    const bmp=await (window.createImageBitmap?createImageBitmap(blob):imageFromFile(blob));
+    pjAddCanvas(bmp,name);
+    if(bmp.close)bmp.close();
+  }catch(error){
+    errEl.textContent="レイヤ画像を読み込めませんでした（"+(name||"画像")+"）。PNG/JPEG/WebPを使ってください。";
+    pjStatus("画像追加に失敗しました");
+  }
+}
+function pjComposite(){
+  const c=document.createElement("canvas");c.width=pj.w;c.height=pj.h;const x=c.getContext("2d");
+  for(const l of pj.layers)if(l.visible)x.drawImage(l.canvas,l.x,l.y);
+  return c;
+}
+function pjRefresh(){
+  $("#pjTitle").textContent=pjHas()?`${pj.name}（${pj.w}×${pj.h}）`:"プロジェクト（未作成）";
+  const list=$("#pjLayers");
+  list.replaceChildren(...pj.layers.map((l,i)=>({l,i})).reverse().map(({l,i})=>{
+    const row=document.createElement("div");row.className="pjItem"+(i===pj.sel?" sel":"");row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===pj.sel));
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=l.visible;cb.setAttribute("aria-label",l.name+" を表示");
+    cb.addEventListener("click",e=>e.stopPropagation());cb.addEventListener("change",()=>{l.visible=cb.checked;pjDraw()});
+    const label=document.createElement("span");label.textContent=l.name;
+    row.append(cb,label);row.addEventListener("click",()=>{pj.sel=i;pjRefresh()});return row;
+  }));
+  for(const id of ["pjSave","pjApply","pjPaste"])$("#"+id).disabled=!pjHas();
+  for(const id of ["pjUp","pjDown","pjDelete"])$("#"+id).disabled=!pjSelLayer();
+  pjDraw();
+}
+function pjLayout(){
+  const r=pjCanvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  const w=Math.max(2,Math.round(r.width*dpr)),h=Math.max(2,Math.round(r.height*dpr));
+  if(pjCanvas.width!==w||pjCanvas.height!==h){pjCanvas.width=w;pjCanvas.height=h}
+  const k=pjHas()?Math.min((w-16)/pj.w,(h-16)/pj.h):1;
+  pj.box={k,ox:pjHas()?(w-pj.w*k)/2:0,oy:pjHas()?(h-pj.h*k)/2:0};
+  return pj.box;
+}
+function pjDraw(){
+  if(!pj.open)return;
+  const b=pjLayout(),W=pjCanvas.width,H=pjCanvas.height;
+  pjCtx.setTransform(1,0,0,1,0,0);pjCtx.fillStyle="#1b1b20";pjCtx.fillRect(0,0,W,H);
+  if(!pjHas())return;
+  pjCtx.save();pjCtx.translate(b.ox,b.oy);pjCtx.scale(b.k,b.k);
+  pjCtx.beginPath();pjCtx.rect(0,0,pj.w,pj.h);pjCtx.clip();
+  const tile=Math.max(8,Math.round(16/b.k));
+  for(let y=0;y*tile<pj.h;y++)for(let x=0;x*tile<pj.w;x++){pjCtx.fillStyle=(x+y)%2?"#c9c9cf":"#e8e8ec";pjCtx.fillRect(x*tile,y*tile,tile,tile)}
+  for(const l of pj.layers)if(l.visible)pjCtx.drawImage(l.canvas,l.x,l.y);
+  pjCtx.restore();
+  const s=pjSelLayer();
+  if(s){pjCtx.save();pjCtx.strokeStyle="#79e7ff";pjCtx.lineWidth=2;pjCtx.setLineDash([6,4]);
+    pjCtx.strokeRect(b.ox+s.x*b.k,b.oy+s.y*b.k,s.canvas.width*b.k,s.canvas.height*b.k);pjCtx.restore()}
+}
+function pjPoint(e){
+  const r=pjCanvas.getBoundingClientRect(),b=pj.box||pjLayout(),dpr=pjCanvas.width/r.width;
+  return {x:((e.clientX-r.left)*dpr-b.ox)/b.k,y:((e.clientY-r.top)*dpr-b.oy)/b.k};
+}
+function pjHit(p){
+  for(let i=pj.layers.length-1;i>=0;i--){
+    const l=pj.layers[i];if(!l.visible)continue;
+    const lx=Math.floor(p.x-l.x),ly=Math.floor(p.y-l.y);
+    if(lx<0||ly<0||lx>=l.canvas.width||ly>=l.canvas.height)continue;
+    let a=255;try{a=l.canvas.getContext("2d").getImageData(lx,ly,1,1).data[3]}catch(error){}
+    if(a>8)return i;
+  }
+  return -1;
+}
+// Shift 押下中は、開始点からの移動量が大きい軸だけを動かして垂直／水平に固定する。
+function pjConstrain(dx,dy,shift){
+  if(!shift)return [dx,dy];
+  return Math.abs(dx)>=Math.abs(dy)?[dx,0]:[0,dy];
+}
+pjCanvas.addEventListener("pointerdown",e=>{
+  if(!pjHas()||e.button!==0)return;
+  const p=pjPoint(e),hit=pjHit(p);
+  if(hit>=0){pj.sel=hit;pjRefresh()}
+  const l=pjSelLayer();if(!l)return;
+  pj.drag={id:e.pointerId,sx:p.x,sy:p.y,lx:l.x,ly:l.y};
+  pjCanvas.setPointerCapture(e.pointerId);pjCanvas.focus({preventScroll:true});e.preventDefault();
+});
+pjCanvas.addEventListener("pointermove",e=>{
+  const d=pj.drag;if(!d||d.id!==e.pointerId)return;
+  const l=pjSelLayer();if(!l)return;
+  const p=pjPoint(e),[dx,dy]=pjConstrain(p.x-d.sx,p.y-d.sy,e.shiftKey);
+  l.x=Math.round(d.lx+dx);l.y=Math.round(d.ly+dy);pjDraw();
+});
+function pjEndDrag(e){if(pj.drag&&pj.drag.id===e.pointerId)pj.drag=null}
+pjCanvas.addEventListener("pointerup",pjEndDrag);pjCanvas.addEventListener("pointercancel",pjEndDrag);
+pjCanvas.addEventListener("keydown",e=>{
+  const l=pjSelLayer(),step=e.shiftKey?10:1,m={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];
+  if(!l||!m)return;
+  l.x+=m[0];l.y+=m[1];pjDraw();e.preventDefault();
+});
+function pjMove(delta){
+  const i=pj.sel,j=i+delta;if(!pjSelLayer()||j<0||j>=pj.layers.length)return;
+  [pj.layers[i],pj.layers[j]]=[pj.layers[j],pj.layers[i]];pj.sel=j;pjRefresh();
+}
+function pjOpen(){pj.open=true;pjEl.hidden=false;pjRefresh();pjCanvas.focus({preventScroll:true})}
+function pjClose(){pj.open=false;pj.drag=null;pjEl.hidden=true}
+function pjSave(){
+  if(!pjHas())return;
+  const data={format:"P3D-Project",version:1,name:pj.name,width:pj.w,height:pj.h,layers:pj.layers.map(l=>({name:l.name,x:l.x,y:l.y,visible:l.visible,png:l.canvas.toDataURL("image/png")}))};
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=`p3d-project-${new Date().toISOString().slice(0,10)}.json`;a.hidden=true;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  pjStatus("プロジェクトを保存しました（レイヤ画像を含むJSON）");
+}
+async function pjLoad(file){
+  try{
+    const data=JSON.parse(await file.text());
+    if(data.format!=="P3D-Project"||!Array.isArray(data.layers))throw new Error("形式が違います");
+    const w=Math.round(boundedNumber(data.width,64,4096,0)),h=Math.round(boundedNumber(data.height,64,4096,0));
+    if(!w||!h)throw new Error("サイズが不正です");
+    const layers=[];
+    for(const item of data.layers){
+      if(typeof item.png!=="string"||!item.png.startsWith("data:image/"))throw new Error("レイヤ画像が不正です");
+      const img=await loadImageAsset(item.png),c=document.createElement("canvas");
+      c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d").drawImage(img,0,0);
+      layers.push({id:layers.length+1,name:String(item.name||"レイヤ").slice(0,60),canvas:c,x:Math.round(Number(item.x)||0),y:Math.round(Number(item.y)||0),visible:item.visible!==false});
+    }
+    pj.name=String(data.name||"プロジェクト").slice(0,60);pj.w=w;pj.h=h;pj.layers=layers;pj.seq=layers.length;pj.sel=layers.length-1;
+    $("#pjW").value=w;$("#pjH").value=h;pjRefresh();pjStatus(`読み込みました: ${pj.name}（レイヤ${layers.length}）`);
+  }catch(error){
+    errEl.textContent="プロジェクトを読み込めませんでした: "+error.message;pjStatus("プロジェクト読込失敗");
+  }
+}
+function pjApply(){
+  if(!pjHas())return;
+  if(!pj.layers.some(l=>l.visible)){pjStatus("表示中のレイヤがありません");return}
+  demoLoadSerial++;activeDemoIndex=-1;updateDemoSelection();
+  uploadImage(pjComposite(),"プロジェクト: "+pj.name);
+  pjStatus("合成画像を表示へ反映しました。続けて人物分離・Live2Dリグを実行できます。");
+}
+async function pjPasteButton(){
+  try{
+    const items=await navigator.clipboard.read();let found=false;
+    for(const item of items){
+      const type=item.types.find(t=>t.startsWith("image/"));
+      if(type){found=true;await pjAddBlob(await item.getType(type),"貼付"+(pj.seq+1))}
+    }
+    if(!found)pjStatus("クリップボードに画像がありません");
+  }catch(error){pjStatus("クリップボードを読めません。⌘/Ctrl+V で貼り付けてください。")}
+}
+// ⌘/Ctrl+V：プロジェクト編集ウィンドウが開いているとき、クリップボードの画像を新規レイヤにする。
+document.addEventListener("paste",e=>{
+  if(!pj.open||(e.target instanceof Element&&e.target.closest("input[type=text],input[type=number],textarea,select")))return;
+  const files=[...(e.clipboardData?.items||[])].filter(i=>i.kind==="file"&&i.type.startsWith("image/")).map(i=>i.getAsFile()).filter(Boolean);
+  if(!files.length)return;
+  e.preventDefault();files.forEach((f,i)=>pjAddBlob(f,"貼付"+(pj.seq+1+i)));
+});
+$("#openProjectEditor").addEventListener("click",pjOpen);
+$("#pjClose").addEventListener("click",pjClose);
+$("#pjNew").addEventListener("click",()=>{
+  if(pj.layers.length&&!confirm("現在のプロジェクトを破棄して新規作成しますか？（未保存の内容は失われます）"))return;
+  pjNew();
+});
+$("#pjSave").addEventListener("click",pjSave);
+$("#pjApply").addEventListener("click",pjApply);
+$("#pjPaste").addEventListener("click",pjPasteButton);
+$("#pjUp").addEventListener("click",()=>pjMove(1));
+$("#pjDown").addEventListener("click",()=>pjMove(-1));
+$("#pjDelete").addEventListener("click",()=>{if(!pjSelLayer())return;pj.layers.splice(pj.sel,1);pj.sel=Math.min(pj.sel,pj.layers.length-1);pjRefresh()});
+$("#pjLoadFile").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)pjLoad(f)});
+$("#pjAddFile").addEventListener("change",async e=>{const files=[...e.target.files];e.target.value="";for(const f of files)await pjAddBlob(f,f.name.replace(/\.[^.]+$/,""))});
+makeWindowDraggable(pjEl,$("#pjHead"));
+new ResizeObserver(()=>pjDraw()).observe($("#pjView"));
 })();
+
 </script>
 </body>
 </html>

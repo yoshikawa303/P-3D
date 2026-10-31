@@ -281,9 +281,19 @@ def main() -> int:
     require('id="rigPartList" size="6"' in html, "編集部位はドロップダウンでなく一覧選択にしてください")
     for old_id in ["rigPartSelect", "rigPartX", "rigPartY", "rigPartRadiusX", "rigPartRadiusY"]:
         require(f'id="{old_id}"' not in html, f"直接操作へ置き換えた旧部位スライダが残っています: {old_id}")
-    require("const MAX_RIG_PARTS=16;" in html, "目・口・服を含む16部位上限がありません")
-    require('length>8)issues.push("追加部位は8件までです")' in html, "追加8部位の構造検証上限が更新されていません")
-    for human_part in ["頭", "腕 左", "腕 右", "手 左", "手 右", "上半身", "脚 左", "脚 右"]:
+    require("const MAX_RIG_PARTS=24;" in html, "目・眉・口・首・服と腕脚分割を含む24部位上限がありません")
+    require('length>12)issues.push("追加部位は12件までです")' in html, "追加12部位の構造検証上限が更新されていません")
+    require("u_extraRegion11" in html and "u_extraMotion11" in html and "u_extraLayer3" in html and 'role==="custom").slice(0,12)' in html, "シェーダの追加部位枠が12件に拡張されていません")
+    for part_id in ("forearm-left", "forearm-right", "shin-left", "shin-right"):
+        require(f'id:"{part_id}",role:"custom"' in html, f"腕・脚の上下分割部位 {part_id} がありません")
+    for part_id in ("brow-left", "brow-right", "neck"):
+        require(f'id:"{part_id}",role:"feature"' in html, f"特徴部位 {part_id} がありません")
+    require("u_featureMotion0" in html and "u_featureMotion3" in html and "const ownMotion=" in html, "特徴部位のばね（重力・ばね・減衰）が描画へ反映されていません")
+    require('$("#partMotionPreset").disabled=part.role==="feature"' in html, "特徴部位の種類セレクトが固定されていません")
+    require('($("#viewInputMode").value==="pointer"?1:0)' in html, "視点の自動ゆらぎが視線／傾き追従モードで抑止されていません")
+    require("gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px)" in html, "検証用 snapshot が描画バッファを読めません（preserveDrawingBuffer:false）")
+    require("browL:brow(300,336,334)" in html and "browR:brow(70,107,105)" in html, "顔ランドマークによる眉の実測がありません")
+    for human_part in ["頭", "二の腕 左", "二の腕 右", "前腕 左", "前腕 右", "手 左", "手 右", "上半身", "太もも 左", "太もも 右", "膝下 左", "膝下 右", "首", "眉 左", "眉 右"]:
         require(f'label:"{human_part}"' in html, f"人物向けLive2D部位がありません: {human_part}")
     require("function buildHumanRigParts(" in html, "人物向け部位の初期リグ生成がありません")
     require("function buildHumanBoneRig(" in html, "人物向け人体ボーン生成がありません")
@@ -849,7 +859,7 @@ def main() -> int:
         }
         rig_test = "\n".join(
             [
-                "const MAX_RIG_PARTS=16,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
+                "const MAX_RIG_PARTS=24,MAX_BONE_POINTS=24,RIG_PROJECT_VERSION=1;",
                 'const RIG_PARTS={body:{},head:{},material:{},prop:{}};',
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
                 'const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};',
@@ -889,14 +899,14 @@ def main() -> int:
                 extract_js_function(html, "buildBoneRigFromParts"),
                 'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
                 "const humanParts=buildRigPartsFromProfile(human);",
-                'const expected=["頭","腕 左","腕 右","手 左","手 右","上半身","脚 左","脚 右","髪","腰","目 左","目 右","口","服（なびき）"];',
+                'const expected=["頭","二の腕 左","二の腕 右","前腕 左","前腕 右","手 左","手 右","上半身","太もも 左","太もも 右","膝下 左","膝下 右","髪","腰","目 左","目 右","眉 左","眉 右","口","首","服（なびき）"];',
                 'if(JSON.stringify(humanParts.map(part=>part.label))!==JSON.stringify(expected))throw new Error("人物部位の分類・順序が不正です");',
                 'if(humanParts.some(part=>part.label.startsWith("胸")))throw new Error("胸部許可のない人物へ胸部モーションを追加しています");',
                 'const femaleParts=buildRigPartsFromProfile({...human,chestMotion:true});',
-                'if(femaleParts.length!==16||femaleParts.find(part=>part.label==="胸 左")?.preset!=="chest"||femaleParts.find(part=>part.label==="胸 右")?.preset!=="chest")throw new Error("明示した女性デモへ左右の胸部モーションを個別に追加できません");',
+                'if(femaleParts.length!==23||femaleParts.find(part=>part.label==="胸 左")?.preset!=="chest"||femaleParts.find(part=>part.label==="胸 右")?.preset!=="chest")throw new Error("明示した女性デモへ左右の胸部モーションを個別に追加できません");',
                 'if(femaleParts.find(part=>part.label==="腰")?.shape!=="rect"||femaleParts.find(part=>part.label==="髪")?.shape!=="ellipse")throw new Error("部位ごとの形状（腰=矩形）が設定されていません");',
                 'if(humanParts.find(part=>part.label==="髪")?.preset!=="hair"||humanParts.find(part=>part.label==="手 左")?.preset!=="hand")throw new Error("人体の髪・手へ専用アルゴリズムが設定されていません");',
-                'if(humanParts.find(part=>part.label==="手 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="脚 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
+                'if(humanParts.find(part=>part.label==="手 左").parentId!=="forearm-left"||humanParts.find(part=>part.label==="前腕 左").parentId!=="arm-left"||humanParts.find(part=>part.label==="膝下 右").parentId!=="leg-right"||humanParts.find(part=>part.label==="太もも 右").parentId!=="upper-body")throw new Error("人物部位の親子関係が不正です");',
                 "const humanBones=buildBoneRigFromParts(humanParts,human);",
                 'for(const label of ["骨盤","腰","背骨","首","頭頂","肩 左","肘 左","手首 左","肩 右","肘 右","手首 右","股関節 左","膝 左","足首 左","股関節 右","膝 右","足首 右"])if(!humanBones.some(point=>point.label===label))throw new Error(`人体ボーンがありません: ${label}`);',
                 'if(humanBones.length!==17)throw new Error("人物ボーンは腰を含む17ポイントである必要があります");',
@@ -979,7 +989,7 @@ def main() -> int:
     require("function analyzeSilhouetteParts(" in html and "analyzeSilhouetteParts(source)" in html, "シルエット実測による部位認識がありません")
     require('activeRigProfile.rigType="human";\n    activeRigProfile.rigSource="segmented-silhouette";' not in html, "取込画像へ姿勢検出前から人体リグを固定しています")
     require("visibleKeypoints<7" in html, "人物らしくない画像への人体リグ抑止がありません")
-    order = 'const frontToBack=["eye-left","eye-right","mouth","hand-left","hand-right","arm-left","arm-right","hair","head","chest-left","chest-right","waist","cloth","leg-left","leg-right","upper-body"];'
+    order = 'const frontToBack=["eye-left","eye-right","brow-left","brow-right","mouth","hand-left","hand-right","forearm-left","forearm-right","arm-left","arm-right","hair","head","neck","chest-left","chest-right","waist","cloth","leg-left","leg-right","shin-left","shin-right","upper-body"];'
     require(order in html, "人物部位のレイヤー前後関係（手・腕＞髪＞頭＞胸＞腰＞脚＞胴）が崩れています")
     require("const faceUsable=" in html and "unseenParts.has(spec.id)" in html, "顔範囲の妥当性チェック／フレーム外部位の動きOFFがありません（近接ポートレートで頭が極小・存在しない脚が動く）")
     print("PASS: no double contour on part motion, blink compression sign, measured silhouette parts, layer order")
@@ -1048,6 +1058,14 @@ def main() -> int:
     require("uniform vec4 u_featureAngle;" in html and "u_featureAngle" in html[html.index("gl.uniform4f(U.u_featureAngle"):html.index("gl.uniform4f(U.u_featureAngle")+80], "目・口の角度がシェーダへ渡されていません")
     require("e.target instanceof Element&&e.target.closest" in html, "キー操作でdocumentが対象のとき例外になります")
     print("PASS: left-drag pan to image edges, mini-view/magnifier toggle, face-part zoom editor with frame stepping and angle")
+    require('e.target.value=""' in html[html.index('$("#file").addEventListener("change"'):html.index('$("#file").addEventListener("change"')+400], "画像選択後に入力値を消しておらず、同じファイルを再選択しても表示されません")
+    for element_id in ("pjEditor", "pjCanvas", "openProjectEditor", "pjNew", "pjSave", "pjLoadFile", "pjAddFile", "pjPaste", "pjApply"):
+        require(f'id="{element_id}"' in html, f"プロジェクト／レイヤ編集のUIがありません: {element_id}")
+    require("#pjEditor[hidden]{display:none}" in html, "プロジェクト編集ウィンドウのhiddenがIDセレクタのdisplayに負けます")
+    require('document.addEventListener("paste"' in html and "clipboardData" in html, "⌘/Ctrl+Vでのレイヤ貼付がありません")
+    require("function pjConstrain(" in html and "e.shiftKey" in html[html.index('pjCanvas.addEventListener("pointermove"'):html.index('pjCanvas.addEventListener("pointermove"')+500], "Shift押下での垂直／水平固定移動がありません")
+    require('format:"P3D-Project"' in html and "function pjLoad(" in html, "プロジェクトの保存／読込がありません")
+    print("PASS: file re-select fix, project editor (new/save/load, clipboard paste, image import, shift-axis-lock move)")
     print("PASS: Cross-AI governance documents")
     return 0
 

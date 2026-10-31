@@ -135,7 +135,14 @@ Face Landmarkerの両目間隔は追跡開始時を基準値とし、顔が近�
 - 人物前景の縁: `transparentForegroundFromMask`が`decontaminateEdgeColors`で半透明の縁色を最近傍の不透明人物色へ置換し（背景色のハロー防止）、人物マスクは`smoothMaskShape`（開→閉処理）で細い突起を整える。
 - 瞬き: `naturalBlinkPulse` が対数正規間隔・非対称カーブ・二度瞬き・浅い瞬きを生成。口は `expression`（普通/笑顔/真面目）の口角と、`talkMode` 時の `talkingMouthOpen`（音節リズム×フレーズ包絡）で開閉。
 - 動きの大きさ: `MOTION_STYLES`（calm/lively/dynamic）がばね振幅・速さ・変位上限・視点の自動ゆらぎ・風を切り替える。
-- 腕・脚は1部位1楕円（上腕/前腕、太もも/膝下は未分割）で平行移動のみ。肘・膝の曲げは未実装。
+- 腕・脚は関節で2分割（`arm-*`=二の腕: 肩→肘、`forearm-*`: 肘→手首、`leg-*`=太もも: 股関節→膝、`shin-*`: 膝→足首）。前腕・膝下は親（二の腕・太もも）を継承する別ばね。変形は各楕円の平行移動で、関節での回転（曲げ）は未実装。追加部位（`custom`）のシェーダ枠は12件（`u_extraRegion0..11`）。
+- 眉（`brow-left/right`、`u_browL/u_browR`）は顔ランドマーク（300/336/334、70/107/105）で実測し、`u_featureExpr.x`（表情）で上下・内寄せ、瞬きに連動して僅かに下がる。首（`neck`、`u_neckR`）は頭下端と肩中点の間に置き、自身のばねで平行移動する。
+- 特徴部位のばね成分は `u_featureMotion0..3` で部位自身の `spring.x/y` だけを渡す（親継承込みの `effectiveX` を使うと頭の変位と二重になり目が顔から浮く）。
+- 検証フック（`?p3dTest`）の `snapshot()` は `gl.readPixels` で描画バッファを読む（`preserveDrawingBuffer:false` のため `toDataURL` では空になる）。`setMotion({blink,mouth,gaze,breath,freezeHair,boost})` で時間依存の動きを固定し、表情だけの画素差分を計測できる。
+
+### プロジェクト（部品レイヤ合成）
+
+- `#pjEditor`: 独立した2Dキャンバスのレイヤ配列 `pj.layers`（`canvas`,`x`,`y`,`visible`）を持つ編集ウィンドウ。画像追加（`createImageBitmap`）と `paste` イベント（⌘/Ctrl+V、ウィンドウ表示中のみ）で追加し、プロジェクト幅内に縮小して中央配置。ドラッグ移動は `pjConstrain()` が Shift で移動量の大きい軸へ固定。保存形式は `P3D-Project` JSON（レイヤはPNG data URL）。「表示へ反映」は合成canvasを `uploadImage()` へ渡し、以降は通常画像と同じ経路（人物分離・リグ推定）。外部送信なし。
 
 ### 顔パーツ拡大編集・ミニビュー／拡大鏡
 
