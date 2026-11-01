@@ -585,3 +585,4 @@ pushして
 **検証**: `web_regression_gate.py` PASS（頭部切り出し再検出・フック既定値の検査を追加）。ローカルHTTP（Chrome系ペイン）でJSエラー0。iPhone Safari 実機・Pages 配信は未検証。
 - 変更: index.html、scripts/ci/web_regression_gate.py、CHANGELOG.md、Docs/ARCHITECTURE.md、本ログ。
 - モデル: Fable 5.1（動的切替なし）。
+- push: `e6b364d` → `f5a6046`（`f5a604652dca92e4217751562feca5d2ee45598a`）を `main` へ push、`git ls-remote` で到達確認。force pushなし。
