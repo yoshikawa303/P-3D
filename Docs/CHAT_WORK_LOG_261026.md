@@ -687,3 +687,16 @@ Privateのまま
 - 作業フォルダ（`/Volumes/DATA/XCode_Project/P-3D`）は Git checkout ではないため、`gh repo clone` で別ディレクトリへ取得（先頭 `32dd379`）。ローカルとの差分が本作業の5ファイルだけであることを確認して反映し、clone 側で `web_regression_gate.py` PASS。
 - commit/push: `4921563`（機能・検査・文書）→ `ae09471`（作業ログ）を `main` へ push、`git ls-remote` で `ae094716062405700077bb98d61185ba3cef632f` への到達を確認。force pushなし。コード変更は1コミットにまとめた（index.html の変更が機能横断のため分割できず）。
 - Pages 配信は未確認（Private 維持のため停止中）。iPhone Safari 実機は未検証。
+
+### 2026-11-01 23:25 JST - Claude Code (Fable 5.1) - 種別: 依頼内容 - pages_toggle のビルド失敗
+```
+★バグ：pages_toggle.command　ビルドエラー
+```
+画像添付（ターミナル: Private→Public→Pages有効化→ビルド要求→「Pages のビルドが失敗しました: {'message': 'Page build failed.'}」、配信対象 main @ 9bb7059）。
+- モデル: Fable 5.1（動的切替なし）。
+
+### 2026-11-01 23:28 JST - Claude Code (Fable 5.1) - 種別: 作業結果 - pages_toggle のビルド失敗（概算20分）
+- 一次原因: Pages 有効化直後の自動ビルドと、スクリプトの明示的なビルド要求が重なり、GitHub 側で先行ビルドが取り消された（Actions: `pages build and deployment` が cancelled×2 → success）。その間 `GET /pages/builds/latest` が `errored`（"Page build failed."）を返し、初版は errored を即失敗扱いにして終了していた。実際には直後のビルドが成功し配信されていた（14:23:28 success）。
+- 修正: `wait_until_served()` を分離し、errored は同一ビルドが120秒超続いた場合のみ失敗扱い（それまでは再ビルドを要求して待機）。有効化直後（POST /pages 直後）は明示ビルド要求をしない。`--wait`（Public のとき配信待ちのみ）を追加。Pages 無効なのに配信URLが 200 の場合は「CDNキャッシュの残り」と表示。
+- 検証: `py_compile` OK。API を差し替えた模擬テスト（一時的 errored→built で成功／errored 継続で失敗／古いコミットの built では待機）が想定どおり。実際の Public 切替での再現確認は未実施（現在ユーザーが Private へ戻し済み、`has_pages:false`）。`web_regression_gate.py` は clone で実行。
+- モデル: Fable 5.1（動的切替なし）。

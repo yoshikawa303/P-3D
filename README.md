@@ -61,4 +61,4 @@ python3 scripts/dev/pages_toggle.py
 
 - Private のとき: Public へ変更 → Pages を `main` ルートで有効化 → ビルド → `main` の最新コミットが `https://yoshikawa303.github.io/P-3D/` で配信されるまで待ってブラウザで開く。
 - Public のとき: Private へ戻す（Pages は停止して 404 になる）。確認が終わったら必ずもう一度実行して Private へ戻す。
-- 配信されるのは GitHub 上の `main` だけ（ローカルの未push変更は含まれない）。認証は GitHub CLI（`gh auth login` 済み）か環境変数 `GITHUB_TOKEN`。`--status` で状態表示のみ、`--dry-run` で変更なしの予定表示。
+- 配信されるのは GitHub 上の `main` だけ（ローカルの未push変更は含まれない）。認証は GitHub CLI（`gh auth login` 済み）か環境変数 `GITHUB_TOKEN`。`--status` で状態表示のみ、`--dry-run` で変更なしの予定表示、`--wait` で（Public のとき）配信完了を待つだけ。有効化直後は GitHub 側で重なったビルドが取り消され一時的に「Page build failed.」と出ることがあるが、スクリプトは約2分は再ビルドを要求して待つ。

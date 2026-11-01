@@ -97,33 +97,55 @@ def publish(tok, dry_run, open_browser, timeout):
     elif (pages.get("source") or {}).get("branch") != "main" or (pages.get("source") or {}).get("path") != "/":
         api("PUT", "/pages", {"source": source, "build_type": "legacy"}, tok=tok)
         print("GitHub Pages の配信元を main ルートへ変更しました。")
-    try:
-        api("POST", "/pages/builds", tok=tok)
-        print("Pages のビルドを要求しました。")
-    except SystemExit as error:
-        print(f"ビルド要求は省略（自動ビルド待ち）: {error}")
+    else:
+        # 有効化直後は自動ビルドが走るため、要求は配信元が既に main のときだけ行う（二重要求は片方が取り消される）。
+        try:
+            api("POST", "/pages/builds", tok=tok)
+            print("Pages のビルドを要求しました。")
+        except SystemExit as error:
+            print(f"ビルド要求は省略（自動ビルド待ち）: {error}")
+    if wait_until_served(tok, head, timeout):
+        print(f"配信完了: {PAGES_URL}  (main @ {head[:7]})")
+        print("確認が終わったら、もう一度このバッチを実行すると Private に戻ります。")
+        if open_browser:
+            webbrowser.open(PAGES_URL)
+
+
+def wait_until_served(tok, head, timeout):
+    """main の HEAD がビルド済みで配信URLが 200 を返すまで待つ。
+
+    Pages の有効化・push・ビルド要求が重なると GitHub 側で古いビルドが取り消され、
+    `builds/latest` が一時的に errored（"Page build failed."）を返すことがある。
+    そのため errored は即失敗にせず、同じ失敗ビルドが続いた場合だけ失敗とする。
+    """
     print("配信完了を待っています", end="", flush=True)
     deadline = time.time() + timeout
-    served = False
+    errored_since, errored_url = None, None
     while time.time() < deadline:
         time.sleep(6)
         build = api("GET", "/pages/builds/latest", allow404=True, tok=tok) or {}
         status, commit = build.get("status"), build.get("commit") or ""
-        if status == "errored":
-            print(f"\nPages のビルドが失敗しました: {build.get('error')}")
-            return
         if status == "built" and commit == head and http_status(PAGES_URL) == 200:
-            served = True
-            break
+            print()
+            return True
+        if status == "errored":
+            if build.get("url") != errored_url:
+                errored_since, errored_url = time.time(), build.get("url")
+                print("!", end="", flush=True)
+                try:
+                    api("POST", "/pages/builds", tok=tok)
+                except SystemExit:
+                    pass
+            elif time.time() - errored_since > 120:
+                print(f"\nPages のビルドが失敗したままです: {(build.get('error') or {}).get('message')}")
+                print("GitHub の Actions タブ（pages build and deployment）でログを確認してください。")
+                return False
+            continue
+        errored_since, errored_url = None, None
         print(".", end="", flush=True)
     print()
-    if not served:
-        print(f"時間内に配信を確認できませんでした（{timeout}秒）。数分後に {PAGES_URL} を開いて確認してください。")
-        return
-    print(f"配信完了: {PAGES_URL}  (main @ {head[:7]})")
-    print("確認が終わったら、もう一度このバッチを実行すると Private に戻ります。")
-    if open_browser:
-        webbrowser.open(PAGES_URL)
+    print(f"時間内に配信を確認できませんでした（{timeout}秒）。数分後に {PAGES_URL} を開いて確認してください。")
+    return False
 
 
 def unpublish(tok, dry_run):
@@ -140,13 +162,24 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="変更せず予定を表示")
     parser.add_argument("--no-open", action="store_true", help="配信後にブラウザを開かない")
     parser.add_argument("--timeout", type=int, default=600, help="配信待ちの上限秒（既定600）")
+    parser.add_argument("--wait", action="store_true", help="切替せず、main の最新が配信されるまで待つだけ（Public のとき）")
     args = parser.parse_args()
     tok = token()
     repo = api("GET", "", tok=tok)
     private = bool(repo.get("private"))
     pages = api("GET", "/pages", allow404=True, tok=tok)
-    print(f"{OWNER}/{REPO}: {'Private' if private else 'Public'} / Pages: {'有効 (' + (pages.get('html_url') or PAGES_URL) + ')' if pages else '無効'} / 配信URL HTTP {http_status(PAGES_URL)}")
+    served = http_status(PAGES_URL)
+    note = "（CDNキャッシュの残り）" if not pages and served == 200 else ""
+    print(f"{OWNER}/{REPO}: {'Private' if private else 'Public'} / Pages: {'有効 (' + (pages.get('html_url') or PAGES_URL) + ')' if pages else '無効'} / 配信URL HTTP {served}{note}")
     if args.status:
+        return
+    if args.wait:
+        if private or not pages:
+            sys.exit("Private または Pages 無効のため待機できません。切替（引数なし）で実行してください。")
+        head = api("GET", "/commits/main", tok=tok)["sha"]
+        print(f"配信対象: main @ {head[:7]}")
+        if wait_until_served(tok, head, args.timeout):
+            print(f"配信完了: {PAGES_URL}  (main @ {head[:7]})")
         return
     if private:
         publish(tok, args.dry_run, not args.no_open, args.timeout)
