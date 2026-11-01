@@ -682,3 +682,8 @@ Privateのまま
 - 検証: `web_regression_gate.py` PASS（多角形塗り・演算・ブラシ・魔法の棒・拡張縮小の単体検査を追加）。ローカルHTTP（Chrome系ペイン）で「美少女キャラ」に自動選択→4件、JSエラー0、シェーダのコンパイルOK、約47fps、消しゴムを実ポインタ操作で適用（617→0画素、元に戻す履歴あり）、モーション時の描画に破綻なし。
 - 未検証・未対応: 自動選択の精度（帯状・矩形に近い結果が出る。目視で金具以外を含む箇所あり）、投げ縄・ペンの実ポインタ操作、モーション時のマスクの見た目の拡大確認、iPhone Safari実機（テクスチャ枠9以上が前提）、Pages配信。保存・読込、5件目以降、髪・服の自動選択、親の回転・伸縮追従は未実装。
 - モデル: Sonnet 5.5（動的切替なし）。
+
+### 2026-11-01 JST - Claude Code (Sonnet 5.5) - 種別: 作業結果 - commit/push（clone経由）
+- 作業フォルダ（`/Volumes/DATA/XCode_Project/P-3D`）は Git checkout ではないため、`gh repo clone` で別ディレクトリへ取得（先頭 `32dd379`）。ローカルとの差分が本作業の5ファイルだけであることを確認して反映し、clone 側で `web_regression_gate.py` PASS。
+- commit/push: `4921563`（機能・検査・文書）→ `ae09471`（作業ログ）を `main` へ push、`git ls-remote` で `ae094716062405700077bb98d61185ba3cef632f` への到達を確認。force pushなし。コード変更は1コミットにまとめた（index.html の変更が機能横断のため分割できず）。
+- Pages 配信は未確認（Private 維持のため停止中）。iPhone Safari 実機は未検証。
