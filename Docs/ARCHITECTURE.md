@@ -131,7 +131,7 @@ Face Landmarkerの両目間隔は追跡開始時を基準値とし、顔が近�
 ### 顔・服の特徴部位（目・口・服）と動きの大きさ
 
 - `role:"feature"` の部位（`eye-left`/`eye-right`/`mouth`/`cloth`）は人物リグ生成時に頭・上半身の範囲から初期配置する。シェーダの追加部位枠（`custom` 8件）は使わず、専用ユニフォーム（`u_eyeL/u_eyeR/u_mouthR/u_clothR/u_featureGain/u_featureExpr`）で変形する。部位の動作ON/OFFと強度が各効果のゲインになり、範囲はガイドで編集できる。特徴部位がないリグは `u_legacyFace` により従来の頭部の顔帯処理を使う。
-- 目・口の配置: 人物リグ構築時に`detectFaceFeatures`（FaceLandmarker・IMAGEモード。カメラ用VIDEOとは別インスタンス）で目・口の中心と半径を実測し`profile.faceFeatures`へ保持、`buildHumanRigParts`の特徴部位へ使う。検出失敗は警告のみで顔楕円からの推定位置へ戻り、人物分離・姿勢推定は止めない。瞬きのshaderは目の中心線から離れた位置を読む縦圧縮（最大5倍、読む範囲は目の範囲の1.15倍まで）で、強度0.28で全閉。
+- 目・口の配置: 人物リグ構築時に`detectFaceFeatures`（FaceLandmarker・IMAGEモード。カメラ用VIDEOとは別インスタンス）で目・口の中心と半径を実測し`profile.faceFeatures`へ保持、`buildHumanRigParts`の特徴部位へ使う。全身写真では顔が小さく全体画像では未検出になりやすいため、`faceHint`（`analyzeHumanPartsFromSource` の顔楕円、無ければ姿勢の鼻位置±0.07）を中心に頭部を切り出して512pxへ拡大し再検出、座標を元画像へ戻す。それでも検出失敗なら警告のみで顔楕円からの推定位置へ戻り、人物分離・姿勢推定は止めない。瞬きのshaderは目の中心線から離れた位置を読む縦圧縮（最大5倍、読む範囲は目の範囲の1.15倍まで）で、強度0.28で全閉。
 - 人物前景の縁: `transparentForegroundFromMask`が`decontaminateEdgeColors`で半透明の縁色を最近傍の不透明人物色へ置換し（背景色のハロー防止）、人物マスクは`smoothMaskShape`（開→閉処理）で細い突起を整える。
 - 瞬き: `naturalBlinkPulse` が対数正規間隔・非対称カーブ・二度瞬き・浅い瞬きを生成。口は `expression`（普通/笑顔/真面目）の口角と、`talkMode` 時の `talkingMouthOpen`（音節リズム×フレーズ包絡）で開閉。
 - 動きの大きさ: `MOTION_STYLES`（calm/lively/dynamic）がばね振幅・速さ・変位上限・視点の自動ゆらぎ・風を切り替える。

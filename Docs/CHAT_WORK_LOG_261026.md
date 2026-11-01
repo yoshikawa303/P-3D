@@ -566,3 +566,22 @@ pushして
 - Pages: `https://yoshikawa303.github.io/P-3D/` が 404、`GET /repos/yoshikawa303/P-3D/pages` も 404（Pagesサイト未構成またはPrivate化に伴い停止している可能性）。配信確認は不可。
 - 未検証: iPhone Safari実機、Pages配信。
 - モデル: Fable 5.1（動的切替なし）。
+
+### 2026-11-01 00:05 JST - Claude Code (Fable 5.1) - 種別: 依頼内容 - 残務対応
+```
+★残務対応して
+```
+- モデル: Fable 5.1（動的切替なし）。対象: Pages 404 の原因確認と復旧、実写画像での腕脚分割・表情の目視確認、iPhone実機検証用LANサーバ起動。
+
+### 2026-11-01 14:12 JST - Claude Code (Fable 5.1) - 種別: 作業結果 - 残務対応（概算75分）
+**Pages 404**: `repos/yoshikawa303/P-3D` は `has_pages:false`、アカウントは Free プラン、最後の `pages-build-deployment` は 2026-10-22。Private 化（10-26）に伴い Pages が停止しており、Free プランの Private リポジトリでは再有効化できない。復旧には Public へ戻す（要ユーザー承認）か有料プランが必要なため未対応・判断待ち。
+**実写風デモでの目視確認（都会派キャミソール＝姿勢ランドマーク経路、23部位）**:
+1. 腕脚分割: 二の腕/前腕・太もも/膝下の範囲が肘・膝で分かれて配置されることを解析レイヤで確認。JSエラー0。
+2. 発見したバグ①: 全身写真では顔ランドマークが未検出（顔が小さい）で `faceFeatures=null` となり、顔楕円からの推定位置に戻るため、口が顎の下、目が鼻の横に置かれていた（顔パーツ拡大編集で確認）。→ `detectFaceFeatures(source,faceHint)` で全体未検出時に頭部（顔楕円、無ければ鼻±0.07）を切り出して512pxへ拡大し再検出、座標を元画像へ戻す。修正後は目・眉・口が実際の位置に一致（瞬きで両目が閉じることを拡大画像で確認）。
+3. 発見したバグ②: 検証フック `setMotion` で未指定項目（boost/blink/mouth）が `undefined` のまま uniform へ渡り NaN で人物が消えていた → `Number.isFinite` で既定値へ復帰。
+4. 口の開き: 元から口が開いた笑顔写真では最大開口で二重に開いて不自然だったため係数 1.4→1.0 に戻した（0.5 では自然、1.0 でもまだ強め。元画像の開口量に応じた減衰は未実装・追加課題）。表情（笑顔/真面目）は実写では控えめ（口角・眉がわずかに動く程度）。
+5. 計測（静か・揺れ強度0・風0・時間依存を固定、normal同士の差分=0）: 差分領域は瞬き [.42–.50, .055–.094]、口・表情 [.41–.51, .05–.12] に局在し、全身へ波及なし。
+**iPhone実機用LANサーバ**: `scripts/dev/serve_pages.py --lan` の起動は本セッションの権限ポリシー（ローカルサービスの公開）で拒否されたため未起動。ユーザー側で起動が必要。
+**検証**: `web_regression_gate.py` PASS（頭部切り出し再検出・フック既定値の検査を追加）。ローカルHTTP（Chrome系ペイン）でJSエラー0。iPhone Safari 実機・Pages 配信は未検証。
+- 変更: index.html、scripts/ci/web_regression_gate.py、CHANGELOG.md、Docs/ARCHITECTURE.md、本ログ。
+- モデル: Fable 5.1（動的切替なし）。

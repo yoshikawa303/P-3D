@@ -551,6 +551,8 @@ def main() -> int:
     require("function decontaminateEdgeColors(" in html and "decontaminateEdgeColors(image.data,alpha,width,height" in html, "人物の縁の色（背景混じり）の除去がありません")
     require("function smoothMaskShape(" in html and "smoothMaskShape(filled,width,height" in html, "人物マスクの開閉処理がありません")
     require("function detectFaceFeatures(" in html and "runningMode:\"IMAGE\",numFaces:1" in html and "measured?.eyeL||" in html, "顔ランドマークによる目・口の実測配置がありません")
+    require("async function detectFaceFeatures(source,faceHint=null)" in html and "detectFaceFeatures(source,faceHint)" in html and "頭部を拡大しても未検出" in html, "全身写真向けの頭部切り出し再検出（顔ランドマーク）がありません")
+    require("Number.isFinite(testMotionOverride?.boost)" in html and "Number.isFinite(testMotionOverride?.blink)" in html, "テストフック未指定項目の既定値復帰（NaN描画消失の防止）がありません")
     require("min(abs(eyePL.y)*(1.0+4.0*closeL),1.15)" in html.replace("sign(eyePL.y)*",""), "瞬きの閉じ量（目の縦圧縮）が不足しています")
     require("const blend=boxBlurFloat(" in html, "補完範囲の縁を元画素へなじませる処理がありません")
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")

@@ -898,7 +898,7 @@ vec2 riggedForegroundUV(vec2 uv){
   displacement.x+=(u_eyeL.z*eyeWL+u_eyeR.z*eyeWR)*u_featureExpr.y*0.12;
   vec2 mouthP=(rotM*(uv-u_mouthR.xy))/max(u_mouthR.zw,vec2(0.002));
   float mouthW=(1.0-smoothstep(0.75,1.3,length(mouthP)))*u_featureGain.z;
-  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.5*mouthP.y+1.4*min(mouthP.y,0.0))+u_featureExpr.x*1.1*(mouthP.x*mouthP.x-0.25)))*rotM;
+  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.5*mouthP.y+1.0*min(mouthP.y,0.0))+u_featureExpr.x*1.1*(mouthP.x*mouthP.x-0.25)))*rotM;
   vec2 clothP=(uv-u_clothR.xy)/max(u_clothR.zw,vec2(0.002));
   float clothW=(1.0-smoothstep(0.8,1.3,length(clothP)))*u_featureGain.w;
   float clothTip=smoothstep(-0.7,1.0,-clothP.y);
@@ -3169,12 +3169,21 @@ function faceFeaturesFromLandmarks(landmarks,aspect=1){
   };
 }
 
-async function detectFaceFeatures(source){
+// 全身写真では顔が小さく全体画像では検出できないことがあるため、頭部周辺（faceHint: source座標の中心と半径）を切り出して拡大し再検出する。
+async function detectFaceFeatures(source,faceHint=null){
   const detector=await withTimeout(createStillFaceLandmarker(),45000,"顔ランドマークの読込");
-  const result=detector.detect(source),landmarks=result.faceLandmarks?.[0];
-  if(!landmarks||landmarks.length<400)throw new Error("顔を検出できませんでした");
   const width=source.naturalWidth||source.videoWidth||source.width||1,height=source.naturalHeight||source.videoHeight||source.height||1;
-  return faceFeaturesFromLandmarks(landmarks,width/height);
+  const full=detector.detect(source).faceLandmarks?.[0];
+  if(full&&full.length>=400)return faceFeaturesFromLandmarks(full,width/height);
+  if(!faceHint)throw new Error("顔を検出できませんでした");
+  const side=Math.max(64,Math.round(Math.max(faceHint.rx*width,faceHint.ry*height)*4.4));
+  const left=Math.round(faceHint.cx*width-side/2),top=Math.round(faceHint.cy*height-side/2);
+  const crop=document.createElement("canvas");
+  crop.width=crop.height=512;
+  crop.getContext("2d").drawImage(source,left,top,side,side,0,0,512,512);
+  const landmarks=detector.detect(crop).faceLandmarks?.[0];
+  if(!landmarks||landmarks.length<400)throw new Error("顔を検出できませんでした（頭部を拡大しても未検出）");
+  return faceFeaturesFromLandmarks(landmarks.map(point=>({x:(left+point.x*side)/width,y:(top+point.y*side)/height,z:point.z})),width/height);
 }
 
 async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
@@ -3200,9 +3209,10 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
     const y=placement.top+(value[1]-sourcePlacement.top)/sourcePlacement.height*placement.height;
     return [name,[Math.max(.01,Math.min(.99,x)),Math.max(.01,Math.min(.99,y)),value[2]]];
   }));
-  let humanParts=null;
+  let humanParts=null,faceHint={cx:pose.nose[0],cy:pose.nose[1],rx:.07,ry:.07};
   try{
     const analysis=await analyzeHumanPartsFromSource(source,pose);
+    if(analysis.face?.shape)faceHint={cx:analysis.face.shape[0],cy:analysis.face.shape[1],rx:analysis.face.shape[2],ry:analysis.face.shape[3]};
     const sp=sourcePlacement,pl=placement;
     const mapShape=({kind,shape})=>({kind,shape:[pl.left+(shape[0]-sp.left)/sp.width*pl.width,pl.top+(shape[1]-sp.top)/sp.height*pl.height,shape[2]/sp.width*pl.width,shape[3]/sp.height*pl.height]});
     humanParts={waistY:analysis.waistY===null?null:pl.top+(analysis.waistY-sp.top)/sp.height*pl.height,face:mapShape(analysis.face),hair:mapShape(analysis.hair),hairRgb:analysis.hairRgb,garments:Object.fromEntries(Object.entries(analysis.garments).map(([key,value])=>[key,mapShape(value)])),accessories:analysis.accessories.map(mapShape)};
@@ -3210,7 +3220,7 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
   // 目・口は顔ランドマークで実測。検出できない画像（イラスト等）は null のまま、顔の楕円からの推定位置を使う。
   let faceFeatures=null;
   try{
-    const raw=await detectFaceFeatures(source),sp=sourcePlacement,pl=placement;
+    const raw=await detectFaceFeatures(source,faceHint),sp=sourcePlacement,pl=placement;
     const mapFeature=([x,y,rx,ry])=>[pl.left+(x-sp.left)/sp.width*pl.width,pl.top+(y-sp.top)/sp.height*pl.height,rx/sp.width*pl.width,ry/sp.height*pl.height];
     faceFeatures={eyeL:mapFeature(raw.eyeL),eyeR:mapFeature(raw.eyeR),mouth:mapFeature(raw.mouth),browL:raw.browL?mapFeature(raw.browL):null,browR:raw.browR?mapFeature(raw.browR):null};
   }catch(error){console.warn("顔ランドマークで目・口を実測できないため、顔の範囲から推定位置を使います。",error)}
@@ -6250,7 +6260,8 @@ function render(now){
   gl.uniform1f(U.u_autoRigEnabled,autoRigActive||facePose ? 1 : 0);
   const core=Object.fromEntries(Object.keys(RIG_PARTS).map(role=>[role,activeRigParts.find(part=>part.role===role)]));
   const coreMotion=role=>core[role]&&rigSprings[core[role].id]?rigSprings[core[role].id]:newRigSpring();
-  const motionBoost=testMotionOverride?testMotionOverride.boost:1;
+  // テストフックの未指定項目は既定値へ戻す（undefined をuniformへ渡すとNaNで描画が消える）。
+  const motionBoost=Number.isFinite(testMotionOverride?.boost)?testMotionOverride.boost:1;
   gl.uniform2f(U.u_bodyMotion,coreMotion("body").effectiveX*motionBoost,coreMotion("body").effectiveY*motionBoost);
   gl.uniform2f(U.u_headMotion,coreMotion("head").effectiveX*motionBoost,coreMotion("head").effectiveY*motionBoost);
   gl.uniform2f(U.u_materialMotion,coreMotion("material").effectiveX*motionBoost,coreMotion("material").effectiveY*motionBoost);
@@ -6333,8 +6344,8 @@ function render(now){
   gl.uniform4f(U.u_featureExpr,facePose?facePose.smile:expressionNow.smile,gazeMotion*0.5+viewX*0.5,windAmount,0);
   // 顔パーツ編集ウィンドウの手動ポーズは、自動の瞬き・口・表情より優先する。
   const poseActive=Boolean(facePose&&activeRigProfile);
-  const shownBlink=poseActive?facePose.blink:testMotionOverride&&autoRigActive?testMotionOverride.blink:blinkPulse;
-  const shownMouth=poseActive?facePose.mouth:testMotionOverride&&autoRigActive?testMotionOverride.mouth:mouthMotion;
+  const shownBlink=poseActive?facePose.blink:autoRigActive&&Number.isFinite(testMotionOverride?.blink)?testMotionOverride.blink:blinkPulse;
+  const shownMouth=poseActive?facePose.mouth:autoRigActive&&Number.isFinite(testMotionOverride?.mouth)?testMotionOverride.mouth:mouthMotion;
   live2dVisualState={blink:autoRigActive||poseActive?shownBlink:0,mouth:autoRigActive||poseActive?shownMouth:0,gaze:autoRigActive?gazeMotion:0,breath:autoRigActive?breathMotion:0,active:autoRigActive};
   gl.uniform4f(U.u_live2dMotion,autoRigActive||poseActive?shownBlink:0,autoRigActive||poseActive?shownMouth:0,autoRigActive?gazeMotion:0,autoRigActive?breathMotion:0);
   const debugLayerMode=$("#rigDebug").checked&&hasLayeredDemo;
