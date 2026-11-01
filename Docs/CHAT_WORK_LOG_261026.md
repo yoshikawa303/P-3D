@@ -609,3 +609,4 @@ Privateのまま
 - 文書: README（使い方）、PROJECT_RULES・CLAUDE.md（一時公開の運用、AIはスクリプトを実行しない）、CHANGELOG。
 - 検証: `py_compile` OK、`--status`（Private／Pages無効／HTTP 404）と `--dry-run` を実行し、API書込なしで想定どおりの表示。**Public への実切替は未実行**（ユーザー操作）。Windows の `.bat` は未検証。`web_regression_gate.py` PASS。
 - モデル: Fable 5.1（動的切替なし）。
+- push: `841091b` → `e343ffd`（`e343ffdf6c2f0cf9dd569adaff9f4212fad47f3f`）を `main` へ push、`git ls-remote` で到達確認。force pushなし。
