@@ -700,3 +700,4 @@ Privateのまま
 - 修正: `wait_until_served()` を分離し、errored は同一ビルドが120秒超続いた場合のみ失敗扱い（それまでは再ビルドを要求して待機）。有効化直後（POST /pages 直後）は明示ビルド要求をしない。`--wait`（Public のとき配信待ちのみ）を追加。Pages 無効なのに配信URLが 200 の場合は「CDNキャッシュの残り」と表示。
 - 検証: `py_compile` OK。API を差し替えた模擬テスト（一時的 errored→built で成功／errored 継続で失敗／古いコミットの built では待機）が想定どおり。実際の Public 切替での再現確認は未実施（現在ユーザーが Private へ戻し済み、`has_pages:false`）。`web_regression_gate.py` は clone で実行。
 - モデル: Fable 5.1（動的切替なし）。
+- push: `9bb7059` → `757d94d`（`757d94d69b63c7d06a33be22f7cd8bbf920b4064`）を `main` へ push、`git ls-remote` で到達確認。
