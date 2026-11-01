@@ -586,3 +586,13 @@ pushして
 - 変更: index.html、scripts/ci/web_regression_gate.py、CHANGELOG.md、Docs/ARCHITECTURE.md、本ログ。
 - モデル: Fable 5.1（動的切替なし）。
 - push: `e6b364d` → `f5a6046`（`f5a604652dca92e4217751562feca5d2ee45598a`）を `main` へ push、`git ls-remote` で到達確認。force pushなし。
+
+### 2026-11-01 14:23 JST - Claude Code (Fable 5.1) - 種別: 依頼内容 - Pages復旧の判断
+```
+Privateのまま
+```
+
+### 2026-11-01 14:23 JST - Claude Code (Fable 5.1) - 種別: 作業結果 - Pages復旧の判断（概算3分）
+- 決定: リポジトリは Private を維持し、Public へは戻さない。Free プランのため GitHub Pages（`https://yoshikawa303.github.io/P-3D/`）は停止したまま（404）となる。
+- 影響: CLAUDE.md §8 の「Pages URLで配信確認」は実施不能となるため、以後の完了報告では「Pages 配信は未確認（Private 維持のため停止中）」と明記する。CLAUDE.md／PROJECT_RULES.md の公開手順の見直しは仕様変更にあたるため未変更（ユーザー判断待ち）。
+- モデル: Fable 5.1（動的切替なし）。
