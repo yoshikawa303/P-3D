@@ -553,7 +553,7 @@ def main() -> int:
     require("function detectFaceFeatures(" in html and "runningMode:\"IMAGE\",numFaces:1" in html and "measured?.eyeL||" in html, "顔ランドマークによる目・口の実測配置がありません")
     require("async function detectFaceFeatures(source,faceHint=null)" in html and "detectFaceFeatures(source,faceHint)" in html and "頭部を拡大しても未検出" in html, "全身写真向けの頭部切り出し再検出（顔ランドマーク）がありません")
     require("Number.isFinite(testMotionOverride?.boost)" in html and "Number.isFinite(testMotionOverride?.blink)" in html, "テストフック未指定項目の既定値復帰（NaN描画消失の防止）がありません")
-    require("min(abs(eyePL.y)*(1.0+4.0*closeL),1.15)" in html.replace("sign(eyePL.y)*",""), "瞬きの閉じ量（目の縦圧縮）が不足しています")
+    require("min(abs(qL)*(1.0+(qL>0.0?4.5:0.9)*closeL),1.15)" in html, "瞬きの閉じ量（上まぶた4.5倍・下まぶた0.9倍の縦圧縮）が不足しています")
     require("const blend=boxBlurFloat(" in html, "補完範囲の縁を元画素へなじませる処理がありません")
     require("生成AIではなく端末内の近傍色補完" in html, "擬似背景補完と生成AIの違いが画面へ明記されていません")
     require("await createLayeredSceneFromMask()" in html, "人物自動分離の結果が2層立体化へ接続されていません")
@@ -866,6 +866,10 @@ def main() -> int:
                 'const EXTRA_PART_COLORS=["#b79cff","#ff9b72","#84f7d1","#ffca72"];',
                 'const BONE_TYPE_LABELS={root:"起点",joint:"関節",branch:"分岐",end:"終点"};',
                 "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},chest:{strength:1.1,gravity:-.00032,stiffness:15,damping:6.2}};",
+                re.search(r"^const RIG_SHAPES=.*$", html, re.M).group(0),
+                re.search(r"^const FEATURE_SHAPE_KIND=.*$", html, re.M).group(0),
+                re.search(r"^const DEFAULT_FEATURE_SHAPES=.*$", html, re.M).group(0),
+                extract_js_function(html, "normalizeRigShape"),
                 extract_js_function(html, "parentChainHasCycle"),
                 extract_js_function(html, "validateRigDefinition"),
                 extract_js_function(html, "boundedNumber"),
@@ -889,6 +893,10 @@ def main() -> int:
                 "const MOTION_PRESETS={body:{strength:1,gravity:-.00006,stiffness:32,damping:9.8},soft:{strength:1,gravity:-.00045,stiffness:18,damping:6.5},face:{strength:.55,gravity:0,stiffness:34,damping:10.5},eyes:{strength:.28,gravity:0,stiffness:42,damping:12.5},mouth:{strength:.34,gravity:0,stiffness:38,damping:11.2},cloth:{strength:1,gravity:-.0004,stiffness:12,damping:5},hair:{strength:1,gravity:-.001,stiffness:13,damping:5.5},hand:{strength:.62,gravity:-.00018,stiffness:30,damping:10.2},chest:{strength:1.15,gravity:-.00032,stiffness:15,damping:6.2},propRigid:{strength:.72,gravity:-.00018,stiffness:35,damping:11.5}};",
                 "const rigSprings={};",
                 extract_js_function(html, "newRigSpring"),
+                re.search(r"^const RIG_SHAPES=.*$", html, re.M).group(0),
+                re.search(r"^const FEATURE_SHAPE_KIND=.*$", html, re.M).group(0),
+                re.search(r"^const DEFAULT_FEATURE_SHAPES=.*$", html, re.M).group(0),
+                extract_js_function(html, "normalizeRigShape"),
                 extract_js_function(html, "poseMidpoint"),
                 extract_js_function(html, "poseDistance"),
                 extract_js_function(html, "humanPoseBones"),
@@ -919,6 +927,92 @@ def main() -> int:
         )
         subprocess.run([node, "-e", human_rig_test], check=True)
         print("PASS: human 10/12-part rig (waist, left/right chest) and articulated bone hierarchy")
+        # 顔の傾き・半身像の体幹ボーン: 目の並びが傾いた顔の部位角度、腰が写らない画像での骨盤・背骨位置。
+        face_bone_test = "\n".join(
+            [
+                extract_js_function(html, "faceFeaturesFromLandmarks"),
+                extract_js_function(html, "poseMidpoint"),
+                extract_js_function(html, "poseDistance"),
+                extract_js_function(html, "humanPoseBones"),
+                # 右上がり（画像左の目が低く右の目が高い）に約-22度傾いた顔を合成する。
+                "const lm=[];const rot=-22*Math.PI/180,c=Math.cos(rot),s=Math.sin(rot);",
+                "const put=(i,x,y)=>{lm[i]={x:.5+x*c-y*s,y:.5+x*s+y*c,z:0}};",
+                "for(let i=0;i<478;i++)put(i,0,0);",
+                "put(33,-.15,-.05);put(133,-.07,-.05);put(159,-.11,-.065);put(145,-.11,-.035);put(263,.15,-.05);put(362,.07,-.05);put(386,.11,-.065);put(374,.11,-.035);",
+                "put(70,-.17,-.1);put(107,-.07,-.1);put(105,-.12,-.12);put(300,.17,-.1);put(336,.07,-.1);put(334,.12,-.12);",
+                "put(61,-.07,.12);put(291,.07,.12);put(13,0,.115);put(14,0,.14);put(10,0,-.25);put(152,0,.3);put(234,-.2,0);put(454,.2,0);",
+                "const f=faceFeaturesFromLandmarks(lm,1);",
+                'if(Math.abs(f.roll-rot)>.02)throw new Error("顔の傾き（目の並び）を部位角度へ反映できません: "+f.roll);',
+                'for(const key of ["eyeL","eyeR","browL","browR","mouth"])if(Math.abs(f.angles[key]-rot)>.03)throw new Error("目・眉・口の個別角度が顔の傾きと一致しません: "+key+" "+f.angles[key]);',
+                'if(!f.face||f.face[2]<.18||f.face[3]<.25)throw new Error("顔の輪郭（頭範囲）を顔ランドマークから求められません: "+f.face);',
+                # 半身像: 腰の視認度が低い／画面外。骨盤は肩幅から体幹下端へ置く。
+                "const half={poseLandmarks:{nose:[.5,.2,1],shoulderLeft:[.62,.42,1],shoulderRight:[.38,.42,1],elbowLeft:[.7,.6,1],elbowRight:[.3,.6,1],wristLeft:[.7,.8,1],wristRight:[.3,.8,1],hipLeft:[.58,1.4,.1],hipRight:[.42,1.4,.1],kneeLeft:[.58,1.8,0],kneeRight:[.42,1.8,0],ankleLeft:[.58,2.2,0],ankleRight:[.42,2.2,0]}};",
+                "const hb=humanPoseBones(half);",
+                'if(!(hb.pelvis[1]<.9&&hb.pelvis[1]>.6))throw new Error("腰が写らない半身像の骨盤が画面外へ外挿されています: "+hb.pelvis);',
+                'if(!(hb.neck[1]<hb.spine[1]&&hb.spine[1]<hb.waist[1]&&hb.waist[1]<hb.pelvis[1]))throw new Error("首・背骨・腰・骨盤が上から順に並んでいません");',
+                'if(Math.abs(hb.spine[1]-hb.neck[1])>(hb.pelvis[1]-hb.neck[1])*.45)throw new Error("背骨が腹の高さ（胴の中央以下）にあります");',
+            ]
+        )
+        subprocess.run([node, "-e", face_bone_test], check=True)
+        print("PASS: face roll applied to eye/brow/mouth angles, half-body pelvis/spine placement")
+        # 目・眉・口の専用形状: 輪郭点のノルムが1、中心は内側、シェーダの featureNorm が同じ式を持つ。
+        shape_test = "\n".join(
+            [
+                re.search(r"^const RIG_SHAPES=.*$", html, re.M).group(0),
+                extract_js_function(html, "partShapeNorm"),
+                extract_js_function(html, "partOutlineLocal"),
+                'for(const shape of ["ellipse","rect","almond","brow","lips"]){if(shape!=="rect")for(let i=0;i<48;i++){const [x,y]=partOutlineLocal(shape,i/48*Math.PI*2);const n=partShapeNorm(shape,x,y);if(Math.abs(n-1)>.03)throw new Error(`${shape}の輪郭がノルム1になりません: ${i} ${n}`)}if(partShapeNorm(shape,0,0)>.2)throw new Error(shape+"の中心が範囲外です")}',
+                'if(!(partShapeNorm("almond",.8,.5)>1&&partShapeNorm("ellipse",.8,.5)<1.0001))throw new Error("アーモンドの端が楕円より細くなっていません");',
+            ]
+        )
+        subprocess.run([node, "-e", shape_test], check=True)
+        require("float featureNorm(vec2 p,float kind)" in html and "featureNorm(eyePL,u_featureShape.x)" in html and "featureNorm(browPL,u_featureShape2.x)" in html and "featureNorm(mouthP,u_featureShape.z)" in html, "目・眉・口のシェーダが専用形状を使っていません")
+        print("PASS: eye/brow/mouth shapes (almond, arched brow, lips) consistent across outline, hit test and shader")
+        # マスク: 投げ縄（多角形の塗り・選択範囲の演算）、ペン／消しゴムのブラシ形状、魔法の棒、拡張／縮小、シェーダ連携。
+        mask_test = "\n".join(
+            [
+                "const maskState={gw:20,gh:20,brushShape:'round',brushSize:6,sourcePixels:null};",
+                extract_js_function(html, "maskFillPolygon"),
+                extract_js_function(html, "maskCombine"),
+                extract_js_function(html, "maskBrushRadii"),
+                extract_js_function(html, "maskStamp"),
+                extract_js_function(html, "maskWandRegion"),
+                extract_js_function(html, "maskMorph"),
+                "const sum=a=>a.reduce((x,y)=>x+y,0);",
+                "const square=maskFillPolygon([[5,5],[15,5],[15,15],[5,15]]);",
+                'if(sum(square)!==100)throw new Error("投げ縄の多角形塗りつぶしが不正です: "+sum(square));',
+                "const data=new Uint8Array(400);maskCombine(data,square,'add');",
+                "const inner=maskFillPolygon([[8,8],[12,8],[12,12],[8,12]]);",
+                "const cut=data.slice();maskCombine(cut,inner,'sub');",
+                'if(sum(cut)!==84)throw new Error("選択範囲の削除（減算）が不正です");',
+                "const both=data.slice();maskCombine(both,inner,'intersect');",
+                'if(sum(both)!==16)throw new Error("選択範囲の交差が不正です");',
+                "const fresh=data.slice();maskCombine(fresh,inner,'new');",
+                'if(sum(fresh)!==16)throw new Error("選択範囲の新規（置換）が不正です");',
+                "for(const shape of ['round','square','diamond','wide','tall']){const d=new Uint8Array(400);maskStamp(d,10,10,shape,8,1);if(sum(d)<8)throw new Error(shape+'のブラシが塗れません');maskStamp(d,10,10,shape,20,0);if(sum(d)!==0)throw new Error(shape+'の消しゴムが消せません')}",
+                "const sq=new Uint8Array(400),dm=new Uint8Array(400);maskStamp(sq,10,10,'square',8,1);maskStamp(dm,10,10,'diamond',8,1);",
+                'if(!(sum(sq)>sum(dm)))throw new Error("ブラシ形状（四角>ひし形）の面積が不正です");',
+                "const grown=maskMorph(square,true);if(sum(grown)<=sum(square)||sum(maskMorph(grown,false))!==sum(square))throw new Error('拡張／縮小が不正です');",
+                "const px=new Uint8ClampedArray(400*4);for(let i=0;i<400;i++){const x=i%20;const v=x<10?200:20;px.set([v,v,v,255],i*4)}maskState.sourcePixels=px;",
+                "const wand=maskWandRegion(2,5,20);if(sum(wand)!==200)throw new Error('魔法の棒が同色領域だけを選択できません: '+sum(wand));",
+            ]
+        )
+        subprocess.run([node, "-e", mask_test], check=True)
+        for needle, message in [
+            ("vec4 applyMaskLayer(", "マスクの剛体追従（シェーダ）がありません"),
+            ("riggedForegroundUV(anchor)", "マスクが親位置のリグ変位を使っていません"),
+            ("foregroundTexel(foregroundUV)", "本体の変形がマスク補完画像を使っていません"),
+            ("function maskBuildFill(", "背面補完画像の生成がありません"),
+            ("function maskAutoAccessories(", "アクセサリの自動範囲選択がありません"),
+            ("data-mask-tool=\"lasso\"", "マスクの投げ縄ツールがありません"),
+            ("data-mask-tool=\"pen\"", "マスクのペンツールがありません"),
+            ("data-mask-tool=\"eraser\"", "マスクの消しゴムがありません"),
+        ]:
+            require(needle in html, message)
+        print("PASS: mask foundation (lasso/pen/eraser/wand, rigid follow, background fill, auto accessories)")
+        require('const FE_PART_IDS=["eye-left","eye-right","brow-left","brow-right","mouth"]' in html and 'data-fe-part="brow-left"' in html and "function feNearestInside(" in html, "顔パーツ編集で眉を個別に選択・編集できません")
+        require("float lidL=-0.30*closeL" in html and "(qL>0.0?4.5:0.9)" in html and "(0.12*mouthP.y+" in html, "瞬き（上まぶた主体）・口（上唇ほぼ固定）の人体構造に沿った処理がありません")
+        print("PASS: brow selectable in face editor, anatomical blink (upper lid leads) and jaw opening")
         scene_look_test = "\n".join(
             [
                 "const NEUTRAL_SCENE_LOOK={gain:[1,1,1],lightColor:[1,1,1],lightDir:[-0.4,0.6],directional:0,backlit:0,harmonize:0,shadow:0,foot:[0.5,0.05,0.1,0.8],shadowDir:[0.3,0.12],label:\"\"};",

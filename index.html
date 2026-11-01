@@ -228,7 +228,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
   <div id="faceEditor" class="floatWin" role="dialog" aria-label="顔パーツ編集" hidden>
     <div class="floatHead" id="feHead"><span class="grow">顔パーツ編集（拡大）</span><button id="feClose" class="winBtn" type="button" aria-label="閉じる">×</button></div>
     <div class="feRow" id="fePartTabs">
-      <button class="winBtn" type="button" data-fe-part="eye-left">左目</button><button class="winBtn" type="button" data-fe-part="eye-right">右目</button><button class="winBtn" type="button" data-fe-part="mouth">口</button>
+      <button class="winBtn" type="button" data-fe-part="eye-left">左目</button><button class="winBtn" type="button" data-fe-part="eye-right">右目</button><button class="winBtn" type="button" data-fe-part="brow-left">左眉</button><button class="winBtn" type="button" data-fe-part="brow-right">右眉</button><button class="winBtn" type="button" data-fe-part="mouth">口</button>
       <span style="flex:1"></span>
       <button id="feFitFace" class="winBtn" type="button">顔全体</button><button id="feFitPart" class="winBtn" type="button">選択パーツ</button>
     </div>
@@ -343,6 +343,35 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
       <label class="check"><input id="debugShowTags" type="checkbox">タグ番号</label>
     </div>
     <div id="rigDebugStatus" aria-live="polite">解析デバッグ: OFF</div>
+    <details class="fold" id="maskFold"><summary>マスク（アクセサリ・髪・服）</summary>
+      <div class="hint">アクセサリなどを個別のマスクにして、マスク内の形状は変形せず、親の動きに合わせて全体を動かします。マスクの位置は本体から切り出して周囲色で補完します。重なりはリストの下ほど手前です。最大4件。2層化したキャラ（デモ）で有効です。<span id="maskSupportHint" hidden>この端末はテクスチャ枠が足りないためマスクを使えません。</span></div>
+      <div class="row"><label for="maskList">マスク <span id="maskCount">0/4</span></label><select id="maskList" size="4" aria-label="マスク一覧"></select></div>
+      <div class="iconRow">
+        <button id="maskAdd" class="ibtn" type="button" data-tip="マスク追加" aria-label="マスク追加"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button id="maskDelete" class="ibtn secondary" type="button" data-tip="マスク削除" aria-label="マスク削除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+        <button id="maskAuto" class="ibtn secondary" type="button" data-tip="アクセサリを自動選択" aria-label="アクセサリを自動選択"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2 5 5 .5-4 3.5 1.3 5L12 14.2 7.7 17l1.3-5L5 8.5 10 8z"/></svg></button>
+        <button id="maskToggleEdit" class="winBtn" type="button">編集OFF</button>
+      </div>
+      <div class="row"><label for="maskName">名前</label><input id="maskName" type="text" maxlength="24"></div>
+      <div class="row"><label for="maskKind">種類</label><select id="maskKind"><option value="accessory">アクセサリ</option><option value="hair">髪</option><option value="cloth">服</option><option value="other">その他</option></select></div>
+      <div class="row"><label for="maskParent">追従する親</label><select id="maskParent"></select></div>
+      <label class="check"><input id="maskRigid" type="checkbox" checked>アニメーション除外（形状を変形せず剛体で追従）</label>
+      <div class="row"><label for="maskFollow">追従量</label><input id="maskFollow" type="range" min="0" max="1.5" step="0.05" value="1"></div>
+      <label class="check"><input id="maskVisible" type="checkbox" checked>範囲を表示</label>
+      <div id="maskTools" class="iconRow">
+        <button class="winBtn on" type="button" data-mask-tool="lasso">投げ縄</button>
+        <button class="winBtn" type="button" data-mask-tool="wand">魔法の棒</button>
+        <button class="winBtn" type="button" data-mask-tool="pen">ペン</button>
+        <button class="winBtn" type="button" data-mask-tool="eraser">消しゴム</button>
+      </div>
+      <div class="row"><label for="maskLassoMode">投げ縄・魔法の棒</label><select id="maskLassoMode"><option value="add">追加</option><option value="sub">削除</option><option value="new">新規（置換）</option><option value="intersect">交差</option></select></div>
+      <div class="row"><label for="maskBrushShape">ブラシ形状</label><select id="maskBrushShape"><option value="round">円</option><option value="square">四角</option><option value="diamond">ひし形</option><option value="wide">横長</option><option value="tall">縦長</option></select></div>
+      <div class="row"><label for="maskBrushSize">ブラシ大きさ</label><input id="maskBrushSize" type="range" min="2" max="80" step="1" value="16"></div>
+      <div class="row"><label for="maskTolerance">魔法の棒の許容差</label><input id="maskTolerance" type="range" min="4" max="90" step="1" value="28"></div>
+      <div class="iconRow">
+        <button id="maskGrow" class="winBtn" type="button">拡張</button><button id="maskShrink" class="winBtn" type="button">縮小</button><button id="maskClear" class="winBtn" type="button">全消去</button><button id="maskUndo" class="winBtn" type="button">元に戻す</button>
+      </div>
+    </details>
     <details class="fold"><summary>部位編集</summary><div class="hint">人物の左／右はキャラクター本人基準です（正面では画面上の左右と反転）。iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。 上が手前・下が奥のレイヤー順です。◉＝ワイヤー表示、動＝アニメーション。行頭の ⠿ を別の行へドラッグすると、その行の子になります（字下げ表示）。「親を外す」帯へ落とすと親なしに戻ります。 範囲の中心は円内、幅と高さは円周の4ハンドル、角度は上側の丸い回転ハンドルをドラッグして編集します。Shiftで15°刻みに固定できます。 親子関係ON時は親の実モーションを子へ加算します。例: 胴体→胸部。ボーン・ワイヤー・タグは合成後の動作へ追随します。</div>
     <div class="rigEditor">
       <select id="rigPartList" size="6" aria-label="編集部位リスト" hidden></select>
@@ -363,6 +392,13 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="deleteRigPart" class="ibtn secondary" type="button" data-tip="部位削除" aria-label="部位削除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
       </div>
       <div class="row"><label for="rigPartName">部位名</label><input id="rigPartName" type="text" maxlength="24" value=""></div>
+      <div class="row"><label for="partShape">形状</label><select id="partShape">
+        <option value="ellipse">楕円</option>
+        <option value="rect">角丸矩形</option>
+        <option value="almond" data-feature>目（アーモンド）</option>
+        <option value="brow" data-feature>眉（弓なり）</option>
+        <option value="lips" data-feature>口（唇）</option>
+      </select></div>
       <div class="motionFields">
         <label class="check"><input id="partMotionEnabled" type="checkbox" checked>動作</label>
         <div class="row"><label for="partMotionPreset">種類</label><select id="partMotionPreset">
@@ -541,6 +577,17 @@ uniform sampler2D u_depthTex;
 uniform sampler2D u_subjectMaskTex;
 uniform sampler2D u_backgroundTex;
 uniform sampler2D u_foregroundTex;
+uniform sampler2D u_maskTex;
+uniform sampler2D u_fillTex;
+uniform float u_maskActive;
+uniform vec2 u_maskTexel;
+uniform vec4 u_maskBox0;
+uniform vec4 u_maskBox1;
+uniform vec4 u_maskBox2;
+uniform vec4 u_maskBox3;
+uniform vec4 u_maskAnchor01;
+uniform vec4 u_maskAnchor23;
+uniform vec4 u_maskFollow;
 uniform sampler2D u_cameraBackgroundTex;
 uniform sampler2D u_frontTex;
 uniform float u_hasFront;
@@ -619,6 +666,9 @@ uniform vec4 u_mouthR;
 uniform vec4 u_clothR;
 uniform vec4 u_featureGain;
 uniform vec4 u_featureAngle;
+uniform vec4 u_featureAngle2;
+uniform vec4 u_featureShape;
+uniform vec4 u_featureShape2;
 uniform vec2 u_legacyFace;
 uniform vec4 u_featureExpr;
 uniform vec4 u_featureMotion0;
@@ -702,16 +752,32 @@ vec4 cameraBackgroundAt(vec2 uv){
   return texture2D(u_cameraBackgroundTex,clamp(cameraUV,vec2(0.0),vec2(1.0)));
 }
 
+// マスク（アクセサリ等）の領域は、本体の変形から外すため周囲色で補完した画像（u_fillTex）へ置き換える。
+float maskHoleAt(vec2 uv){
+  if(u_maskActive<0.5)return 0.0;
+  vec2 s=u_maskTexel*2.0;
+  vec4 m=texture2D(u_maskTex,uv);
+  vec4 a=texture2D(u_maskTex,uv+vec2(s.x,0.0)),b=texture2D(u_maskTex,uv-vec2(s.x,0.0)),c=texture2D(u_maskTex,uv+vec2(0.0,s.y)),d=texture2D(u_maskTex,uv-vec2(0.0,s.y));
+  vec4 peak=max(max(m,a),max(max(b,c),d));
+  return smoothstep(0.05,0.55,max(max(peak.r,peak.g),max(peak.b,peak.a)));
+}
+vec4 foregroundTexel(vec2 uv){
+  vec4 original=texture2D(u_foregroundTex,uv);
+  if(u_maskActive<0.5)return original;
+  return mix(original,texture2D(u_fillTex,uv),maskHoleAt(uv));
+}
+float foregroundAlphaTexel(vec2 uv){return foregroundTexel(uv).a;}
+
 float cleanLayerAlphaAt(vec2 uv){
   if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0)return 0.0;
   vec2 safeUV=clamp(uv,vec2(0.0),vec2(1.0));
   vec2 stepSize=max(u_texelSize,vec2(0.0005));
-  float center=texture2D(u_foregroundTex,safeUV).a;
+  float center=foregroundAlphaTexel(safeUV);
   float crossMean=0.25*(
-    texture2D(u_foregroundTex,clamp(safeUV+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).a+
-    texture2D(u_foregroundTex,clamp(safeUV-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0))).a+
-    texture2D(u_foregroundTex,clamp(safeUV+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).a+
-    texture2D(u_foregroundTex,clamp(safeUV-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0))).a
+    foregroundAlphaTexel(clamp(safeUV+vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0)))+
+    foregroundAlphaTexel(clamp(safeUV-vec2(stepSize.x,0.0),vec2(0.0),vec2(1.0)))+
+    foregroundAlphaTexel(clamp(safeUV+vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0)))+
+    foregroundAlphaTexel(clamp(safeUV-vec2(0.0,stepSize.y),vec2(0.0),vec2(1.0)))
   );
   float cleanup=clamp(u_edgeCleanup,0.0,1.0);
   float inwardAlpha=mix(center,min(center,crossMean),cleanup*0.72);
@@ -782,6 +848,17 @@ float rigNormAt(vec2 point,float shape){
   vec2 magnitude=abs(point);
   float rectNorm=pow(pow(magnitude.x,4.0)+pow(magnitude.y,4.0),0.25);
   return mix(ellipseNorm,rectNorm,shape);
+}
+
+// 特徴部位の形状（0=楕円、1=アーモンド（目）、2=弓なり（眉）、3=唇）。pは範囲で正規化した局所座標（GLなので上がy正）。
+// index.html の JS 側 partShapeNorm と同じ式を保つこと。1の内側が範囲。
+float featureNorm(vec2 p,float kind){
+  float ax=abs(p.x);
+  if(kind<0.5)return length(p);
+  if(kind<1.5)return max(ax,abs(p.y)/max(1.0-0.85*p.x*p.x,0.18));
+  if(kind<2.5)return max(ax,abs(p.y-(0.2*(1.0-p.x*p.x)-0.133))/max(1.0-0.5*p.x*p.x,0.4));
+  float lip=max(1.0-p.x*p.x,0.0);
+  return max(ax,abs(p.y)/((p.y<0.0?1.0:0.75)*max(pow(lip,0.6),0.2)));
 }
 
 float rigEllipseAt(vec2 uv,vec2 center,vec2 radius,float angle,float shape){
@@ -886,19 +963,22 @@ vec2 riggedForegroundUV(vec2 uv){
   mat2 rotM=mat2(cos(u_featureAngle.z),sin(u_featureAngle.z),-sin(u_featureAngle.z),cos(u_featureAngle.z));
   vec2 eyePL=(rotEL*(uv-u_eyeL.xy))/max(u_eyeL.zw,vec2(0.002));
   vec2 eyePR=(rotER*(uv-u_eyeR.xy))/max(u_eyeR.zw,vec2(0.002));
-  float eyeWL=(1.0-smoothstep(0.7,1.25,length(eyePL)))*u_featureGain.x;
-  float eyeWR=(1.0-smoothstep(0.7,1.25,length(eyePR)))*u_featureGain.y;
+  float eyeWL=(1.0-smoothstep(0.7,1.25,featureNorm(eyePL,u_featureShape.x)))*u_featureGain.x;
+  float eyeWR=(1.0-smoothstep(0.7,1.25,featureNorm(eyePR,u_featureShape.y)))*u_featureGain.y;
   // 瞬きは目の中心線から離れた位置を読む（縦に最大5倍へ圧縮）。以前の係数（約1.4倍）では最大でも3割しか閉じず、瞬きに見えなかった。
   // 強度は閉じ具合（0.28で全閉）。読む位置は目の範囲の1.15倍までに制限し、眉・頬の外まで引き込まない。
   float closeL=min(1.0,u_featureGain.x*3.6)*u_live2dMotion.x,closeR=min(1.0,u_featureGain.y*3.6)*u_live2dMotion.x;
   float shapeL=eyeWL/max(u_featureGain.x,0.001),shapeR=eyeWR/max(u_featureGain.y,0.001);
-  float readL=sign(eyePL.y)*min(abs(eyePL.y)*(1.0+4.0*closeL),1.15),readR=sign(eyePR.y)*min(abs(eyePR.y)*(1.0+4.0*closeR),1.15);
-  displacement+=vec2(0.0,-(max(abs(readL),abs(eyePL.y))*sign(eyePL.y)-eyePL.y)*u_eyeL.w*shapeL)*rotEL;
-  displacement+=vec2(0.0,-(max(abs(readR),abs(eyePR.y))*sign(eyePR.y)-eyePR.y)*u_eyeR.w*shapeR)*rotER;
+  // 人体の瞬き: 閉じる線は目の中心より少し下（下まぶたの縁）。上まぶたが大きく下りて、下まぶたは少しだけ上がる。上下が同じだけ中央へ寄ると、目が潰れて見える。
+  float lidL=-0.30*closeL,lidR=-0.30*closeR;
+  float qL=eyePL.y-lidL,qR=eyePR.y-lidR;
+  float readL=lidL+sign(qL)*max(min(abs(qL)*(1.0+(qL>0.0?4.5:0.9)*closeL),1.15),abs(qL)),readR=lidR+sign(qR)*max(min(abs(qR)*(1.0+(qR>0.0?4.5:0.9)*closeR),1.15),abs(qR));
+  displacement+=vec2(0.0,-(readL-eyePL.y)*u_eyeL.w*shapeL)*rotEL;
+  displacement+=vec2(0.0,-(readR-eyePR.y)*u_eyeR.w*shapeR)*rotER;
   displacement.x+=(u_eyeL.z*eyeWL+u_eyeR.z*eyeWR)*u_featureExpr.y*0.12;
   vec2 mouthP=(rotM*(uv-u_mouthR.xy))/max(u_mouthR.zw,vec2(0.002));
-  float mouthW=(1.0-smoothstep(0.75,1.3,length(mouthP)))*u_featureGain.z;
-  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.5*mouthP.y+1.0*min(mouthP.y,0.0))+u_featureExpr.x*1.1*(mouthP.x*mouthP.x-0.25)))*rotM;
+  float mouthW=(1.0-smoothstep(0.75,1.3,featureNorm(mouthP,u_featureShape.z)))*u_featureGain.z;
+  displacement+=vec2(mouthW*u_mouthR.z*u_featureExpr.x*0.12*mouthP.x,mouthW*u_mouthR.w*(u_live2dMotion.y*(0.12*mouthP.y+1.0*min(mouthP.y,0.0))+u_featureExpr.x*1.1*(mouthP.x*mouthP.x-0.25)))*rotM;
   vec2 clothP=(uv-u_clothR.xy)/max(u_clothR.zw,vec2(0.002));
   float clothW=(1.0-smoothstep(0.8,1.3,length(clothP)))*u_featureGain.w;
   float clothTip=smoothstep(-0.7,1.0,-clothP.y);
@@ -909,8 +989,10 @@ vec2 riggedForegroundUV(vec2 uv){
   // 特徴部位それぞれのばね（部位パネルの重力・ばね・減衰）による平行移動。親の動きは頭／胴体の変位で既に掛かるため、部位自身のばね成分だけを足す。
   displacement+=u_featureMotion0.xy*eyeWL+u_featureMotion0.zw*eyeWR+u_featureMotion1.xy*mouthW+u_featureMotion1.zw*clothW;
   // 眉: 笑顔で上がり、真面目で下がって内側へ寄る。瞬きに少し連動して下がる。
-  vec2 browPL=(uv-u_browL.xy)/max(u_browL.zw,vec2(0.002)),browPR=(uv-u_browR.xy)/max(u_browR.zw,vec2(0.002));
-  float browWL=(1.0-smoothstep(0.75,1.3,length(browPL)))*u_featureGain2.x,browWR=(1.0-smoothstep(0.75,1.3,length(browPR)))*u_featureGain2.y;
+  mat2 rotBL=mat2(cos(u_featureAngle2.x),sin(u_featureAngle2.x),-sin(u_featureAngle2.x),cos(u_featureAngle2.x));
+  mat2 rotBR=mat2(cos(u_featureAngle2.y),sin(u_featureAngle2.y),-sin(u_featureAngle2.y),cos(u_featureAngle2.y));
+  vec2 browPL=(rotBL*(uv-u_browL.xy))/max(u_browL.zw,vec2(0.002)),browPR=(rotBR*(uv-u_browR.xy))/max(u_browR.zw,vec2(0.002));
+  float browWL=(1.0-smoothstep(0.75,1.3,featureNorm(browPL,u_featureShape2.x)))*u_featureGain2.x,browWR=(1.0-smoothstep(0.75,1.3,featureNorm(browPR,u_featureShape2.y)))*u_featureGain2.y;
   // 前髪が眉を覆う画像では、眉の変形が髪を歪ませる。髪色の画素は眉の変形から除く（髪色が未解析なら全画素に掛ける）。
   float browHairGuard=mix(1.0,1.0-hairColorWeight,u_hairColor.a);
   browWL*=browHairGuard;browWR*=browHairGuard;
@@ -927,6 +1009,19 @@ vec2 riggedForegroundUV(vec2 uv){
   // 変位は元のシルエットでマスクしない。マスクすると動いた輪郭が元の輪郭で切られ、縁が二重に見える。
   // 背景は別レイヤーなので、変位後のUVで前景のαを読めば移動後の輪郭だけが残る。
   return uv-displacement*enabled;
+}
+
+// マスクの剛体追従。親（追従部位または重心）の位置での全身リグの変位を、マスク全体へ一律に与える（マスク内の形状は変形しない）。
+vec4 applyMaskLayer(vec4 color,vec2 sourceUV,vec4 box,vec2 anchor,float follow,vec4 channel,inout float cover){
+  if(box.z<=box.x)return color;
+  if(sourceUV.x<box.x-0.07||sourceUV.x>box.z+0.07||sourceUV.y<box.y-0.07||sourceUV.y>box.w+0.07)return color;
+  vec2 moved=riggedForegroundUV(anchor);
+  vec2 shifted=sourceUV-(anchor-moved)*follow;
+  if(shifted.x<0.0||shifted.x>1.0||shifted.y<0.0||shifted.y>1.0)return color;
+  vec4 texel=texture2D(u_foregroundTex,shifted);
+  float amount=dot(texture2D(u_maskTex,shifted),channel)*texel.a;
+  cover=max(cover,amount);
+  return vec4(mix(color.rgb,texel.rgb,amount),max(color.a,amount));
 }
 
 float softSubjectMaskAt(vec2 uv){
@@ -1032,7 +1127,7 @@ float contactShadowAt(vec2 uv){
 
 float layerAlphaFast(vec2 uv){
   if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0)return 0.0;
-  return texture2D(u_foregroundTex,uv).a;
+  return foregroundAlphaTexel(uv);
 }
 
 // 2層素材の接地影。背景の推定光源方向へ人物シルエットを地面へ投影し、足元の接触影と合わせて背景だけを暗くする。
@@ -1190,14 +1285,24 @@ void main(){
   vec2 mirroredBackgroundUV=vec2(1.0)-abs(vec2(1.0)-abs(backgroundUV));
   backgroundUV=mix(clamp(backgroundUV,vec2(0.0),vec2(1.0)),clamp(mirroredBackgroundUV,vec2(0.0),vec2(1.0)),u_hasLayeredDemo);
   foregroundUV=characterSourceUV(foregroundUV);
+  vec2 maskSourceUV=foregroundUV;
   foregroundUV=riggedForegroundUV(foregroundUV);
   // すべてのモードで移動先のマスクを使い、移動前の輪郭を合成へ残さない。
   float displacedForegroundMask=softSubjectMaskAt(foregroundUV);
   foregroundMask=displacedForegroundMask;
   vec4 layerBackground=mix(texture2D(u_backgroundTex,backgroundUV),cameraBackgroundAt(backgroundUV),u_useCameraBackground);
   vec4 backgroundColor=mix(texture2D(u_tex,backgroundUV),layerBackground,u_hasLayeredDemo);
-  vec4 foregroundColor=mix(texture2D(u_tex,foregroundUV),texture2D(u_foregroundTex,foregroundUV),u_hasLayeredDemo);
+  vec4 foregroundColor=mix(texture2D(u_tex,foregroundUV),foregroundTexel(foregroundUV),u_hasLayeredDemo);
   foregroundColor.a=mix(foregroundColor.a,cleanLayerAlphaAt(foregroundUV),u_hasLayeredDemo);
+  if(u_maskActive>0.5&&u_hasLayeredDemo>0.5&&u_autoRigEnabled>0.5){
+    // 個別マスク: リスト順（先頭が奥）に、剛体として動かした元の形状を重ねる。重なりは手前のマスクが優先。
+    float maskCover=0.0;
+    foregroundColor=applyMaskLayer(foregroundColor,maskSourceUV,u_maskBox0,u_maskAnchor01.xy,u_maskFollow.x,vec4(1.0,0.0,0.0,0.0),maskCover);
+    foregroundColor=applyMaskLayer(foregroundColor,maskSourceUV,u_maskBox1,u_maskAnchor01.zw,u_maskFollow.y,vec4(0.0,1.0,0.0,0.0),maskCover);
+    foregroundColor=applyMaskLayer(foregroundColor,maskSourceUV,u_maskBox2,u_maskAnchor23.xy,u_maskFollow.z,vec4(0.0,0.0,1.0,0.0),maskCover);
+    foregroundColor=applyMaskLayer(foregroundColor,maskSourceUV,u_maskBox3,u_maskAnchor23.zw,u_maskFollow.w,vec4(0.0,0.0,0.0,1.0),maskCover);
+    foregroundMask=max(foregroundMask,maskCover);
+  }
   if(u_hasLayeredDemo>0.5){
     // 影は背景だけへ落とし、前景は背景の光源色・明るさへ合わせてから合成する。
     backgroundColor.rgb*=1.0-groundShadowAt(backgroundUV);
@@ -1376,7 +1481,7 @@ gl.activeTexture(gl.TEXTURE0);
 gl.bindTexture(gl.TEXTURE_2D,tex);
 
 const U={};
-["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartAngles3","u_extraPartRigid","u_extraPartRigid2","u_extraPartRigid3","u_coreShape","u_extraShape","u_extraShape2","u_extraShape3","u_extraHair","u_extraHair2","u_extraHair3","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_extraLayer3","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraRegion8","u_extraRegion9","u_extraRegion10","u_extraRegion11","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_extraMotion8","u_extraMotion9","u_extraMotion10","u_extraMotion11","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir","u_featureAngle","u_featureMotion0","u_featureMotion1","u_featureMotion2","u_featureMotion3","u_browL","u_browR","u_neckR","u_featureGain2"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+["u_tex","u_depthTex","u_subjectMaskTex","u_backgroundTex","u_foregroundTex","u_cameraBackgroundTex","u_frontTex","u_hasFront","u_view","u_viewNear","u_viewMid","u_viewFar","u_depth","u_center","u_radius","u_imgAspect","u_screenAspect","u_effectMode","u_effectStrength","u_time","u_texelSize","u_motionScale","u_hasDepthMap","u_hasSubjectMask","u_lightDirection","u_lightingStrength","u_enableHologram","u_enableRelief","u_enableVibration","u_enableDepthLayers","u_enableTrickPortal","u_hologramStrength","u_reliefStrength","u_vibrationStrength","u_vibrationTuning","u_depthLayerStrength","u_trickPortalStrength","u_edgeCleanup","u_hologramNearSuppression","u_contourCrop","u_cropFeather","u_spatialEnhance","u_spatialStrength","u_zeroParallax","u_viewZ","u_hasLayeredDemo","u_bgLayerStrength","u_characterScale","u_characterOffset","u_autoRigEnabled","u_bodyMotion","u_headMotion","u_materialMotion","u_propMotion","u_corePartEnabled","u_corePartAngles","u_corePartRigid","u_extraPartAngles","u_extraPartAngles2","u_extraPartAngles3","u_extraPartRigid","u_extraPartRigid2","u_extraPartRigid3","u_coreShape","u_extraShape","u_extraShape2","u_extraShape3","u_extraHair","u_extraHair2","u_extraHair3","u_hairColor","u_coreLayer","u_extraLayer","u_extraLayer2","u_extraLayer3","u_hairWave","u_faceBands","u_eyeL","u_eyeR","u_mouthR","u_clothR","u_featureGain","u_legacyFace","u_featureExpr","u_rigCenters","u_rigRadii","u_bodyRegion","u_materialRegion","u_extraRegion0","u_extraRegion1","u_extraRegion2","u_extraRegion3","u_extraRegion4","u_extraRegion5","u_extraRegion6","u_extraRegion7","u_extraRegion8","u_extraRegion9","u_extraRegion10","u_extraRegion11","u_extraMotion0","u_extraMotion1","u_extraMotion2","u_extraMotion3","u_extraMotion4","u_extraMotion5","u_extraMotion6","u_extraMotion7","u_extraMotion8","u_extraMotion9","u_extraMotion10","u_extraMotion11","u_groundAnchor","u_motionRange","u_standeeMode","u_live2dMotion","u_debugLayerMode","u_debugShowBackground","u_debugShowCharacter","u_useCameraBackground","u_cameraAspect","u_cameraMirror","u_fgGain","u_lightColor","u_sceneLightDir","u_sceneLook","u_footSpan","u_shadowDir","u_maskTex","u_fillTex","u_maskActive","u_maskTexel","u_maskBox0","u_maskBox1","u_maskBox2","u_maskBox3","u_maskAnchor01","u_maskAnchor23","u_maskFollow","u_featureAngle","u_featureAngle2","u_featureShape","u_featureShape2","u_featureMotion0","u_featureMotion1","u_featureMotion2","u_featureMotion3","u_browL","u_browR","u_neckR","u_featureGain2"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
 gl.uniform1i(U.u_tex,0);
 gl.uniform1i(U.u_depthTex,1);
 gl.uniform1i(U.u_subjectMaskTex,2);
@@ -1970,16 +2075,25 @@ function humanPoseBones(profile){
   const pose=profile.poseLandmarks;
   if(!pose)return null;
   const neck=poseMidpoint(pose.shoulderLeft,pose.shoulderRight);
-  const pelvis=poseMidpoint(pose.hipLeft,pose.hipRight);
-  const spine=poseMidpoint(neck,pelvis);
   const shoulderSpan=poseDistance(pose.shoulderLeft,pose.shoulderRight);
+  // 腰が写っていない半身像では姿勢推定の股関節が画面外へ外挿されるため、肩幅から体幹の下端を求める。
+  const hipsSeen=["hipLeft","hipRight"].every(name=>(pose[name][2]??1)>=.5&&pose[name][1]<.97);
+  const shoulderVector=[pose.shoulderLeft[0]-pose.shoulderRight[0],pose.shoulderLeft[1]-pose.shoulderRight[1]];
+  const shoulderNorm=Math.max(1e-4,Math.hypot(shoulderVector[0],shoulderVector[1])),down=[-shoulderVector[1]/shoulderNorm,shoulderVector[0]/shoulderNorm];
+  const pelvis=hipsSeen?poseMidpoint(pose.hipLeft,pose.hipRight):[neck[0]+down[0]*shoulderSpan*1.35,neck[1]+down[1]*shoulderSpan*1.35];
+  const hipHalf=hipsSeen?null:[shoulderVector[0]/shoulderNorm*shoulderSpan*.2,shoulderVector[1]/shoulderNorm*shoulderSpan*.2];
+  const hipLeft=hipsSeen?pose.hipLeft.slice(0,2):[pelvis[0]+hipHalf[0],pelvis[1]+hipHalf[1]],hipRight=hipsSeen?pose.hipRight.slice(0,2):[pelvis[0]-hipHalf[0],pelvis[1]-hipHalf[1]];
+  const along=t=>[neck[0]+(pelvis[0]-neck[0])*t,neck[1]+(pelvis[1]-neck[1])*t];
+  // 背骨は胸の高さ（首〜骨盤の約38%）、腰は画像解析した胴のくびれ行（無ければ約65%）。
+  const torsoDy=pelvis[1]-neck[1],waistY=profile.humanParts?.waistY;
+  const waistT=Number.isFinite(waistY)&&Math.abs(torsoDy)>.02?Math.max(.5,Math.min(.8,(waistY-neck[1])/torsoDy)):.65;
   return {
-    pelvis,waist:poseMidpoint(pelvis,spine),spine,neck,
+    pelvis,waist:along(waistT),spine:along(.38),neck,
     headTop:[pose.nose[0],Math.max(.01,pose.nose[1]-shoulderSpan*.38)],
     shoulderLeft:pose.shoulderLeft.slice(0,2),elbowLeft:pose.elbowLeft.slice(0,2),wristLeft:pose.wristLeft.slice(0,2),
     shoulderRight:pose.shoulderRight.slice(0,2),elbowRight:pose.elbowRight.slice(0,2),wristRight:pose.wristRight.slice(0,2),
-    hipLeft:pose.hipLeft.slice(0,2),kneeLeft:pose.kneeLeft.slice(0,2),ankleLeft:pose.ankleLeft.slice(0,2),
-    hipRight:pose.hipRight.slice(0,2),kneeRight:pose.kneeRight.slice(0,2),ankleRight:pose.ankleRight.slice(0,2)
+    hipLeft,kneeLeft:pose.kneeLeft.slice(0,2),ankleLeft:pose.ankleLeft.slice(0,2),
+    hipRight,kneeRight:pose.kneeRight.slice(0,2),ankleRight:pose.ankleRight.slice(0,2)
   };
 }
 
@@ -2189,6 +2303,11 @@ function buildHumanRigParts(profile){
       if(faceUsable)regions.head={region:face,angle:regions.head.angle,shape:analysis.face.kind};
       regions.hair={region:analysis.hair.shape,angle:0,shape:analysis.hair.kind};
     }
+    // 顔ランドマークで顔の輪郭と傾き（目の並び）が測れた場合は、肌色領域より優先して頭の範囲と角度にする。
+    const measuredFace=profile.faceFeatures;
+    if(measuredFace?.face&&Number.isFinite(measuredFace.roll)){
+      regions.head={region:measuredFace.face,angle:measuredFace.roll,shape:"ellipse"};
+    }
     // 腕・脚は関節で上下に分ける（二の腕/前腕、太もも/膝下）。前腕・膝下が別のばねで遅れて追従できる。
     regions.armLeft=orientedRigRegion([pose.shoulderLeft,pose.elbowLeft],.032,.045);
     regions.armRight=orientedRigRegion([pose.shoulderRight,pose.elbowRight],.032,.045);
@@ -2266,15 +2385,15 @@ function buildHumanRigParts(profile){
   // 顔の目・口と服は、頭／上半身の範囲から初期配置する「特徴部位」。シェーダの追加部位枠（8件）は使わず、範囲と動作を個別に指定できる。
   const faceBox=specs.find(spec=>spec.id==="head"),bodyBox=specs.find(spec=>spec.id==="upper-body");
   if(faceBox){
-    const [hx,hy,hrx,hry]=faceBox.region,tilt=faceBox.angle||0,cosT=Math.cos(tilt),sinT=Math.sin(tilt);
+    const [hx,hy,hrx,hry]=faceBox.region,tilt=faceBox.angle||0,featureAngles=profile.faceFeatures?.angles||{},cosT=Math.cos(tilt),sinT=Math.sin(tilt);
     const onFace=(dx,dy)=>[hx+(dx*cosT-dy*sinT)*hrx,hy+(dx*sinT+dy*cosT)*hry];
     const eyeSize=[Math.max(.008,hrx*.24),Math.max(.006,hry*.15)],measured=profile.faceFeatures;
-    specs.push({id:"eye-left",role:"feature",tag:"13",label:"目 左",color:"#7df9ff",region:measured?.eyeL||[...onFace(.40,-.22),...eyeSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
-    specs.push({id:"eye-right",role:"feature",tag:"14",label:"目 右",color:"#7dd4ff",region:measured?.eyeR||[...onFace(-.40,-.22),...eyeSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    specs.push({id:"eye-left",role:"feature",tag:"13",label:"目 左",color:"#7df9ff",region:measured?.eyeL||[...onFace(.40,-.22),...eyeSize],angle:featureAngles.eyeL??tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    specs.push({id:"eye-right",role:"feature",tag:"14",label:"目 右",color:"#7dd4ff",region:measured?.eyeR||[...onFace(-.40,-.22),...eyeSize],angle:featureAngles.eyeR??tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
     const browSize=[Math.max(.009,hrx*.26),Math.max(.004,hry*.06)];
-    specs.push({id:"brow-left",role:"feature",tag:"21",label:"眉 左",color:"#b8f1ff",region:measured?.browL||[...onFace(.40,-.46),...browSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
-    specs.push({id:"brow-right",role:"feature",tag:"22",label:"眉 右",color:"#b8dcff",region:measured?.browR||[...onFace(-.40,-.46),...browSize],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
-    specs.push({id:"mouth",role:"feature",tag:"15",label:"口",color:"#ff7d9c",region:measured?.mouth||[...onFace(0,.52),Math.max(.01,hrx*.30),Math.max(.007,hry*.11)],angle:tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"mouth"});
+    specs.push({id:"brow-left",role:"feature",tag:"21",label:"眉 左",color:"#b8f1ff",region:measured?.browL||[...onFace(.40,-.46),...browSize],angle:featureAngles.browL??tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    specs.push({id:"brow-right",role:"feature",tag:"22",label:"眉 右",color:"#b8dcff",region:measured?.browR||[...onFace(-.40,-.46),...browSize],angle:featureAngles.browR??tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"eyes"});
+    specs.push({id:"mouth",role:"feature",tag:"15",label:"口",color:"#ff7d9c",region:measured?.mouth||[...onFace(0,.52),Math.max(.01,hrx*.30),Math.max(.007,hry*.11)],angle:featureAngles.mouth??tilt,parentId:"head",inheritMotion:true,inheritAmount:.9,preset:"mouth"});
   }
   if(regions.neck)specs.push({id:"neck",role:"feature",tag:"23",label:"首",color:"#ffd2a8",...regions.neck,parentId:"head",inheritMotion:true,inheritAmount:.5,preset:"face"});
   if(bodyBox){
@@ -2287,7 +2406,7 @@ function buildHumanRigParts(profile){
     // 手前から奥へ。手・腕は胸や顔の前へ重なり、前髪（髪）は顔の前、衣装の腰は脚の前、胴体が最奥。
     const frontToBack=["eye-left","eye-right","brow-left","brow-right","mouth","hand-left","hand-right","forearm-left","forearm-right","arm-left","arm-right","hair","head","neck","chest-left","chest-right","waist","cloth","leg-left","leg-right","shin-left","shin-right","upper-body"];
     // 関節の見えていない部位（フレーム外の脚・手など）は配置だけ残し、存在しない体を動かさないよう動きをOFFにする。
-    const part={...spec,region,originalRegion:[...region],angle,originalAngle:angle,shape:spec.shape==='rect'?'rect':'ellipse',layer:frontToBack.length-frontToBack.indexOf(spec.id),visible:true,group:null,motionEnabled:unseenParts.has(spec.id)?false:true,...motion,...(spec.role==="feature"?{strength:1}:{})};
+    const part={...spec,region,originalRegion:[...region],angle,originalAngle:angle,shape:normalizeRigShape(spec.shape||DEFAULT_FEATURE_SHAPES[spec.id]),layer:frontToBack.length-frontToBack.indexOf(spec.id),visible:true,group:null,motionEnabled:unseenParts.has(spec.id)?false:true,...motion,...(spec.role==="feature"?{strength:1}:{})};
     rigSprings[part.id]=newRigSpring();
     return part;
   });
@@ -2592,7 +2711,7 @@ function syncRigEditor(){
   const part=rigPartById(selectedRigPart());
   document.querySelectorAll("#rigLayerList .layerRow[data-id]").forEach(row=>row.classList.toggle("selected",row.dataset.id===selectedRigPart()));
   const available=Boolean(part);
-  for(const id of ["rigPartList","rigPartName","deleteRigPart","duplicateRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
+  for(const id of ["rigPartList","rigPartName","partShape","deleteRigPart","duplicateRigPart","partMotionEnabled","partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount","resetRigPart"]){
     $("#"+id).disabled=!available;
   }
   $("#addRigPart").disabled=!activeRigProfile||activeRigParts.length>=MAX_RIG_PARTS; 
@@ -2600,6 +2719,8 @@ function syncRigEditor(){
   if(!part)return;
   $("#rigPartName").value=part.label;
   $("#partMotionEnabled").checked=part.motionEnabled;
+  $("#partShape").value=part.shape;
+  for(const option of $("#partShape").querySelectorAll("option[data-feature]"))option.disabled=part.role!=="feature";
   $("#partMotionPreset").value=part.preset;
   // 目・口・眉・首・服は専用の変形を持つため、種類は固定（重力・ばね・減衰・強度は部位の平行移動に効く）。
   $("#partMotionPreset").disabled=part.role==="feature";
@@ -2620,6 +2741,8 @@ function applyRigPartControls(){
   if(!part)return;
   part.label=$("#rigPartName").value.trim()||part.label;
   part.motionEnabled=$("#partMotionEnabled").checked;
+  part.shape=normalizeRigShape($("#partShape").value,part.shape);
+  if(part.role!=="feature"&&FEATURE_SHAPE_KIND[part.shape]>0)part.shape="ellipse";
   part.preset=$("#partMotionPreset").value;
   part.strength=parseFloat($("#partMotionStrength").value);
   part.gravity=parseFloat($("#partGravity").value);
@@ -2890,7 +3013,7 @@ function normalizeRigProject(raw){
     const preset=MOTION_PRESETS[source.preset]?source.preset:"soft";
     const region=Array.isArray(source.region)?source.region:[];
     const angle=boundedNumber(source.angle,-Math.PI,Math.PI,0);
-    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],angle,originalAngle:angle,motionEnabled:source.motionEnabled!==false,preset,shape:source.shape==="rect"?"rect":"ellipse",layer:Number.isFinite(source.layer)?source.layer:index+1,visible:source.visible!==false,group:typeof source.group==="string"&&source.group?String(source.group).slice(0,24):null,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
+    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],angle,originalAngle:angle,motionEnabled:source.motionEnabled!==false,preset,shape:normalizeRigShape(source.shape),layer:Number.isFinite(source.layer)?source.layer:index+1,visible:source.visible!==false,group:typeof source.group==="string"&&source.group?String(source.group).slice(0,24):null,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
   });
   const bones=raw.bonePoints.slice(0,MAX_BONE_POINTS+1).map((source,index)=>({id:cleanId(source.id,`ボーン${index+1}`),tag:String(source.tag||`B${index+1}`).slice(0,4),label:cleanLabel(source.label),type:BONE_TYPE_LABELS[source.type]?source.type:"joint",x:boundedNumber(source.x,0,1,.5),y:boundedNumber(source.y,0,1,.5),parentId:source.parentId?cleanId(source.parentId,"親ボーン"):null,partId:source.partId?cleanId(source.partId,"追随部位"):null,followAmount:boundedNumber(source.followAmount,0,1.5,1),original:[boundedNumber(source.x,0,1,.5),boundedNumber(source.y,0,1,.5)]}));
   const validation=validateRigDefinition(parts,bones);
@@ -3160,12 +3283,20 @@ function faceFeaturesFromLandmarks(landmarks,aspect=1){
   const [mx,my]=mid(at(61),at(291));
   // 眉は外端・内端の中点と上端で位置を決め、幅の約6割を半径にする。
   const brow=(outer,inner,top)=>{const [cx,cy]=mid(at(outer),at(inner)),width=Math.hypot((at(outer).x-at(inner).x)*aspect,at(outer).y-at(inner).y)/aspect;return [cx,(cy+at(top).y)*.5,Math.max(.007,width*.6),Math.max(.004,width*.16)]};
+  // 角度は部位定義と同じ正規化座標（UV）での線の向き。目・眉・口は自分の両端を結ぶ線、顔全体は目の並びと顎〜額の軸の平均。
+  const lineAngle=(a,b)=>Math.atan2(at(b).y-at(a).y,at(b).x-at(a).x);
+  const eyeRoll=lineAngle(33,263),axisRoll=Math.atan2(at(152).y-at(10).y,at(152).x-at(10).x)-Math.PI*.5;
+  const roll=(eyeRoll+axisRoll)*.5;
+  const side=Math.hypot(at(454).x-at(234).x,at(454).y-at(234).y),height=Math.hypot(at(152).x-at(10).x,at(152).y-at(10).y);
   return {
     browL:brow(300,336,334),
     browR:brow(70,107,105),
     eyeL:eye(263,362,386,374),
     eyeR:eye(33,133,159,145),
-    mouth:[(mx+at(13).x)*.5,(my+at(13).y+at(14).y)/3,Math.max(.008,mouthWidth*.62),Math.max(.006,Math.abs(at(14).y-at(13).y)*2.2,mouthWidth*.18)]
+    mouth:[(mx+at(13).x)*.5,(my+at(13).y+at(14).y)/3,Math.max(.008,mouthWidth*.62),Math.max(.006,Math.abs(at(14).y-at(13).y)*2.2,mouthWidth*.18)],
+    face:[(at(10).x+at(152).x)*.5,(at(10).y+at(152).y)*.5,side*.55,height*.56],
+    roll,
+    angles:{eyeL:lineAngle(362,263),eyeR:lineAngle(33,133),browL:lineAngle(336,300),browR:lineAngle(70,107),mouth:lineAngle(61,291)}
   };
 }
 
@@ -3222,7 +3353,7 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
   try{
     const raw=await detectFaceFeatures(source,faceHint),sp=sourcePlacement,pl=placement;
     const mapFeature=([x,y,rx,ry])=>[pl.left+(x-sp.left)/sp.width*pl.width,pl.top+(y-sp.top)/sp.height*pl.height,rx/sp.width*pl.width,ry/sp.height*pl.height];
-    faceFeatures={eyeL:mapFeature(raw.eyeL),eyeR:mapFeature(raw.eyeR),mouth:mapFeature(raw.mouth),browL:raw.browL?mapFeature(raw.browL):null,browR:raw.browR?mapFeature(raw.browR):null};
+    faceFeatures={eyeL:mapFeature(raw.eyeL),eyeR:mapFeature(raw.eyeR),mouth:mapFeature(raw.mouth),browL:raw.browL?mapFeature(raw.browL):null,browR:raw.browR?mapFeature(raw.browR):null,face:raw.face?mapFeature(raw.face):null,roll:raw.roll,angles:raw.angles};
   }catch(error){console.warn("顔ランドマークで目・口を実測できないため、顔の範囲から推定位置を使います。",error)}
   return {...baseProfile,poseLandmarks:mapped,humanParts,faceFeatures,rigSource:correctionCount?"pose-calibrated":"pose",poseCorrectionCount:correctionCount};
 }
@@ -3466,6 +3597,7 @@ function resetMapTexture(texture,unit){
 }
 
 function clearMaps({announce=true,preserveCharacterPlacement=false}={}){
+  try{maskReset()}catch(error){/* マスク機能の初期化前は無視 */}
   resetMapTexture(depthTex,gl.TEXTURE1);
   resetMapTexture(subjectMaskTex,gl.TEXTURE2);
   resetMapTexture(backgroundTex,gl.TEXTURE3);
@@ -3518,6 +3650,7 @@ function uploadMapImage(texture,unit,img){
 // 前景の透明部のRGBを輪郭の色で埋めてから転送する。
 // canvas経由の透過画像は透明部が黒（元PNGは発光した縁色）になり、線形補間の輪郭が暗く／白く縁取られて動いた輪郭が二重に見えるため。
 function uploadForegroundImage(texture,unit,img){
+  try{maskForegroundChanged(img)}catch(error){/* マスク機能の初期化前（起動直後）は無視 */}
   const sourceWidth=img.naturalWidth||img.width,sourceHeight=img.naturalHeight||img.height;
   const scale=Math.min(1,2048/Math.max(sourceWidth,sourceHeight));
   const width=Math.max(1,Math.round(sourceWidth*scale)),height=Math.max(1,Math.round(sourceHeight*scale));
@@ -4739,7 +4872,7 @@ $("#addRigPart").addEventListener("click",addRigPart);
 $("#deleteRigPart").addEventListener("click",deleteSelectedRigPart);
 $("#duplicateRigPart").addEventListener("click",duplicateSelectedRigPart);
 $("#partMotionPreset").addEventListener("change",()=>{applyMotionPreset();pushEditHistory()});
-for(const id of ["rigPartName","partMotionEnabled","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount"]){
+for(const id of ["rigPartName","partShape","partMotionEnabled","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount"]){
   $("#"+id).addEventListener("input",applyRigPartControls);
   $("#"+id).addEventListener("change",pushEditHistory);
 }
@@ -4956,7 +5089,7 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
       }
     }
   }
-  guideHandles.parts={};guideHandles.sizes={};guideHandles.rotations={};guideHandles.rotationFlip={};
+  guideHandles.parts={};guideHandles.axes={};guideHandles.sizes={};guideHandles.rotations={};guideHandles.rotationFlip={};
   // 服（上衣・下衣）と小物の認識形状。リグ部位ではなく認識結果の表示のみ。
   const recognized=activeRigProfile.humanParts;
   if(recognized&&$("#debugShowWireframe").checked){
@@ -4989,8 +5122,8 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
       guideContext.fillStyle=meta.color+"18";
       guideContext.beginPath();
       for(let index=0;index<=48;index++){
-        const phase=index/48*Math.PI*2,curve=meta.shape==="rect"?.5:1,cosine=Math.cos(phase),sine=Math.sin(phase);
-        const localX=state.radiusX*Math.sign(cosine)*Math.pow(Math.abs(cosine),curve),localY=state.radiusY*Math.sign(sine)*Math.pow(Math.abs(sine),curve);
+        const [unitX,unitY]=partOutlineLocal(meta.shape,index/48*Math.PI*2);
+        const localX=state.radiusX*unitX,localY=state.radiusY*unitY;
         const imageX=state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY;
         const imageY=state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY;
         const outline=mapPoint(imageX,imageY);
@@ -5000,6 +5133,7 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
       guideContext.fill();guideContext.stroke();
       const axisPoint=(localX,localY)=>mapPoint(state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY,state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY);
       const left=axisPoint(-state.radiusX,0),right=axisPoint(state.radiusX,0),top=axisPoint(0,-state.radiusY),bottom=axisPoint(0,state.radiusY);
+      guideHandles.axes[partKey]={cx:point.x,cy:point.y,ux:(right.x-left.x)/2,uy:(right.y-left.y)/2,vx:(bottom.x-top.x)/2,vy:(bottom.y-top.y)/2,shape:meta.shape};
       guideContext.beginPath();
       guideContext.moveTo(left.x,left.y);guideContext.lineTo(right.x,right.y);
       guideContext.moveTo(top.x,top.y);guideContext.lineTo(bottom.x,bottom.y);
@@ -5094,6 +5228,7 @@ function drawGuides(){
     guideContext.restore();
   }
   drawRigDebug(rect,mapPoint,dpr,lastRenderTime*0.001);
+  drawMaskOverlay(rect,mapPoint,dpr);
 }
 
 function guideEventPoint(event){
@@ -5106,6 +5241,43 @@ function guideEventPoint(event){
 
 function rigOverlayEditingActive(){
   return $("#rigDebug").checked&&Boolean(activeRigProfile);
+}
+
+// 部位の形状。ellipse/rect は全部位、almond（目）・brow（眉）・lips（口）は特徴部位だけ指定でき、シェーダの featureNorm と同じ式。
+const RIG_SHAPES=["ellipse","rect","almond","brow","lips"];
+const FEATURE_SHAPE_KIND={ellipse:0,almond:1,brow:2,lips:3};
+const DEFAULT_FEATURE_SHAPES={"eye-left":"almond","eye-right":"almond","brow-left":"brow","brow-right":"brow",mouth:"lips"};
+function featureShapeKind(part){return part?.role==="feature"?(FEATURE_SHAPE_KIND[part.shape]||0):0}
+function normalizeRigShape(shape,fallback="ellipse"){return RIG_SHAPES.includes(shape)?shape:fallback}
+// 局所座標（範囲で正規化。画像座標なので下がy正）から形状のノルム。1以下が内側。shaderはGL座標（上がy正）なのでyの符号を反転して同じ式へ渡す。
+function partShapeNorm(shape,lx,ly){
+  const x=Math.abs(lx),y=-ly;
+  if(shape==="rect")return Math.max(x,Math.abs(y));
+  if(shape==="almond")return Math.max(x,Math.abs(y)/Math.max(1-.85*lx*lx,.18));
+  if(shape==="brow")return Math.max(x,Math.abs(y-(.2*(1-lx*lx)-.133))/Math.max(1-.5*lx*lx,.4));
+  if(shape==="lips")return Math.max(x,Math.abs(y)/((y<0?1:.75)*Math.max(Math.pow(Math.max(1-lx*lx,0),.6),.2)));
+  return Math.hypot(lx,ly);
+}
+// 輪郭（局所座標、下がy正）を位相tから得る。
+function partOutlineLocal(shape,t){
+  const c=Math.cos(t),s=Math.sin(t);
+  if(shape==="rect")return [Math.sign(c)*Math.sqrt(Math.abs(c)),Math.sign(s)*Math.sqrt(Math.abs(s))];
+  // ノルム1の境界は |x|=1 の端と |y|=縁の高さ。位相tのcosをx、sinの符号を上下として縁をたどる（中央が太く両端が細い）。
+  const side=s<0?-1:1;
+  if(shape==="almond")return [c,-side*Math.max(1-.85*c*c,.18)];
+  if(shape==="brow")return [c,-((.2*(1-c*c)-.133)+side*Math.max(1-.5*c*c,.4))];
+  if(shape==="lips")return [c,-side*(side<0?1:.75)*Math.max(Math.pow(Math.max(1-c*c,0),.6),.2)];
+  return [c,-s];
+}
+
+// 画面上の点が、描画中の部位範囲（楕円／角丸矩形）の内側か。軸は画像の縦横比で直交しないため、2軸の逆行列で局所座標へ戻す。
+function pointInPartShape(point,partId){
+  const axes=guideHandles.axes?.[partId];
+  if(!axes)return false;
+  const det=axes.ux*axes.vy-axes.vx*axes.uy;
+  if(Math.abs(det)<1e-6)return false;
+  const dx=point.x-axes.cx,dy=point.y-axes.cy,a=(dx*axes.vy-dy*axes.vx)/det,b=(axes.ux*dy-axes.uy*dx)/det;
+  return partShapeNorm(axes.shape,a,b)<=1;
 }
 
 function guideDragTargetAt(event){
@@ -5137,11 +5309,18 @@ function guideDragTargetAt(event){
       const segment=guideHandles.boneSegments.find(candidate=>candidate.childId===bone.id);
       if(segment&&pointToSegmentDistance(point,segment.start,segment.end)<=Math.max(10,7*guideHandles.dpr))return `bone-segment:${bone.id}`;
     }
-    const ordered=[selected,...activeRigParts.map(part=>part.id).filter(key=>key!==selected)];
-    for(const partKey of ordered){
-      const handle=rigPartById(partKey)?.visible===false?null:guideHandles.parts[partKey];
-      if(handle&&Math.hypot(point.x-handle.x,point.y-handle.y)<=hitRadius)return "rig:"+partKey;
+    // 目・口・眉のように小さい部位は中心が近接する。リスト順の先着ではなく、ポインタに最も近い中心の部位を選ぶ。
+    // 部位自身の範囲（楕円内）に入っていれば、固定の判定半径より外でも選択できる。
+    let nearestKey=null,nearestScore=Infinity;
+    for(const part of activeRigParts){
+      const handle=part.visible===false?null:guideHandles.parts[part.id];
+      if(!handle)continue;
+      const distance=Math.hypot(point.x-handle.x,point.y-handle.y),inside=pointInPartShape(point,part.id);
+      if(distance>hitRadius&&!inside)continue;
+      const score=distance-(part.id===selected?hitRadius*.15:0);
+      if(score<nearestScore){nearestScore=score;nearestKey=part.id}
     }
+    if(nearestKey)return "rig:"+nearestKey;
   }
   if(guideHandles.light&&Math.hypot(point.x-guideHandles.light.x,point.y-guideHandles.light.y)<=hitRadius)return "light";
   if(guideHandles.center&&Math.hypot(point.x-guideHandles.center.x,point.y-guideHandles.center.y)<=hitRadius)return "center";
@@ -5223,6 +5402,7 @@ function updateGuideDrag(event){
 }
 
 function beginGuideDrag(event){
+  if(maskPointerDown(event))return;
   const target=guideDragTargetAt(event);
   if(!target)return;
   if(target.startsWith("bone-segment:")){
@@ -5260,6 +5440,7 @@ function beginGuideDrag(event){
 }
 
 function moveGuideDrag(event){
+  if(maskPointerMove(event))return;
   if(!guideDragTarget)return;
   event.preventDefault();
   event.stopPropagation();
@@ -5267,6 +5448,7 @@ function moveGuideDrag(event){
 }
 
 function finishGuideDrag(event){
+  if(maskPointerUp(event))return;
   if(!guideDragTarget)return;
   event.preventDefault();
   event.stopPropagation();
@@ -5795,7 +5977,7 @@ setInterval(syncViewAssistVisibility,400);
 syncViewAssistVisibility();
 
 // ---- 顔パーツ拡大編集（目・口の範囲／角度とコマ送りアニメーション確認）----
-const FE_PART_IDS=["eye-left","eye-right","mouth"];
+const FE_PART_IDS=["eye-left","eye-right","brow-left","brow-right","mouth"];
 const FE_FRAMES=12;
 const FE_TRACKS={
   blink:{label:"瞬き",value:f=>f/FE_FRAMES,rest:0},
@@ -5942,7 +6124,18 @@ function feHandlePositions(def){
 function feInside(def,point){
   const a=def.angle||0,c=Math.cos(a),s=Math.sin(a),dx=point.x-def.region[0],dy=point.y-def.region[1];
   const lx=dx*c+dy*s,ly=-dx*s+dy*c;
-  return (lx/def.region[2])**2+(ly/def.region[3])**2<=1.2;
+  return partShapeNorm(def.shape||"ellipse",lx/def.region[2],ly/def.region[3])<=1.1;
+}
+// 重なる部位は、ポインタに最も近い中心の部位を選ぶ（目と眉が近接して眉が選べない問題の対策）。
+function feNearestInside(point,excludeId){
+  let best=null,bestDistance=Infinity;
+  for(const id of FE_PART_IDS){
+    const def=fePartDef(id);
+    if(!def||def.id===excludeId||!feInside(def,point))continue;
+    const distance=Math.hypot((point.x-def.region[0])/def.region[2],(point.y-def.region[1])/def.region[3]);
+    if(distance<bestDistance){bestDistance=distance;best=def}
+  }
+  return best;
 }
 feCanvas.addEventListener("pointerdown",e=>{
   if(!faceEditor.open)return;
@@ -5959,7 +6152,7 @@ feCanvas.addEventListener("pointerdown",e=>{
     if(!drag&&feInside(def,point))drag={type:"move",off:{x:def.region[0]-point.x,y:def.region[1]-point.y}};
   }
   if(!drag){
-    const other=FE_PART_IDS.map(id=>fePartDef(id)).find(d=>d&&d.id!==faceEditor.part&&feInside(d,point));
+    const other=feNearestInside(point,faceEditor.part);
     if(other){feSelectPart(other.id);const d=fePartDef();drag={type:"move",off:{x:d.region[0]-point.x,y:d.region[1]-point.y}}}
   }
   if(!drag)drag={type:"pan",x:px,y:py,cx:faceEditor.view.cx,cy:faceEditor.view.cy};
@@ -6035,7 +6228,7 @@ function feTick(now){
     const selected=id===f.part,color=def.color||"#79e7ff";
     ctx.beginPath();
     for(let i=0;i<=48;i++){
-      const t=i/48*Math.PI*2,[x,y]=fePx(...Object.values(fePartPoint(def,Math.cos(t)*def.region[2],Math.sin(t)*def.region[3])));
+      const [ux,uy]=partOutlineLocal(def.shape,i/48*Math.PI*2),[x,y]=fePx(...Object.values(fePartPoint(def,ux*def.region[2],uy*def.region[3])));
       if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
     }
     ctx.closePath();
@@ -6333,6 +6526,10 @@ function render(now){
   gl.uniform4f(U.u_browR,...featureRegion(browR,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_neckR,...featureRegion(neckPart,[.5,.5,.001,.001]));
   gl.uniform4f(U.u_featureGain2,featureGain(browL),featureGain(browR),featureGain(neckPart),0);
+  gl.uniform4f(U.u_featureAngle2,browL?.angle||0,browR?.angle||0,0,0);
+  gl.uniform4f(U.u_featureShape,featureShapeKind(eyeL),featureShapeKind(eyeR),featureShapeKind(mouthPart),0);
+  gl.uniform4f(U.u_featureShape2,featureShapeKind(browL),featureShapeKind(browR),0,0);
+  maskUploadUniforms();
   // 特徴部位のばねは部位自身の成分（spring.x/y）だけ。effectiveX（親継承込み）を使うと頭の変位と二重に動き、目が顔から浮く。
   const ownMotion=part=>{const spring=part&&part.motionEnabled?rigSprings[part.id]:null;return [(spring?.x||0)*motionBoost,(spring?.y||0)*motionBoost]};
   gl.uniform4f(U.u_featureMotion0,...ownMotion(eyeL),...ownMotion(eyeR));
@@ -6401,7 +6598,424 @@ function render(now){
 }
 requestAnimationFrame(render);
 // 自動検証用の読み取り専用フック（?p3dTest 付きURLのときだけ公開）。
-if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());const w=canvas.width,h=canvas.height,px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);ctx.putImageData(img,0,0);return c.toDataURL('image/png')},visual:()=>({...live2dVisualState}),handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
+// ================= マスク（アクセサリ・髪・服などの個別領域） =================
+// 画像座標（0-1）をグリッド（最大640px）へ量子化した2値マスクを最大4件持つ。
+// 「アニメーション除外」ONのマスクは、(1) 本体の変形から外し（マスク内を周囲色で補完した画像を本体として変形）、
+// (2) マスク内の形状は変形せず、親（追従部位または重心）の動きで剛体として動かし、(3) 前後はリスト順（下ほど手前）で重ねる。
+const MASK_MAX=4,MASK_GRID=640;
+const MASK_KINDS={accessory:{label:"アクセサリ",color:"#ffd36e"},hair:{label:"髪",color:"#70e8ff"},cloth:{label:"服",color:"#c9a7ff"},other:{label:"その他",color:"#ff9fc9"}};
+const maskState={masks:[],selected:null,edit:false,tool:"lasso",lassoMode:"add",brushShape:"round",brushSize:16,tolerance:28,gw:0,gh:0,source:null,sourcePixels:null,fillDirty:true,atlasDirty:true,overlayDirty:true,overlay:null,drag:null,cursor:null,undo:[],serial:0,supported:gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)>=9};
+const maskTex=maskState.supported?createMapTexture(gl.TEXTURE7,0):null;
+const fillTex=maskState.supported?createMapTexture(gl.TEXTURE8,0):null;
+if(maskState.supported){gl.uniform1i(U.u_maskTex,7);gl.uniform1i(U.u_fillTex,8)}
+gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+
+function maskGridSize(){const s=MASK_GRID/Math.max(imgWidth,imgHeight,1);return [Math.max(8,Math.round(imgWidth*s)),Math.max(8,Math.round(imgHeight*s))]}
+function maskById(id){return maskState.masks.find(mask=>mask.id===id)||null}
+function maskSelected(){return maskById(maskState.selected)}
+function maskMarkDirty(){maskState.atlasDirty=maskState.fillDirty=maskState.overlayDirty=true;for(const mask of maskState.masks)mask.stats=null}
+function maskReset(){
+  maskState.masks=[];maskState.selected=null;maskState.undo=[];maskState.drag=null;maskState.sourcePixels=null;maskState.gw=maskState.gh=0;
+  maskMarkDirty();if(typeof syncMaskPanel==="function")syncMaskPanel();
+}
+// uploadForegroundImage から呼ぶ。別の前景画像になったときだけマスクを破棄する。
+function maskForegroundChanged(img){
+  if(maskState.source!==img){maskState.source=img;maskReset()}
+}
+function maskEnsureGrid(){
+  const [gw,gh]=maskGridSize();
+  if(gw!==maskState.gw||gh!==maskState.gh){
+    const had=maskState.masks.length;
+    maskState.gw=gw;maskState.gh=gh;maskState.masks=[];maskState.selected=null;maskState.undo=[];maskState.sourcePixels=null;maskMarkDirty();
+    if(had&&typeof syncMaskPanel==="function")syncMaskPanel();
+  }
+  if(!maskState.sourcePixels&&maskState.source){
+    try{
+      const c=document.createElement("canvas");c.width=gw;c.height=gh;
+      const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(maskState.source,0,0,gw,gh);
+      maskState.sourcePixels=ctx.getImageData(0,0,gw,gh).data;
+    }catch(error){console.warn("マスク用の前景画素を取得できません。",error)}
+  }
+  return maskState.gw>0&&maskState.gh>0;
+}
+function maskStats(mask){
+  if(mask.stats)return mask.stats;
+  const {gw,gh}=maskState;let count=0,minX=gw,minY=gh,maxX=-1,maxY=-1,sx=0,sy=0;
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++)if(mask.data[y*gw+x]){count++;sx+=x;sy+=y;if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}
+  mask.stats=count?{count,minX:minX/gw,minY:minY/gh,maxX:(maxX+1)/gw,maxY:(maxY+1)/gh,cx:(sx/count+.5)/gw,cy:(sy/count+.5)/gh}:{count:0,minX:0,minY:0,maxX:-1,maxY:-1,cx:.5,cy:.5};
+  return mask.stats;
+}
+function maskNew(kind="accessory",label=""){
+  if(!maskEnsureGrid()||maskState.masks.length>=MASK_MAX)return null;
+  const meta=MASK_KINDS[kind]||MASK_KINDS.other,serial=++maskState.serial;
+  const mask={id:"mask-"+serial,label:label||`${meta.label} ${serial}`,kind,color:meta.color,parentId:null,rigid:true,follow:1,visible:true,data:new Uint8Array(maskState.gw*maskState.gh),stats:null};
+  maskState.masks.push(mask);maskState.selected=mask.id;maskMarkDirty();
+  return mask;
+}
+function maskDelete(id){
+  maskState.masks=maskState.masks.filter(mask=>mask.id!==id);
+  if(maskState.selected===id)maskState.selected=maskState.masks.at(-1)?.id||null;
+  maskMarkDirty();syncMaskPanel();
+}
+function maskPushUndo(mask){maskState.undo.push({id:mask.id,data:mask.data.slice()});if(maskState.undo.length>20)maskState.undo.shift()}
+function maskUndo(){
+  const entry=maskState.undo.pop(),mask=entry&&maskById(entry.id);
+  if(mask){mask.data=entry.data;maskMarkDirty();syncMaskPanel()}
+}
+function maskFillPolygon(poly){
+  const {gw,gh}=maskState,out=new Uint8Array(gw*gh),n=poly.length;
+  if(n<3)return out;
+  let minY=Infinity,maxY=-Infinity;
+  for(const p of poly){if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1]}
+  for(let y=Math.max(0,Math.floor(minY));y<=Math.min(gh-1,Math.ceil(maxY));y++){
+    const yc=y+.5,xs=[];
+    for(let i=0;i<n;i++){const a=poly[i],b=poly[(i+1)%n];if((a[1]<=yc&&b[1]>yc)||(b[1]<=yc&&a[1]>yc))xs.push(a[0]+(yc-a[1])/(b[1]-a[1])*(b[0]-a[0]))}
+    xs.sort((p,q)=>p-q);
+    for(let k=0;k+1<xs.length;k+=2)for(let x=Math.max(0,Math.round(xs[k]));x<Math.min(gw,Math.round(xs[k+1]));x++)out[y*gw+x]=1;
+  }
+  return out;
+}
+// 選択範囲の合成。new=置換、add=追加、sub=削除、intersect=交差（Photoshopの選択範囲の演算に倣う）。
+function maskCombine(data,region,mode){
+  if(mode==="new")data.fill(0);
+  for(let i=0;i<data.length;i++){
+    const a=data[i],b=region[i];
+    data[i]=mode==="sub"?(b?0:a):mode==="intersect"?(a&&b?1:0):(a||b?1:0);
+  }
+}
+function maskBrushRadii(shape,size){
+  const r=Math.max(.5,size/2);
+  return shape==="wide"?[r*1.8,r*.7]:shape==="tall"?[r*.7,r*1.8]:[r,r];
+}
+function maskStamp(data,cx,cy,shape,size,value){
+  const {gw,gh}=maskState,[rx,ry]=maskBrushRadii(shape,size);
+  for(let y=Math.max(0,Math.floor(cy-ry));y<=Math.min(gh-1,Math.ceil(cy+ry));y++)for(let x=Math.max(0,Math.floor(cx-rx));x<=Math.min(gw-1,Math.ceil(cx+rx));x++){
+    const dx=(x+.5-cx)/rx,dy=(y+.5-cy)/ry;
+    const inside=shape==="square"?Math.max(Math.abs(dx),Math.abs(dy))<=1:shape==="diamond"?Math.abs(dx)+Math.abs(dy)<=1:dx*dx+dy*dy<=1;
+    if(inside)data[y*gw+x]=value;
+  }
+}
+function maskStrokeTo(mask,from,to,value){
+  const dist=Math.hypot(to[0]-from[0],to[1]-from[1]),step=Math.max(1,maskState.brushSize/4),count=Math.max(1,Math.ceil(dist/step));
+  for(let i=1;i<=count;i++)maskStamp(mask.data,from[0]+(to[0]-from[0])*i/count,from[1]+(to[1]-from[1])*i/count,maskState.brushShape,maskState.brushSize,value);
+}
+// 魔法の棒: クリックした画素の色に近い連続領域（前景が透明な画素は除く）。
+function maskWandRegion(seedX,seedY,tolerance){
+  const {gw,gh,sourcePixels:px}=maskState,out=new Uint8Array(gw*gh);
+  if(!px)return out;
+  const sx=Math.max(0,Math.min(gw-1,Math.floor(seedX))),sy=Math.max(0,Math.min(gh-1,Math.floor(seedY))),s=(sy*gw+sx)*4;
+  const limit=tolerance*tolerance*3,stack=[sy*gw+sx];
+  out[sy*gw+sx]=1;
+  while(stack.length){
+    const at=stack.pop(),x=at%gw,y=(at-x)/gw;
+    for(const next of [x>0?at-1:-1,x<gw-1?at+1:-1,y>0?at-gw:-1,y<gh-1?at+gw:-1]){
+      if(next<0||out[next])continue;
+      const o=next*4;
+      if(px[o+3]<64)continue;
+      const dr=px[o]-px[s],dg=px[o+1]-px[s+1],db=px[o+2]-px[s+2];
+      if(dr*dr+dg*dg+db*db>limit)continue;
+      out[next]=1;stack.push(next);
+    }
+  }
+  return out;
+}
+function maskMorph(data,grow){
+  const {gw,gh}=maskState,out=new Uint8Array(data.length);
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+    const i=y*gw+x,c=data[i],l=x>0?data[i-1]:0,r=x<gw-1?data[i+1]:0,u=y>0?data[i-gw]:0,d=y<gh-1?data[i+gw]:0;
+    out[i]=grow?(c||l||r||u||d?1:0):(c&&l&&r&&u&&d?1:0);
+  }
+  return out;
+}
+// アクセサリの自動範囲選択: 人物解析の小物候補（色差の大きい小さな塊）の周辺で、外周の色と違う画素だけを最大の連結塊として取る。
+function maskAutoAccessories(){
+  if(!maskEnsureGrid()||!maskState.sourcePixels)return {added:0,message:"前景画像がありません。2層化したキャラを読み込んでください。"};
+  const candidates=activeRigProfile?.humanParts?.accessories;
+  if(!candidates?.length)return {added:0,message:"人物解析の小物候補がありません（人物デモ／人物リグのみ対応）。"};
+  const {gw,gh,sourcePixels:px}=maskState,pose=activeRigProfile.poseLandmarks;
+  let added=0;
+  for(const item of candidates){
+    if(maskState.masks.length>=MASK_MAX)break;
+    const [cx,cy,rx,ry]=item.shape;
+    // 足元（靴）は足首付近。アクセサリではない。
+    if(pose&&["ankleLeft","ankleRight"].some(name=>Math.hypot(pose[name][0]-cx,pose[name][1]-cy)<.09))continue;
+    const inner=new Uint8Array(gw*gh);const ring=[];
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+      const nx=((x+.5)/gw-cx)/Math.max(rx,.004),ny=((y+.5)/gh-cy)/Math.max(ry,.004);
+      const norm=item.kind==="rect"?Math.max(Math.abs(nx),Math.abs(ny)):Math.hypot(nx,ny);
+      const i=y*gw+x;
+      if(px[i*4+3]<128)continue;
+      if(norm<=1.15)inner[i]=1;else if(norm<=1.7)ring.push(i);
+    }
+    if(ring.length<12)continue;
+    const med=c=>{const v=ring.map(i=>px[i*4+c]).sort((a,b)=>a-b);return v[v.length>>1]};
+    const ref=[med(0),med(1),med(2)];
+    let region=new Uint8Array(gw*gh),seeds=0;
+    for(let i=0;i<inner.length;i++){
+      if(!inner[i])continue;
+      const dr=px[i*4]-ref[0],dg=px[i*4+1]-ref[1],db=px[i*4+2]-ref[2];
+      if(dr*dr+dg*dg+db*db>34*34){region[i]=1;seeds++}
+    }
+    if(seeds<10)continue;
+    // 最大の連結塊だけ残し、1画素膨らませて縁の混色を含める。
+    const labels=new Int32Array(gw*gh);let best=0,bestSize=0,label=0;
+    for(let start=0;start<region.length;start++){
+      if(!region[start]||labels[start])continue;
+      label++;const stack=[start];labels[start]=label;let size=0;
+      while(stack.length){
+        const at=stack.pop(),x=at%gw;size++;
+        for(const next of [x>0?at-1:-1,x<gw-1?at+1:-1,at>=gw?at-gw:-1,at<region.length-gw?at+gw:-1])if(next>=0&&region[next]&&!labels[next]){labels[next]=label;stack.push(next)}
+      }
+      if(size>bestSize){bestSize=size;best=label}
+    }
+    if(bestSize<10)continue;
+    region=new Uint8Array(region.length);
+    for(let i=0;i<region.length;i++)if(labels[i]===best)region[i]=1;
+    region=maskMorph(region,true);
+    const mask=maskNew("accessory",`アクセサリ ${added+1}`);
+    if(!mask)break;
+    mask.data=region;added++;
+  }
+  maskMarkDirty();syncMaskPanel();
+  return {added,message:added?`${added}件のアクセサリを自動選択しました。投げ縄・ペン・消しゴムで調整できます。`:"アクセサリ候補を抽出できませんでした。投げ縄や魔法の棒で選択してください。"};
+}
+// 背面補完: マスクを3画素広げた領域と透明画素を、周囲の確定色からpush-pullで補完した画像（本体の変形用）。
+function maskBuildFill(){
+  const {gw,gh,sourcePixels:px}=maskState,active=maskActiveMasks();
+  if(!px||!active.length)return null;
+  let union=new Uint8Array(gw*gh);
+  for(const mask of active)for(let i=0;i<union.length;i++)if(mask.data[i])union[i]=1;
+  const holeMask=union;
+  let hole=union;for(let k=0;k<3;k++)hole=maskMorph(hole,true);
+  const out=new Uint8ClampedArray(px),need=new Uint8Array(gw*gh);
+  for(let i=0;i<need.length;i++)need[i]=hole[i]||px[i*4+3]<24?1:0;
+  pushPullFill(out,need,gw,gh);
+  // 補完部分の不透明度は、周囲の確定画素の平均（輪郭の外へ出ていたアクセサリの跡を残さない）。
+  const R=5;
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+    const i=y*gw+x;
+    if(!hole[i]){out[i*4+3]=px[i*4+3];continue}
+    let sum=0,n=0;
+    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
+      const xx=x+dx,yy=y+dy;
+      if(xx<0||yy<0||xx>=gw||yy>=gh||hole[yy*gw+xx])continue;
+      sum+=px[(yy*gw+xx)*4+3];n++;
+    }
+    out[i*4+3]=n?Math.round(sum/n):0;
+  }
+  void holeMask;
+  return out;
+}
+function maskActiveMasks(){
+  maskEnsureGrid();
+  return maskState.masks.filter(mask=>mask.rigid&&maskStats(mask).count>0).slice(0,MASK_MAX);
+}
+function maskUploadTextures(){
+  if(!maskState.supported||!maskEnsureGrid())return;
+  const {gw,gh}=maskState,active=maskActiveMasks(),flip=gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+  if(maskState.atlasDirty){
+    const atlas=new Uint8Array(gw*gh*4);
+    active.forEach((mask,channel)=>{
+      // 3x3平均で縁をなめらかにする（シェーダ側の線形補間と合わせて縁のギザつきを抑える）。
+      for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){
+        let sum=0;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=Math.min(gw-1,Math.max(0,x+dx)),yy=Math.min(gh-1,Math.max(0,y+dy));sum+=mask.data[yy*gw+xx]}
+        atlas[(y*gw+x)*4+channel]=Math.round(sum/9*255);
+      }
+    });
+    gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,maskTex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gw,gh,0,gl.RGBA,gl.UNSIGNED_BYTE,atlas);
+    maskState.atlasDirty=false;
+  }
+  if(maskState.fillDirty&&!maskState.drag){
+    const fill=maskBuildFill();
+    if(fill){
+      gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D,fillTex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gw,gh,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(fill.buffer,fill.byteOffset,fill.byteLength));
+    }
+    maskState.fillDirty=false;
+  }
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,flip);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+}
+function maskUploadUniforms(){
+  if(!maskState.supported)return;
+  maskUploadTextures();
+  const active=hasLayeredDemo?maskActiveMasks():[];
+  // 補完画像がまだ無い（ストローク中）間は本体を置換しない。
+  gl.uniform1f(U.u_maskActive,active.length&&!maskState.fillDirty?1:0);
+  gl.uniform2f(U.u_maskTexel,1/Math.max(1,maskState.gw),1/Math.max(1,maskState.gh));
+  const boxes=[],anchors=[],follow=[];
+  for(let k=0;k<MASK_MAX;k++){
+    const mask=active[k];
+    if(!mask){boxes.push([0,0,-1,-1]);anchors.push([.5,.5]);follow.push(0);continue}
+    const s=maskStats(mask),parent=mask.parentId?rigPartById(mask.parentId):null;
+    const ax=parent?parent.region[0]:s.cx,ay=parent?parent.region[1]:s.cy;
+    boxes.push([s.minX,1-s.maxY,s.maxX,1-s.minY]);anchors.push([ax,1-ay]);follow.push(mask.follow);
+  }
+  for(let k=0;k<MASK_MAX;k++)gl.uniform4f(U["u_maskBox"+k],...boxes[k]);
+  gl.uniform4f(U.u_maskAnchor01,...anchors[0],...anchors[1]);
+  gl.uniform4f(U.u_maskAnchor23,...anchors[2],...anchors[3]);
+  gl.uniform4f(U.u_maskFollow,...follow);
+}
+
+// ---- 編集操作（ガイドキャンバス上のポインタ） ----
+function maskPointerGrid(event){
+  const rect=guideHandles.imageRect;
+  if(!rect)return null;
+  const p=guideEventPoint(event),src=characterSourcePoint((p.x-rect.x)/rect.width,(p.y-rect.y)/rect.height);
+  return [src.x*maskState.gw,src.y*maskState.gh];
+}
+function maskPointerDown(event){
+  if(!maskState.edit||!hasImage||event.button!==0||event.target!==canvas)return false;
+  if(!maskEnsureGrid())return false;
+  let mask=maskSelected();
+  if(!mask){mask=maskNew(maskState.tool==="lasso"||maskState.tool==="wand"?"accessory":"other");if(!mask){errEl.textContent=`マスクは最大${MASK_MAX}件です。`;return true}syncMaskPanel()}
+  const point=maskPointerGrid(event);
+  if(!point)return false;
+  event.preventDefault();event.stopPropagation();
+  maskPushUndo(mask);
+  const tool=maskState.tool;
+  if(tool==="wand"){
+    maskCombine(mask.data,maskWandRegion(point[0],point[1],maskState.tolerance),maskState.lassoMode);
+    maskMarkDirty();syncMaskPanel();return true;
+  }
+  maskState.drag={id:event.pointerId,tool,points:[point],last:point,mask};
+  if(tool==="pen"||tool==="eraser"){maskStamp(mask.data,point[0],point[1],maskState.brushShape,maskState.brushSize,tool==="pen"?1:0);maskState.atlasDirty=maskState.overlayDirty=true;mask.stats=null}
+  try{stage.setPointerCapture(event.pointerId)}catch(error){}
+  return true;
+}
+function maskPointerMove(event){
+  const point=maskPointerGrid(event);
+  if(maskState.edit&&point)maskState.cursor=point;
+  const drag=maskState.drag;
+  if(!drag||drag.id!==event.pointerId||!point)return false;
+  event.preventDefault();event.stopPropagation();
+  if(drag.tool==="lasso"){if(Math.hypot(point[0]-drag.last[0],point[1]-drag.last[1])>=1.2){drag.points.push(point);drag.last=point}}
+  else{maskStrokeTo(drag.mask,drag.last,point,drag.tool==="pen"?1:0);drag.last=point;drag.mask.stats=null;maskState.atlasDirty=maskState.overlayDirty=true}
+  return true;
+}
+function maskPointerUp(event){
+  const drag=maskState.drag;
+  if(!drag||drag.id!==event.pointerId)return false;
+  event.preventDefault();event.stopPropagation();
+  if(drag.tool==="lasso"&&drag.points.length>=3)maskCombine(drag.mask.data,maskFillPolygon(drag.points),maskState.lassoMode);
+  maskState.drag=null;
+  try{if(stage.hasPointerCapture(event.pointerId))stage.releasePointerCapture(event.pointerId)}catch(error){}
+  maskMarkDirty();syncMaskPanel();pushEditHistory();
+  return true;
+}
+// ガイド描画: マスクの色付き重ね表示、投げ縄の軌跡、ブラシ範囲のカーソル。
+function drawMaskOverlay(rect,mapPoint,dpr){
+  if(!maskState.masks.length&&!maskState.edit)return;
+  if(!maskEnsureGrid())return;
+  const {gw,gh}=maskState;
+  if(maskState.overlayDirty||!maskState.overlay||maskState.overlay.width!==gw){
+    const c=maskState.overlay&&maskState.overlay.width===gw&&maskState.overlay.height===gh?maskState.overlay:Object.assign(document.createElement("canvas"),{width:gw,height:gh});
+    const ctx=c.getContext("2d"),image=ctx.createImageData(gw,gh);
+    for(const mask of maskState.masks){
+      if(!mask.visible)continue;
+      const r=parseInt(mask.color.slice(1,3),16),g=parseInt(mask.color.slice(3,5),16),b=parseInt(mask.color.slice(5,7),16),selected=mask.id===maskState.selected;
+      for(let i=0;i<mask.data.length;i++)if(mask.data[i]){
+        const o=i*4,edge=(i%gw===0||i<gw||!mask.data[i-1]||!mask.data[i+1]||(i>=gw&&!mask.data[i-gw])||(i<mask.data.length-gw&&!mask.data[i+gw]));
+        image.data[o]=r;image.data[o+1]=g;image.data[o+2]=b;image.data[o+3]=edge?235:(selected?110:62);
+      }
+    }
+    ctx.putImageData(image,0,0);maskState.overlay=c;maskState.overlayDirty=false;
+  }
+  const a=mapPoint(0,0),b=mapPoint(1,1);
+  guideContext.save();
+  guideContext.beginPath();guideContext.rect(rect.x,rect.y,rect.width,rect.height);guideContext.clip();
+  guideContext.imageSmoothingEnabled=false;
+  guideContext.drawImage(maskState.overlay,a.x,a.y,b.x-a.x,b.y-a.y);
+  const toScreen=pt=>mapPoint(pt[0]/gw,pt[1]/gh);
+  const drag=maskState.drag;
+  if(drag?.tool==="lasso"&&drag.points.length>1){
+    guideContext.lineWidth=Math.max(1.5,1.5*dpr);guideContext.strokeStyle="#fff";guideContext.setLineDash([6*dpr,4*dpr]);
+    guideContext.beginPath();
+    drag.points.forEach((pt,i)=>{const s=toScreen(pt);if(i)guideContext.lineTo(s.x,s.y);else guideContext.moveTo(s.x,s.y)});
+    guideContext.stroke();
+  }
+  if(maskState.edit&&maskState.cursor&&(maskState.tool==="pen"||maskState.tool==="eraser")){
+    const [rx,ry]=maskBrushRadii(maskState.brushShape,maskState.brushSize),c=maskState.cursor;
+    guideContext.setLineDash([]);guideContext.lineWidth=Math.max(1.5,1.5*dpr);guideContext.strokeStyle=maskState.tool==="pen"?"#7dffb0":"#ff8a8a";
+    guideContext.beginPath();
+    for(let i=0;i<=40;i++){
+      const t=i/40*Math.PI*2,cs=Math.cos(t),sn=Math.sin(t);
+      let ux=cs,uy=sn;
+      if(maskState.brushShape==="square"){const m=Math.max(Math.abs(cs),Math.abs(sn));ux=cs/m;uy=sn/m}
+      else if(maskState.brushShape==="diamond"){const m=Math.abs(cs)+Math.abs(sn);ux=cs/m;uy=sn/m}
+      const s=toScreen([c[0]+ux*rx,c[1]+uy*ry]);
+      if(i)guideContext.lineTo(s.x,s.y);else guideContext.moveTo(s.x,s.y);
+    }
+    guideContext.stroke();
+  }
+  guideContext.restore();
+}
+
+// ---- パネル ----
+function maskPanelEls(){return {list:$("#maskList"),name:$("#maskName"),kind:$("#maskKind"),parent:$("#maskParent"),rigid:$("#maskRigid"),follow:$("#maskFollow"),visible:$("#maskVisible")}}
+function syncMaskPanel(){
+  const el=maskPanelEls();
+  if(!el.list)return;
+  const mask=maskSelected();
+  el.list.textContent="";
+  for(const item of maskState.masks){
+    const option=document.createElement("option");
+    option.value=item.id;option.textContent=`${item.label}（${item.rigid?"除外":"通常"}・${maskStats(item).count}px）`;option.selected=item.id===maskState.selected;
+    el.list.append(option);
+  }
+  $("#maskCount").textContent=`${maskState.masks.length}/${MASK_MAX}`;
+  $("#maskSupportHint").hidden=maskState.supported;
+  for(const id of ["maskName","maskKind","maskParent","maskRigid","maskFollow","maskVisible","maskDelete"])$("#"+id).disabled=!mask;
+  $("#maskAdd").disabled=maskState.masks.length>=MASK_MAX||!maskState.supported;
+  if(!mask)return;
+  if(document.activeElement!==el.name)el.name.value=mask.label;
+  el.kind.value=mask.kind;el.rigid.checked=mask.rigid;el.follow.value=mask.follow;el.visible.checked=mask.visible;
+  const parent=el.parent,previous=mask.parentId||"";
+  parent.textContent="";
+  parent.append(new Option("自動（マスクの重心）",""));
+  for(const part of activeRigParts)parent.append(new Option(part.label,part.id));
+  parent.value=[...parent.options].some(o=>o.value===previous)?previous:"";
+  for(const button of document.querySelectorAll("#maskTools [data-mask-tool]"))button.classList.toggle("on",button.dataset.maskTool===maskState.tool);
+  $("#maskToggleEdit").classList.toggle("on",maskState.edit);
+  $("#maskToggleEdit").textContent=maskState.edit?"編集ON":"編集OFF";
+}
+function maskApplyControls(){
+  const mask=maskSelected(),el=maskPanelEls();
+  if(!mask)return;
+  mask.label=el.name.value.trim().slice(0,24)||mask.label;
+  mask.kind=MASK_KINDS[el.kind.value]?el.kind.value:mask.kind;
+  mask.color=MASK_KINDS[mask.kind].color;
+  mask.parentId=el.parent.value||null;
+  mask.rigid=el.rigid.checked;mask.follow=Math.max(0,Math.min(1.5,parseFloat(el.follow.value)||0));mask.visible=el.visible.checked;
+  maskMarkDirty();syncMaskPanel();
+}
+function maskSetEdit(on){
+  maskState.edit=Boolean(on)&&maskState.supported;
+  if(maskState.edit&&!$("#rigDebug").checked)$("#rigDebugToggle").click();
+  syncMaskPanel();
+}
+if($("#maskList")){
+  $("#maskList").addEventListener("change",()=>{maskState.selected=$("#maskList").value||null;maskState.overlayDirty=true;syncMaskPanel()});
+  $("#maskAdd").addEventListener("click",()=>{if(maskNew("accessory"))syncMaskPanel()});
+  $("#maskDelete").addEventListener("click",()=>{const m=maskSelected();if(m)maskDelete(m.id)});
+  for(const id of ["maskName","maskKind","maskParent","maskRigid","maskFollow","maskVisible"])$("#"+id).addEventListener("input",maskApplyControls);
+  $("#maskToggleEdit").addEventListener("click",()=>maskSetEdit(!maskState.edit));
+  for(const button of document.querySelectorAll("#maskTools [data-mask-tool]"))button.addEventListener("click",()=>{maskState.tool=button.dataset.maskTool;syncMaskPanel()});
+  $("#maskLassoMode").addEventListener("input",()=>{maskState.lassoMode=$("#maskLassoMode").value});
+  $("#maskBrushShape").addEventListener("input",()=>{maskState.brushShape=$("#maskBrushShape").value});
+  $("#maskBrushSize").addEventListener("input",()=>{maskState.brushSize=parseFloat($("#maskBrushSize").value)||16});
+  $("#maskTolerance").addEventListener("input",()=>{maskState.tolerance=parseFloat($("#maskTolerance").value)||28});
+  $("#maskGrow").addEventListener("click",()=>{const m=maskSelected();if(m){maskPushUndo(m);m.data=maskMorph(m.data,true);maskMarkDirty();syncMaskPanel()}});
+  $("#maskShrink").addEventListener("click",()=>{const m=maskSelected();if(m){maskPushUndo(m);m.data=maskMorph(m.data,false);maskMarkDirty();syncMaskPanel()}});
+  $("#maskClear").addEventListener("click",()=>{const m=maskSelected();if(m){maskPushUndo(m);m.data.fill(0);maskMarkDirty();syncMaskPanel()}});
+  $("#maskUndo").addEventListener("click",maskUndo);
+  $("#maskAuto").addEventListener("click",()=>{errEl.textContent=maskAutoAccessories().message});
+  syncMaskPanel();
+}
+
+if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={mask:{state:()=>maskState,newMask:(...a)=>{const m=maskNew(...a);syncMaskPanel();return m},fillPolygon:maskFillPolygon,combine:maskCombine,auto:maskAutoAccessories,markDirty:maskMarkDirty},bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());const w=canvas.width,h=canvas.height,px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);ctx.putImageData(img,0,0);return c.toDataURL('image/png')},visual:()=>({...live2dVisualState}),handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
 // ===== プロジェクト（空画像から部品レイヤを重ねて作成） =====
 // レイヤは各々独立したcanvas。合成結果を「表示へ反映」で通常の画像として読み込む（端末内のみで処理）。
 const pjEl=$("#pjEditor"),pjCanvas=$("#pjCanvas"),pjCtx=pjCanvas.getContext("2d");

@@ -131,12 +131,13 @@ Face Landmarkerの両目間隔は追跡開始時を基準値とし、顔が近�
 ### 顔・服の特徴部位（目・口・服）と動きの大きさ
 
 - `role:"feature"` の部位（`eye-left`/`eye-right`/`mouth`/`cloth`）は人物リグ生成時に頭・上半身の範囲から初期配置する。シェーダの追加部位枠（`custom` 8件）は使わず、専用ユニフォーム（`u_eyeL/u_eyeR/u_mouthR/u_clothR/u_featureGain/u_featureExpr`）で変形する。部位の動作ON/OFFと強度が各効果のゲインになり、範囲はガイドで編集できる。特徴部位がないリグは `u_legacyFace` により従来の頭部の顔帯処理を使う。
-- 目・口の配置: 人物リグ構築時に`detectFaceFeatures`（FaceLandmarker・IMAGEモード。カメラ用VIDEOとは別インスタンス）で目・口の中心と半径を実測し`profile.faceFeatures`へ保持、`buildHumanRigParts`の特徴部位へ使う。全身写真では顔が小さく全体画像では未検出になりやすいため、`faceHint`（`analyzeHumanPartsFromSource` の顔楕円、無ければ姿勢の鼻位置±0.07）を中心に頭部を切り出して512pxへ拡大し再検出、座標を元画像へ戻す。それでも検出失敗なら警告のみで顔楕円からの推定位置へ戻り、人物分離・姿勢推定は止めない。瞬きのshaderは目の中心線から離れた位置を読む縦圧縮（最大5倍、読む範囲は目の範囲の1.15倍まで）で、強度0.28で全閉。
+- 目・口の配置: 人物リグ構築時に`detectFaceFeatures`（FaceLandmarker・IMAGEモード。カメラ用VIDEOとは別インスタンス）で目・口の中心と半径を実測し`profile.faceFeatures`へ保持、`buildHumanRigParts`の特徴部位へ使う。全身写真では顔が小さく全体画像では未検出になりやすいため、`faceHint`（`analyzeHumanPartsFromSource` の顔楕円、無ければ姿勢の鼻位置±0.07）を中心に頭部を切り出して512pxへ拡大し再検出、座標を元画像へ戻す。それでも検出失敗なら警告のみで顔楕円からの推定位置へ戻り、人物分離・姿勢推定は止めない。瞬きのshaderは、閉じる線を目の中心より下（-0.30×閉じ量）に置き、その線から離れた位置を読む縦圧縮（上まぶた側は最大5.5倍、下まぶた側は約1.9倍、読む範囲は目の範囲の1.15倍まで）で、強度0.28で全閉。口は上唇の動きを下唇の約12%に抑え、顎側が下がる。顔パーツ編集の部位は左右の目・左右の眉・口。
 - 人物前景の縁: `transparentForegroundFromMask`が`decontaminateEdgeColors`で半透明の縁色を最近傍の不透明人物色へ置換し（背景色のハロー防止）、人物マスクは`smoothMaskShape`（開→閉処理）で細い突起を整える。
 - 瞬き: `naturalBlinkPulse` が対数正規間隔・非対称カーブ・二度瞬き・浅い瞬きを生成。口は `expression`（普通/笑顔/真面目）の口角と、`talkMode` 時の `talkingMouthOpen`（音節リズム×フレーズ包絡）で開閉。
 - 動きの大きさ: `MOTION_STYLES`（calm/lively/dynamic）がばね振幅・速さ・変位上限・視点の自動ゆらぎ・風を切り替える。
 - 腕・脚は関節で2分割（`arm-*`=二の腕: 肩→肘、`forearm-*`: 肘→手首、`leg-*`=太もも: 股関節→膝、`shin-*`: 膝→足首）。前腕・膝下は親（二の腕・太もも）を継承する別ばね。変形は各楕円の平行移動で、関節での回転（曲げ）は未実装。追加部位（`custom`）のシェーダ枠は12件（`u_extraRegion0..11`）。
 - 眉（`brow-left/right`、`u_browL/u_browR`）は顔ランドマーク（300/336/334、70/107/105）で実測し、`u_featureExpr.x`（表情）で上下・内寄せ、瞬きに連動して僅かに下がる。首（`neck`、`u_neckR`）は頭下端と肩中点の間に置き、自身のばねで平行移動する。
+- 顔の傾き: `faceFeaturesFromLandmarks`は目の外端（33→263）と顎・額（152・10）の軸の平均を`roll`、目・眉・口は自分の両端を結ぶ線を`angles`、顔の輪郭（10/152/234/454）を`face`として返し、`buildHumanRigParts`が頭の範囲・角度と特徴部位の`angle`へ使う。ランドマーク未検出時のみ従来の頭ボーン向きと顔楕円推定。体幹ボーン（`humanPoseBones`）は股関節の視認度が低い／画面外なら肩幅×1.35で骨盤を決め、背骨は首〜骨盤の38%、腰は`humanParts.waistY`（無ければ65%）。部位の選択（`guideDragTargetAt`）は最近傍の中心を優先し、部位の範囲内（`pointInPartShape`）も判定する。特徴部位の形状は`part.shape`（`ellipse/rect/almond/brow/lips`）。目=アーモンド、眉=弓なり、口=唇を人物リグ生成時の既定とし、JS（`partShapeNorm`/`partOutlineLocal`）とシェーダ（`featureNorm`、`u_featureShape/u_featureShape2`、眉の傾きは`u_featureAngle2`）で同じ式を使う。ガイド・顔パーツ編集の輪郭と選択判定もこの式。
 - 特徴部位のばね成分は `u_featureMotion0..3` で部位自身の `spring.x/y` だけを渡す（親継承込みの `effectiveX` を使うと頭の変位と二重になり目が顔から浮く）。
 - 検証フック（`?p3dTest`）の `snapshot()` は `gl.readPixels` で描画バッファを読む（`preserveDrawingBuffer:false` のため `toDataURL` では空になる）。`setMotion({blink,mouth,gaze,breath,freezeHair,boost})` で時間依存の動きを固定し、表情だけの画素差分を計測できる。
 
@@ -262,3 +263,11 @@ GPUでFaceLandmarker生成
 ### 画像選択後の自動2層化（r8）
 
 `#autoSegmentOnPick`（既定ON、`p3d.autoSegmentOnPick.v1`へ保存）がONの場合、ファイル選択で画像が読み込まれた直後に`autoSegmentPerson({closePanelOnSuccess:true})`を呼ぶ。分離・面積検査（1〜92%）・タイムアウトは手動実行と同じ経路で、失敗時はエラー表示と手動マスク経路を残し、成功時のみパネルを閉じる。OFFなら従来どおり手動ボタンで実行する。
+
+
+## マスク（アクセサリ・髪・服の個別領域）
+
+- データ: `maskState.masks`（最大4件、`MASK_MAX`）。各マスクは画像座標をグリッド（長辺640px）へ量子化した2値配列、種類、追従する親部位（無ければ重心）、`rigid`（アニメーション除外）、追従量`follow`、表示を持つ。前景画像が変わる（`uploadForegroundImage`）か`clearMaps`で破棄する。保存（リグJSONへの出力）は未実装。
+- 描画（`rigid`のマスクのみ）: `maskUploadTextures`がマスクを4チャンネルのアトラス（`u_maskTex`、TEXTURE7、リスト順＝チャンネル順）へ、マスクを3画素広げた領域と透明画素を`pushPullFill`で補完した前景（`u_fillTex`、TEXTURE8）を作る。shaderの`foregroundTexel`は、マスク周辺だけ補完画像へ置換して本体を変形する（マスク内を変形に巻き込まない・背面を補完）。`applyMaskLayer`は親位置（`riggedForegroundUV(anchor)`）のリグ変位をマスク全体へ一律に与え、元の前景からマスク形状をそのまま重ねる（`u_maskBox*`の外は評価しない）。補完画像のalphaも輪郭判定へ使う。TEXTURE_IMAGE_UNITSが9未満の端末ではマスクを無効にする。
+- 編集: ガイドキャンバスのポインタ（`maskPointerDown/Move/Up`）。投げ縄は走査線の偶奇塗り、選択範囲の演算は`maskCombine`（new/add/sub/intersect）、魔法の棒は色差の連結領域、ペン・消しゴムはブラシ形状と大きさを選ぶ。「アクセサリを自動選択」は`humanParts.accessories`の周辺で外周の中央値色と違う画素の最大連結塊（足元は除外）。
+- 制約・未実装: 4件まで／髪・服の自動選択なし／保存・読込なし／補完は粗い（push-pullの色のぼかし）で、背面の細かい模様は再現しない／親は部位の中心の変位に追従（部位内の回転・伸縮は反映しない）。
