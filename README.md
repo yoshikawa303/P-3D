@@ -50,3 +50,15 @@ python3 scripts/dev/serve_pages.py
 ```
 
 `https://localhost:8443/P-3D/` でPagesと同じパス構成のまま確認できる。既定は自分のMacだけに公開する。iPhone Safari実機で確認する場合は `--lan` を付けると同一Wi-Fiへ公開され、表示されるURLを自己署名証明書の警告を許可して開く（HTTPSのためカメラ権限を要求できる）。終了は Ctrl+C。
+
+## GitHub Pages への一時公開（Private リポジトリ）
+
+リポジトリは Private のため通常は Pages が停止している。実機で Pages 版を確認したいときは、次をダブルクリック（Mac: `scripts/dev/pages_toggle.command`、Windows: `scripts/dev/pages_toggle.bat`）するか、コマンドで実行する。
+
+```bash
+python3 scripts/dev/pages_toggle.py
+```
+
+- Private のとき: Public へ変更 → Pages を `main` ルートで有効化 → ビルド → `main` の最新コミットが `https://yoshikawa303.github.io/P-3D/` で配信されるまで待ってブラウザで開く。
+- Public のとき: Private へ戻す（Pages は停止して 404 になる）。確認が終わったら必ずもう一度実行して Private へ戻す。
+- 配信されるのは GitHub 上の `main` だけ（ローカルの未push変更は含まれない）。認証は GitHub CLI（`gh auth login` 済み）か環境変数 `GITHUB_TOKEN`。`--status` で状態表示のみ、`--dry-run` で変更なしの予定表示。

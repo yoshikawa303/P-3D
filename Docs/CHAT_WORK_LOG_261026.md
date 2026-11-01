@@ -596,3 +596,16 @@ Privateのまま
 - 決定: リポジトリは Private を維持し、Public へは戻さない。Free プランのため GitHub Pages（`https://yoshikawa303.github.io/P-3D/`）は停止したまま（404）となる。
 - 影響: CLAUDE.md §8 の「Pages URLで配信確認」は実施不能となるため、以後の完了報告では「Pages 配信は未確認（Private 維持のため停止中）」と明記する。CLAUDE.md／PROJECT_RULES.md の公開手順の見直しは仕様変更にあたるため未変更（ユーザー判断待ち）。
 - モデル: Fable 5.1（動的切替なし）。
+
+### 2026-11-01 14:26 JST - Claude Code (Fable 5.1) - 種別: 依頼内容 - Pages一時公開の切替バッチ
+```
+★時々Pagesにアップして動作確認を行いたいため、ワンクリックで、Privateであれば、一時停止Publicに変更し、GIthub Pagesに最新版をアップするバッチを作って(可能であればMAC/Win共有)。同じバッチを再度実行した場合、Publicであれば、Privateに戻す処理をしてほしい。
+```
+- モデル: Fable 5.1（動的切替なし）。対象工程: GitHub API を使う切替スクリプト（Python＋Mac/Win ラッパ）の設計・実装・ドライラン・規則文書の更新。
+
+### 2026-11-01 14:28 JST - Claude Code (Fable 5.1) - 種別: 作業結果 - Pages一時公開の切替バッチ（概算25分）
+- 追加: `scripts/dev/pages_toggle.py`（Python標準ライブラリのみ、GitHub REST API を直接呼ぶ。認証は `GITHUB_TOKEN` か `gh auth token`）。Mac用 `pages_toggle.command`、Windows用 `pages_toggle.bat` のダブルクリック用ラッパ。
+- 動作: Private → `PATCH private:false` → `GET/POST/PUT /pages`（main ルート）→ `POST /pages/builds` → `GET /pages/builds/latest` が `built` かつ commit が main の HEAD で、配信URLが HTTP 200 になるまで最大600秒待機 → ブラウザで開く。Public → `PATCH private:true`。`--status`／`--dry-run`／`--no-open`／`--timeout`。Git checkout なら未コミット・未push を警告、checkout でなければ「配信されるのは GitHub 上の main」と表示。
+- 文書: README（使い方）、PROJECT_RULES・CLAUDE.md（一時公開の運用、AIはスクリプトを実行しない）、CHANGELOG。
+- 検証: `py_compile` OK、`--status`（Private／Pages無効／HTTP 404）と `--dry-run` を実行し、API書込なしで想定どおりの表示。**Public への実切替は未実行**（ユーザー操作）。Windows の `.bat` は未検証。`web_regression_gate.py` PASS。
+- モデル: Fable 5.1（動的切替なし）。
