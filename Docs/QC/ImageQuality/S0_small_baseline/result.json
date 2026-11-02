@@ -1,0 +1,100 @@
+{
+  "trial": "S0_small_baseline",
+  "src": "/index.html",
+  "date": "2026-11-02T10:47:54.131Z",
+  "cases": {
+    "small60_heroine_on_city": {
+      "proxy": {
+        "fillSharpRatio": 0.318,
+        "personArea": 0.1968,
+        "edgeAlign": 2.412,
+        "roughness": 1.22,
+        "skinMissRatio": 0.1128,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 907,
+      "gt": {
+        "iou": 0.9204,
+        "alphaMAE": 0.018,
+        "bgHolePSNR": 16.56,
+        "ringPSNR": 22.39,
+        "shiftPSNR": 29.54,
+        "shiftChangedPSNR": 23.73,
+        "recompPSNR": 34.02,
+        "score": 53.5
+      },
+      "overlayArea": 0
+    },
+    "small45_city_on_pixie": {
+      "proxy": {
+        "fillSharpRatio": 0.625,
+        "personArea": 0.0428,
+        "edgeAlign": 3.104,
+        "roughness": 1.204,
+        "skinMissRatio": 0.5373,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 1150,
+      "gt": {
+        "iou": 0.9314,
+        "alphaMAE": 0.0036,
+        "bgHolePSNR": 24.67,
+        "ringPSNR": 28.85,
+        "shiftPSNR": 36.99,
+        "shiftChangedPSNR": 25.38,
+        "recompPSNR": 39.68,
+        "score": 77.2
+      },
+      "overlayArea": 0
+    },
+    "small45_mint_on_heroine": {
+      "proxy": {
+        "fillSharpRatio": 0.461,
+        "personArea": 0.0425,
+        "edgeAlign": 1.846,
+        "roughness": 1.125,
+        "skinMissRatio": 0.442,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 831,
+      "gt": {
+        "iou": 0.8682,
+        "alphaMAE": 0.0063,
+        "bgHolePSNR": 13.16,
+        "ringPSNR": 16.28,
+        "shiftPSNR": 26.76,
+        "shiftChangedPSNR": 17.04,
+        "recompPSNR": 34.06,
+        "score": 44.9
+      },
+      "overlayArea": 0
+    },
+    "small30_pixie_on_mint": {
+      "proxy": {
+        "fillSharpRatio": 0.776,
+        "personArea": 0.0166,
+        "edgeAlign": 4.368,
+        "roughness": 1.329,
+        "skinMissRatio": 0.1417,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 1368,
+      "gt": {
+        "iou": 0.8928,
+        "alphaMAE": 0.0022,
+        "bgHolePSNR": 25.26,
+        "ringPSNR": 27.6,
+        "shiftPSNR": 40.16,
+        "shiftChangedPSNR": 26.06,
+        "recompPSNR": 43.43,
+        "score": 81.1
+      },
+      "overlayArea": 0
+    }
+  },
+  "meanScore": 64.2
+}

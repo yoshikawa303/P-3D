@@ -4469,16 +4469,67 @@ function combinePersonMasks(firstMask,secondMask,overlay){
   return canvas;
 }
 
+// 人物分離モデルの入力は256px級のため、人物が画像の一部だと輪郭が粗い。人物の外接範囲を切り出して拡大し、
+// 同じモデルで再分離して外接範囲内のマスクを置き換える（人物が小さいほど効く）。拡大しても得が小さい・再分離で人物が大きく
+// 欠けた場合は元のマスクを使う。
+async function zoomRefinePersonMask(source,maskCanvas,segmentFn,maxPasses=2){
+  const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
+  let current=maskCanvas;
+  for(let pass=0;pass<maxPasses;pass++){
+    const {data,width,height}=readScaledPixels(current,384);
+    let x0=width,x1=-1,y0=height,y1=-1,area=0;
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4]>127){area++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+    if(x1<0||area<width*height*.004)return current;
+    const margin=.1,bw=(x1-x0+1)/width,bh=(y1-y0+1)/height;
+    const left=Math.max(0,x0/width-bw*margin),right=Math.min(1,(x1+1)/width+bw*margin);
+    const top=Math.max(0,y0/height-bh*margin),bottom=Math.min(1,(y1+1)/height+bh*margin);
+    // 切り出しの長辺が元画像の長辺の75%以下のときだけ（拡大率が約1.3倍以上）再分離する。
+    if(Math.max((right-left)*sourceWidth,(bottom-top)*sourceHeight)>Math.max(sourceWidth,sourceHeight)*.75)return current;
+    const cropX=Math.round(left*sourceWidth),cropY=Math.round(top*sourceHeight);
+    const cropW=Math.max(8,Math.round((right-left)*sourceWidth)),cropH=Math.max(8,Math.round((bottom-top)*sourceHeight));
+    const crop=document.createElement("canvas");crop.width=cropW;crop.height=cropH;
+    crop.getContext("2d").drawImage(source,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+    const result=await segmentFn(crop);
+    const zoomed=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
+    result.categoryMask.close();
+    const before=readScaledPixels(current,384).data,zoomData=readScaledPixels(zoomed,384);
+    // 切り出し領域内で、再分離の人物面積が元の6割未満なら失敗とみなして採用しない。
+    const rx0=Math.floor(left*width),rx1=Math.ceil(right*width),ry0=Math.floor(top*height),ry1=Math.ceil(bottom*height);
+    let beforeArea=0,zoomArea=0;
+    for(let y=ry0;y<ry1;y++)for(let x=rx0;x<rx1;x++){
+      if(before[(y*width+x)*4]>127)beforeArea++;
+      const zx=Math.min(zoomData.width-1,Math.floor((x/width-left)/(right-left)*zoomData.width)),zy=Math.min(zoomData.height-1,Math.floor((y/height-top)/(bottom-top)*zoomData.height));
+      if(zx>=0&&zy>=0&&zoomData.data[(zy*zoomData.width+zx)*4]>127)zoomArea++;
+    }
+    if(zoomArea<beforeArea*.6)return current;
+    const out=document.createElement("canvas");out.width=current.width;out.height=current.height;
+    const context=out.getContext("2d");
+    context.drawImage(current,0,0);
+    const dx=left*out.width,dy=top*out.height,dw=(right-left)*out.width,dh=(bottom-top)*out.height;
+    context.fillStyle="#000";context.fillRect(Math.floor(dx),Math.floor(dy),Math.ceil(dw)+1,Math.ceil(dh)+1);
+    context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";
+    context.drawImage(zoomed,0,0,zoomed.width,zoomed.height,dx,dy,dw,dh);
+    // 補間で灰色になった縁を2値へ戻す。
+    const image=context.getImageData(0,0,out.width,out.height);
+    for(let index=0;index<image.data.length;index+=4){const v=image.data[index]>127?255:0;image.data[index]=image.data[index+1]=image.data[index+2]=v;image.data[index+3]=255}
+    context.putImageData(image,0,0);
+    current=out;
+  }
+  return current;
+}
+
 // 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
 async function personMaskWithOverlay(source,segmentFn){
   const first=await segmentFn(source);
   const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
   const overlay=detectGraphicOverlay(source,firstMask);
-  if(!overlay)return {result:first,maskCanvas:firstMask,overlay:null};
+  if(!overlay)return {result:first,maskCanvas:await zoomRefinePersonMask(source,firstMask,segmentFn),overlay:null};
   first.categoryMask.close();
-  const result=await segmentFn(removeOverlayFromSource(source,overlay));
+  const cleaned=removeOverlayFromSource(source,overlay);
+  const result=await segmentFn(cleaned);
   const secondMask=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
-  return {result,maskCanvas:combinePersonMasks(firstMask,secondMask,overlay),overlay};
+  const combined=combinePersonMasks(firstMask,secondMask,overlay);
+  return {result,maskCanvas:await zoomRefinePersonMask(cleaned,combined,segmentFn),overlay};
 }
 
 // 人物マスクから背景補完・人物前景(・手前レイヤー)を作る。画像品質計測ハーネス(scripts/qc)も同じ関数で評価する。

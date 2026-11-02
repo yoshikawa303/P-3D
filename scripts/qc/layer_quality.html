@@ -22,7 +22,7 @@ function extractFn(name){
   }
   return null;
 }
-const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","personMaskWithOverlay"];
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","personMaskWithOverlay"];
 const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
 // 新しい補助関数（NAMESに無いもの）も名前規則 qcHelper_ で拾えるよう、index.html側の追加関数を明示列挙する
 const EXTRA=(q.get("extra")||"").split(",").filter(Boolean).map(n=>[n,extractFn(n)]).filter(([,b])=>b);
@@ -160,7 +160,17 @@ const CASES=[
   {id:"city_camisole_overlay",src:A+"demo-auto-city-camisole.png",gt:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-city-camisole-background.png"},overlay:true},
   {id:"navy_pixie",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"}},
   {id:"mint_ponytail",src:A+"demo-auto-mint-ponytail.png",gt:{fg:A+"demo-auto-mint-ponytail-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png"}},
-  {id:"navy_pixie_overlay",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"},overlay:true}
+  {id:"navy_pixie_overlay",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"},overlay:true},
+  // デモ以外の写真を想定した背景入替ケース: 正解人物(前景PNG)を別デモの背景へ合成して分離させる（正解=元の前景と入替後の背景）。
+  {id:"swap_heroine_on_city",swap:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-auto-city-camisole-background.png"}},
+  {id:"swap_city_on_pixie",swap:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"}},
+  {id:"swap_mint_on_heroine",swap:{fg:A+"demo-auto-mint-ponytail-foreground.png",bg:A+"demo-heroine-background.jpg"}},
+  {id:"swap_pixie_on_mint",swap:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png"}},
+  {id:"swap_city_on_mint",swap:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png"}},
+  {id:"small60_heroine_on_city",swap:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-auto-city-camisole-background.png",scale:.6}},
+  {id:"small45_city_on_pixie",swap:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-navy-pixie-background.png",scale:.45,cx:.38}},
+  {id:"small45_mint_on_heroine",swap:{fg:A+"demo-auto-mint-ponytail-foreground.png",bg:A+"demo-heroine-background.jpg",scale:.45,cx:.62}},
+  {id:"small30_pixie_on_mint",swap:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png",scale:.3}}
 ];
 window.QC_SEGMENT=segment;window.QC_LOADIMG=loadImg;window.QC_MAKEOVERLAY=makeOverlay;window.QC_ALPHA=alphaOf;window.QC_COMPOSITE=composite;
 const only=(q.get("only")||"").split(",").filter(Boolean);
@@ -170,7 +180,17 @@ const save=async(path,body,dataurl)=>fetch("/save/"+path,{method:"POST",body,hea
 for(const cs of CASES){
   if(only.length&&!only.includes(cs.id))continue;
   try{
-    let img=await loadImg(cs.src),gt=null;
+    let img,gt=null;
+    if(cs.swap){
+      let fgImg=await loadImg(cs.swap.fg);const bgImg=await loadImg(cs.swap.bg);
+      const [sw,sh]=sizeOf(fgImg);
+      // scale<1: 人物を小さく置く（遠景・全身・集合写真に近い条件。256px入力のモデルは人物が小さいほど輪郭が粗くなる）
+      if(cs.swap.scale){
+        const k=cs.swap.scale,c=document.createElement("canvas");c.width=sw;c.height=sh;
+        c.getContext("2d").drawImage(fgImg,sw*(cs.swap.cx??.5)-sw*k/2,sh*(cs.swap.bottom??.97)-sh*k,sw*k,sh*k);fgImg=c;
+      }
+      img=composite(bgImg,fgImg,null,0,sw,sh);gt={fg:fgImg,bg:bgImg};
+    }else img=await loadImg(cs.src);
     const [w,h]=sizeOf(img);
     if(cs.gt){
       gt={fg:await loadImg(cs.gt.fg),bg:await loadImg(cs.gt.bg)};

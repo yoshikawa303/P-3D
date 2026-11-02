@@ -1102,6 +1102,7 @@ def main() -> int:
     require("function withTimeout(" in html, "人物分離のタイムアウト補助関数がありません")
     require("withTimeout(createImageSegmenter()" in html or "withTimeout(createImageSegmenter(" in html, "人物分離モデル読込にタイムアウトがありません")
     require("withTimeout(personMaskWithOverlay(" in html and "segmentStillImage(imageSegmenter,image)" in html, "人物分離推論にタイムアウトがありません")
+    require("async function zoomRefinePersonMask(" in html and "await zoomRefinePersonMask(" in html and "zoomArea<beforeArea*.6" in html, "人物範囲の切出し拡大再分離（失敗時は元マスクへ戻す）がありません")
     require("withTimeout(createPoseLandmarker()" in html, "姿勢検出モデル読込にタイムアウトがありません")
     print("PASS: segmentation/pose model load and inference timeouts")
     print("PASS: settings panel visibility toggle and accessibility")

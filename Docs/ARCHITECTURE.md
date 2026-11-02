@@ -141,6 +141,8 @@ Face Landmarkerの両目間隔は追跡開始時を基準値とし、顔が近�
 - 特徴部位のばね成分は `u_featureMotion0..3` で部位自身の `spring.x/y` だけを渡す（親継承込みの `effectiveX` を使うと頭の変位と二重になり目が顔から浮く）。
 - 検証フック（`?p3dTest`）の `snapshot()` は `gl.readPixels` で描画バッファを読む（`preserveDrawingBuffer:false` のため `toDataURL` では空になる）。`setMotion({blink,mouth,gaze,breath,freezeHair,boost})` で時間依存の動きを固定し、表情だけの画素差分を計測できる。
 
+- 人物分離の拡大再分離: `personMaskWithOverlay` の最後に `zoomRefinePersonMask` が人物マスクの外接範囲（余白10%）を切り出して再分離し、範囲内を置換する（外接長辺が元画像の75%以下のときだけ、最大2回、再分離の人物面積が元の6割未満なら不採用）。手前文字がある場合は文字除去後の画像（768px上限）を使う。
+
 ### プロジェクト（部品レイヤ合成）
 
 - `#pjEditor`: 独立した2Dキャンバスのレイヤ配列 `pj.layers`（`canvas`,`x`,`y`,`visible`）を持つ編集ウィンドウ。画像追加（`createImageBitmap`）と `paste` イベント（⌘/Ctrl+V、ウィンドウ表示中のみ）で追加し、プロジェクト幅内に縮小して中央配置。ドラッグ移動は `pjConstrain()` が Shift で移動量の大きい軸へ固定。保存形式は `P3D-Project` JSON（レイヤはPNG data URL）。「表示へ反映」は合成canvasを `uploadImage()` へ渡し、以降は通常画像と同じ経路（人物分離・リグ推定）。外部送信なし。
