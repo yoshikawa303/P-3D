@@ -4414,6 +4414,13 @@ function detectGraphicOverlay(source,personMaskSource,debug=null,textRegions=nul
       const o=index*4,hi=Math.max(data[o],data[o+1],data[o+2]),lo=Math.min(data[o],data[o+1],data[o+2]);
       if((luma[index]<local[index]-55&&hi<120)||(luma[index]>local[index]+55&&lo>165)||(hi-lo>135&&hi>140)){overlay[index]=1;area++}
     }
+    // 炎のようなピンクのグラデーション文字は縁が淡く残って背景補完に滲むため、検出済み文字に接する赤〜ピンク系の画素まで広げる。
+    const nearInk=dilateHoleByDistance(overlay,width,height,3);
+    for(let index=0;index<total;index++){
+      if(overlay[index]||!nearInk[index]||regionPerson[index])continue;
+      const o=index*4,r=data[o],g=data[o+1],b=data[o+2];
+      if(r-g>55&&r-b>20&&r>150){overlay[index]=1;area++}
+    }
   }
   if(area<total*.008)return null;
   // 文字の白い縁取りなど、検出済みの文字に接する細い平坦成分も手前要素へ含める。
