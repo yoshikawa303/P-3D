@@ -22,7 +22,7 @@ function extractFn(name){
   }
   return null;
 }
-const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","personMaskWithOverlay"];
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","loadMattingSession","modnetMatte","refinePersonMaskWithMatte","personMaskWithOverlay"];
 const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
 // 新しい補助関数（NAMESに無いもの）も名前規則 qcHelper_ で拾えるよう、index.html側の追加関数を明示列挙する
 const EXTRA=(q.get("extra")||"").split(",").filter(Boolean).map(n=>[n,extractFn(n)]).filter(([,b])=>b);
@@ -201,7 +201,7 @@ for(const cs of CASES){
     }
     const t0=performance.now();
     let mask,overlay=null;
-    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
+    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment,q.get("matte")?lib.modnetMatte:null);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
     else mask=maskFromResult(await segment(img));
     const layers=buildLayers(img,mask,overlay);
     const ms=Math.round(performance.now()-t0);

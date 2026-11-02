@@ -4349,6 +4349,43 @@ function detectGraphicOverlay(source,personMaskSource,debug=null){
     }
     component++;
   }
+  // 印刷の網点や色ムラで「平坦」判定から漏れる文字（淡い背景上の黒・鮮やかな色の太字）を、インク色の連結成分として拾う。
+  // 人物マスクの外側だけを対象とし、太すぎる塊（髪・衣服）と形の鋭くない成分は除く。
+  if(area>=total*.002){
+    const personWide=dilateHoleByDistance(person,width,height,Math.max(3,Math.round(maxDim*.006)));
+    const inkNear=dilateHoleByDistance(person,width,height,Math.round(maxDim*.35));
+    const ink=new Uint8Array(total);
+    for(let index=0;index<total;index++){
+      if(personWide[index]||!inkNear[index])continue;
+      const o=index*4,hi=Math.max(data[o],data[o+1],data[o+2]),lo=Math.min(data[o],data[o+1],data[o+2]);
+      if(hi<55||hi-lo>150&&hi>150)ink[index]=1;
+    }
+    const seen=new Uint8Array(total);
+    for(let start=0;start<total;start++){
+      if(!ink[start]||seen[start]||overlay[start])continue;
+      let head=0,tail=0,boundary=0,sharp=0,inOverlay=0,bx0=width,bx1=0,by0=height,by1=0;queue[tail++]=start;seen[start]=1;
+      const seed=start*4;
+      while(head<tail){
+        const index=queue[head++],x=index%width,y=(index-x)/width;
+        if(overlay[index])inOverlay++;
+        if(x<bx0)bx0=x;if(x>bx1)bx1=x;if(y<by0)by0=y;if(y>by1)by1=y;
+        for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){
+          const nx=x+dx,ny=y+dy;
+          if(nx<0||nx>=width||ny<0||ny>=height)continue;
+          const next=ny*width+nx;
+          if(ink[next]&&diff(next*4,seed)<=70){if(!seen[next]){seen[next]=1;queue[tail++]=next}continue}
+          boundary++;
+          let step=0;for(let reach=1;reach<=3;reach++){const rx=x+dx*reach,ry=y+dy*reach;if(rx<0||rx>=width||ry<0||ry>=height)break;step=Math.max(step,diff((ry*width+rx)*4,seed))}
+          if(step>=56)sharp++;
+        }
+      }
+      const strokeWidth=2*tail/Math.max(1,boundary);
+      if(tail>=14&&tail<=total*.02&&strokeWidth<=maxDim*.03&&Math.max(bx1-bx0,by1-by0)<=maxDim*.2&&boundary>0&&sharp/boundary>=.5){
+        for(let item=0;item<tail;item++)overlay[queue[item]]=1;
+        area+=tail;
+      }
+    }
+  }
   if(area<total*.008)return null;
   // 文字の白い縁取りなど、検出済みの文字に接する細い平坦成分も手前要素へ含める。
   const nearGlyph=dilateHoleByDistance(overlay,width,height,3);
@@ -4518,17 +4555,100 @@ async function zoomRefinePersonMask(source,maskCanvas,segmentFn,maxPasses=2){
   return current;
 }
 
+// 高精度マッティング(MODNet, Apache-2.0)をonnxruntime-webで端末内実行する。画像は送信せず、モデルとWASMだけを固定版URLから取得する。
+// 失敗しても従来のMediaPipe経路で続行するため、呼び出し側は null を受け取る。
+function loadMattingSession(){
+  if(loadMattingSession.cache)return loadMattingSession.cache;
+  const base="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+  const model="https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model_quantized.onnx";
+  loadMattingSession.cache=(async()=>{
+    const ort=await import(base+"ort.bundle.min.mjs");
+    ort.env.wasm.wasmPaths=base;ort.env.wasm.numThreads=1;
+    const session=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return {ort,session};
+  })().catch(error=>{loadMattingSession.cache=null;loadMattingSession.lastError=error;return null});
+  return loadMattingSession.cache;
+}
+
+// 画像全体のalpha(0..255のグレー画像)を返す。入力は短辺512・32の倍数へ縮小し、長辺は1024までに抑える。
+async function modnetMatte(source){
+  const loaded=await loadMattingSession();
+  if(!loaded)return null;
+  const sw=source.naturalWidth||source.width,sh=source.naturalHeight||source.height;
+  const k=Math.min(512/Math.min(sw,sh),1024/Math.max(sw,sh));
+  const rw=Math.max(32,Math.round(sw*k/32)*32),rh=Math.max(32,Math.round(sh*k/32)*32);
+  const canvas=document.createElement("canvas");canvas.width=rw;canvas.height=rh;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,rw,rh);
+  const pixels=context.getImageData(0,0,rw,rh).data,plane=rw*rh,input=new Float32Array(3*plane);
+  for(let i=0;i<plane;i++){input[i]=pixels[i*4]/127.5-1;input[plane+i]=pixels[i*4+1]/127.5-1;input[2*plane+i]=pixels[i*4+2]/127.5-1}
+  const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,3,rh,rw])});
+  const tensor=output[loaded.session.outputNames[0]],h=tensor.dims[tensor.dims.length-2],w=tensor.dims[tensor.dims.length-1];
+  const out=document.createElement("canvas");out.width=w;out.height=h;
+  const outContext=out.getContext("2d"),image=outContext.createImageData(w,h);
+  for(let i=0;i<w*h;i++){const v=Math.max(0,Math.min(255,Math.round(tensor.data[i]*255)));image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
+  outContext.putImageData(image,0,0);
+  return out;
+}
+
+// MediaPipeの人物マスクを、MODNetのalphaで補正する。MODNetの人物候補のうちMediaPipeマスクと重なる連結成分だけを採用し、
+// 背景の誤検出（植木鉢など）を捨てる。面積が大きく食い違うときはMODNetを信用せず元のマスクを返す。
+function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
+  if(!matteCanvas)return maskCanvas;
+  const long=Math.max(maskCanvas.width,maskCanvas.height,512),scale=long/Math.max(maskCanvas.width,maskCanvas.height);
+  const width=Math.max(1,Math.round(maskCanvas.width*scale)),height=Math.max(1,Math.round(maskCanvas.height*scale));
+  const read=canvas=>{const c=document.createElement("canvas");c.width=width;c.height=height;const x=c.getContext("2d",{willReadFrequently:true});x.imageSmoothingQuality="high";x.drawImage(canvas,0,0,width,height);return x.getImageData(0,0,width,height).data};
+  const base=read(maskCanvas),matte=read(matteCanvas),total=width*height;
+  const label=new Int32Array(total),stats=[];
+  const queue=new Int32Array(total);
+  for(let start=0;start<total;start++){
+    if(label[start]||matte[start*4]<=127)continue;
+    const id=stats.length+1;let head=0,tail=0,size=0,overlap=0;queue[tail++]=start;label[start]=id;
+    while(head<tail){
+      const index=queue[head++],x=index%width,y=(index/width)|0;size++;if(base[index*4]>127)overlap++;
+      if(x>0&&!label[index-1]&&matte[(index-1)*4]>127){label[index-1]=id;queue[tail++]=index-1}
+      if(x<width-1&&!label[index+1]&&matte[(index+1)*4]>127){label[index+1]=id;queue[tail++]=index+1}
+      if(y>0&&!label[index-width]&&matte[(index-width)*4]>127){label[index-width]=id;queue[tail++]=index-width}
+      if(y<height-1&&!label[index+width]&&matte[(index+width)*4]>127){label[index+width]=id;queue[tail++]=index+width}
+    }
+    stats.push({size,overlap});
+  }
+  const keep=stats.map(s=>s.overlap>=s.size*.35);
+  // MODNetが効くのはMediaPipe輪郭の周辺帯(半径radius)だけ。帯の内側は常に人物、外側は常に背景として、
+  // 文字除去跡などでMODNetが内部を欠いても人物本体は失わない。
+  const radius=Math.max(2,Math.round(Math.max(width,height)*.03));
+  const window=(source,grow)=>{
+    const tmp=new Uint8Array(total),res=new Uint8Array(total);
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++){let hit=grow?0:1;for(let dx=-radius;dx<=radius;dx++){const nx=x+dx;const v=nx<0||nx>=width?0:source[y*width+nx];if(grow){if(v){hit=1;break}}else if(!v){hit=0;break}}tmp[y*width+x]=hit}
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++){let hit=grow?0:1;for(let dy=-radius;dy<=radius;dy++){const ny=y+dy;const v=ny<0||ny>=height?0:tmp[ny*width+x];if(grow){if(v){hit=1;break}}else if(!v){hit=0;break}}res[y*width+x]=hit}
+    return res;
+  };
+  const binary=new Uint8Array(total);let baseArea=0;
+  for(let i=0;i<total;i++){binary[i]=base[i*4]>127?1:0;baseArea+=binary[i]}
+  if(!baseArea)return maskCanvas;
+  const inner=window(binary,false),outer=window(binary,true),result=new Uint8Array(total);
+  let keptArea=0;
+  for(let i=0;i<total;i++){result[i]=inner[i]||(outer[i]&&label[i]&&keep[label[i]-1])?1:0;keptArea+=result[i]}
+  if(keptArea<baseArea*.8||keptArea>baseArea*1.25)return maskCanvas;
+  const out=document.createElement("canvas");out.width=width;out.height=height;
+  const context=out.getContext("2d"),image=context.createImageData(width,height);
+  for(let i=0;i<total;i++){const v=result[i]?255:0;image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
+  context.putImageData(image,0,0);
+  return out;
+}
+
 // 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
-async function personMaskWithOverlay(source,segmentFn){
+async function personMaskWithOverlay(source,segmentFn,matteFn=null){
   const first=await segmentFn(source);
   const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
   const overlay=detectGraphicOverlay(source,firstMask);
-  if(!overlay)return {result:first,maskCanvas:await zoomRefinePersonMask(source,firstMask,segmentFn),overlay:null};
+  if(!overlay)return {result:first,maskCanvas:refinePersonMaskWithMatte(await zoomRefinePersonMask(source,firstMask,segmentFn),matteFn?await matteFn(source):null),overlay:null};
   first.categoryMask.close();
   const cleaned=removeOverlayFromSource(source,overlay);
   const result=await segmentFn(cleaned);
   const secondMask=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
   const combined=combinePersonMasks(firstMask,secondMask,overlay);
+  // 文字除去跡が残る画像ではMODNetが人物内部を欠く例（city_camisole_overlay等）があったため、文字がある画像では併用しない。
   return {result,maskCanvas:await zoomRefinePersonMask(cleaned,combined,segmentFn),overlay};
 }
 
@@ -4678,9 +4798,11 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
   try{
     if(!imageSegmenter)imageSegmenter=await withTimeout(createImageSegmenter(),45000,"人物分離モデルの読込");
     statusEl.textContent="人物と背景を分離中…";
+    // 高精度マッティングは任意。取得・実行に失敗したら従来の分離結果をそのまま使う。
+    const matteFn=async image=>{if(new URLSearchParams(location.search).has("noMatte"))return null;statusEl.textContent="高精度マッティングで輪郭を補正中…";try{return await withTimeout(modnetMatte(image),30000,"高精度マッティング")}catch(error){console.warn("matting skipped",error);return null}};
     // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
     currentSubjectOverlay=null;
-    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image)),60000,"人物分離の推論");
+    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn),90000,"人物分離の推論");
     currentSubjectOverlay=separated.overlay;
     personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
     await createLayeredSceneFromMask();
@@ -7066,7 +7188,7 @@ if($("#maskList")){
   syncMaskPanel();
 }
 
-if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={mask:{state:()=>maskState,newMask:(...a)=>{const m=maskNew(...a);syncMaskPanel();return m},fillPolygon:maskFillPolygon,combine:maskCombine,auto:maskAutoAccessories,markDirty:maskMarkDirty},bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());const w=canvas.width,h=canvas.height,px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);ctx.putImageData(img,0,0);return c.toDataURL('image/png')},visual:()=>({...live2dVisualState}),handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
+if(new URLSearchParams(location.search).has("p3dTest"))window.__p3dTest={layers:()=>{const set=sourceImage&&subjectMaskCanvas?buildLayerSet(sourceImage,subjectMaskCanvas,currentSubjectOverlay):null,url=c=>{if(!c)return null;const w=c.naturalWidth||c.width,h=c.naturalHeight||c.height,t=document.createElement("canvas");t.width=w;t.height=h;t.getContext("2d").drawImage(c,0,0);return t.toDataURL("image/png")};return {source:url(sourceImage),mask:url(subjectMaskCanvas),background:url(set?set.background:backgroundLayerSource),foreground:url(set?set.foreground:foregroundLayerSource),front:set?url(set.front):null}},mask:{state:()=>maskState,newMask:(...a)=>{const m=maskNew(...a);syncMaskPanel();return m},fillPolygon:maskFillPolygon,combine:maskCombine,auto:maskAutoAccessories,markDirty:maskMarkDirty},bones:()=>cloneBonePoints(activeBonePoints),profile:()=>cloneRigProfile(activeRigProfile),setMotion:o=>{testMotionOverride=o},snapshot:()=>{render(performance.now());const w=canvas.width,h=canvas.height,px=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),img=ctx.createImageData(w,h);for(let y=0;y<h;y++)img.data.set(px.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);ctx.putImageData(img,0,0);return c.toDataURL('image/png')},visual:()=>({...live2dVisualState}),handles:()=>JSON.parse(JSON.stringify(guideHandles)),parts:()=>cloneRigParts(activeRigParts),canvasSize:()=>[guideCanvas.width,guideCanvas.height],frame:()=>render(performance.now()),renderScale:()=>renderScale,stageRect:()=>JSON.parse(JSON.stringify(canvas.getBoundingClientRect()))};
 // ===== プロジェクト（空画像から部品レイヤを重ねて作成） =====
 // レイヤは各々独立したcanvas。合成結果を「表示へ反映」で通常の画像として読み込む（端末内のみで処理）。
 const pjEl=$("#pjEditor"),pjCanvas=$("#pjCanvas"),pjCtx=pjCanvas.getContext("2d");

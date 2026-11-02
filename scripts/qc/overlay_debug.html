@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>文字検出デバッグ</title>
+<body style="font:12px monospace;background:#222;color:#ddd;margin:8px">
+<!-- 使い方: python3 scripts/qc/serve.py 8140 → http://127.0.0.1:8140/scripts/qc/overlay_debug.html?trial=O1&img=/test_img/Sample1.png
+     index.html の detectGraphicOverlay を実モデルで走らせ、検出マスクを元画像へ重ねて保存する（誌面素材は commit しない）。 -->
+<pre id="log"></pre>
+<script type="module">
+const q=new URLSearchParams(location.search),TRIAL=q.get("trial")||"O1",IMG=q.get("img")||"/test_img/Sample1.png";
+const log=t=>{document.getElementById("log").textContent+=t+"\n"};
+const html=await (await fetch(q.get("src")||"/index.html",{cache:"no-store"})).text();
+function extractFn(name){const m=new RegExp("(?:async )?function "+name+"\\(").exec(html);if(!m)return null;let i=html.indexOf("{",html.indexOf(")",m.index)),d=0;for(let j=i;j<html.length;j++){const c=html[j];if(c==="{")d++;else if(c==="}"){d--;if(d===0)return html.slice(m.index,j+1)}}return null}
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","boxBlurFloat","readScaledPixels","detectGraphicOverlay","smoothMaskShape","personMaskCanvasFromCategories"];
+const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
+const lib=new Function(found.map(([,b])=>b).join("\n")+"\nreturn {"+found.map(([n])=>n).join(",")+"}")();
+const VISION="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
+const MODEL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
+const mod=await import(VISION+"/vision_bundle.mjs"),vision=await mod.FilesetResolver.forVisionTasks(VISION+"/wasm");
+const seg=await mod.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL},runningMode:"IMAGE",outputCategoryMask:true,outputConfidenceMasks:false});
+const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=IMG});
+const r=await new Promise((res,rej)=>{let d=false;const f=x=>{if(!d){d=true;res(x)}};try{const p=seg.segment(img,f);if(p&&p.then)p.then(x=>{if(x)f(x)}).catch(rej)}catch(e){rej(e)}});
+const pm=lib.personMaskCanvasFromCategories(r.categoryMask.getAsUint8Array(),r.categoryMask.width,r.categoryMask.height);
+const dbg=[];const ov=lib.detectGraphicOverlay(img,pm,dbg);
+log("overlay: "+(ov?ov.area:"null"));
+const w=ov?ov.width:768,h=ov?ov.height:768;
+const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;const x=c.getContext("2d");x.drawImage(img,0,0);
+if(ov){const m=document.createElement("canvas");m.width=ov.width;m.height=ov.height;const mx=m.getContext("2d"),id=mx.createImageData(ov.width,ov.height);for(let i=0;i<ov.mask.length;i++)if(ov.mask[i]){id.data[i*4]=255;id.data[i*4+3]=170}mx.putImageData(id,0,0);x.drawImage(m,0,0,c.width,c.height)}
+x.strokeStyle="#0f0";x.lineWidth=2;
+// 未採用の大きめ成分（文字候補）を青枠で示す
+const sx=c.width/(ov?ov.width:c.width),sy=c.height/(ov?ov.height:c.height);
+window.QC_DBG=dbg;
+await fetch("/save/"+TRIAL+"/overlay.png",{method:"POST",body:c.toDataURL("image/png"),headers:{"X-Encoding":"dataurl"}});
+await fetch("/save/"+TRIAL+"/debug.json",{method:"POST",body:JSON.stringify(dbg)});
+log("components "+dbg.length);window.QC_DONE=true;
+</script>

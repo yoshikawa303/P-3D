@@ -273,3 +273,7 @@ GPUでFaceLandmarker生成
 - 描画（`rigid`のマスクのみ）: `maskUploadTextures`がマスクを4チャンネルのアトラス（`u_maskTex`、TEXTURE7、リスト順＝チャンネル順）へ、マスクを3画素広げた領域と透明画素を`pushPullFill`で補完した前景（`u_fillTex`、TEXTURE8）を作る。shaderの`foregroundTexel`は、マスク周辺だけ補完画像へ置換して本体を変形する（マスク内を変形に巻き込まない・背面を補完）。`applyMaskLayer`は親位置（`riggedForegroundUV(anchor)`）のリグ変位をマスク全体へ一律に与え、元の前景からマスク形状をそのまま重ねる（`u_maskBox*`の外は評価しない）。補完画像のalphaも輪郭判定へ使う。TEXTURE_IMAGE_UNITSが9未満の端末ではマスクを無効にする。
 - 編集: ガイドキャンバスのポインタ（`maskPointerDown/Move/Up`）。投げ縄は走査線の偶奇塗り、選択範囲の演算は`maskCombine`（new/add/sub/intersect）、魔法の棒は色差の連結領域、ペン・消しゴムはブラシ形状と大きさを選ぶ。「アクセサリを自動選択」は`humanParts.accessories`の周辺で外周の中央値色と違う画素の最大連結塊（足元は除外）。
 - 制約・未実装: 4件まで／髪・服の自動選択なし／保存・読込なし／補完は粗い（push-pullの色のぼかし）で、背面の細かい模様は再現しない／親は部位の中心の変位に追従（部位内の回転・伸縮は反映しない）。
+
+### 文字検出と高精度マッティング（2026-11-03）
+- `detectGraphicOverlay` は平坦成分に加え、人物マスク外のインク色連結成分（暗色／高彩度、線幅・外接長・輪郭の鋭さで文字らしさを判定）を手前要素へ追加する。
+- `personMaskWithOverlay(source,segmentFn,matteFn)`: 文字が検出されなかった画像のみ、`modnetMatte`（Xenova/modnet 固定リビジョン、onnxruntime-web 1.20.1 固定、WASM単スレッド、端末内実行）のalphaで `refinePersonMaskWithMatte` が MediaPipe 輪郭の周辺帯だけを補正する。失敗時は従来のマスクのまま。
