@@ -306,6 +306,10 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="clearMaps" class="ibtn secondary"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg><span>解除</span></button>
       </div>
       <div id="mapStatus">Depth: 中心近似 ／ マスク: 中心近似</div>
+      <details class="fold" id="layerFixFold"><summary>レイヤー修正（手動ブラシ）</summary>
+        <div class="hint">人物分離後に、取りこぼした文字を「手前の文字層」へ足す／誤って文字にした所を除く、人物の欠けや食い込みを直す、をブラシで指定します。「適用」でレイヤーを作り直します。画像は端末内だけで処理します。</div>
+        <div class="row"><button id="lfStart" class="winBtn" type="button" disabled>修正画面を開く</button></div>
+      </details>
       <label class="check"><input id="contourCrop" type="checkbox" disabled>マスク外を透明化</label>
       <div class="row"><label for="cropFeather">ぼかし</label><input id="cropFeather" type="range" min="0" max="0.08" step="0.002" value="0.012" disabled></div><div class="hint">背景と透過PNGのキャラ／手前人物を別々に選べます。片方だけを差し替えた場合は、現在表示中のもう一方を維持します。 自動分離または人物／物体マスクを使い、キャラを透過前景へ分けます。隠れた背景は生成AIではなく端末内の近傍色補完で自然につなぐ擬似処理です。画像は外部へ送信しません。 人物自動分離または人物／物体マスク読込後に利用できます。元画像とマスクは変更しません。</div>
     </details>
@@ -541,6 +545,17 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
   </div>
 </div>
 
+<div id="lfModal" role="dialog" aria-modal="true" aria-label="レイヤー修正" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.88);color:#fff;flex-direction:column;align-items:center;gap:8px;padding:10px;box-sizing:border-box">
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center">
+    <select id="lfMode" aria-label="ブラシの種類"><option value="front+">文字を手前層へ追加</option><option value="front-">手前層から除く</option><option value="person+">人物に追加</option><option value="person-">人物から除く</option></select>
+    <label>大きさ <input id="lfSize" type="range" min="2" max="60" step="1" value="12"></label>
+    <button id="lfUndo" class="winBtn" type="button" disabled>戻す</button>
+    <button id="lfApply" class="winBtn" type="button" disabled>適用</button>
+    <button id="lfClose" class="winBtn" type="button">閉じる</button>
+  </div>
+  <div id="lfInfo" style="font-size:12px;opacity:.85">赤＝手前の文字層、青＝人物の範囲。</div>
+  <canvas id="lfCanvas" style="touch-action:none;border-radius:6px;background:#222" aria-label="レイヤー修正キャンバス"></canvas>
+</div>
 <script src="assets/demos/auto-demos.js"></script>
 <script>
 (() => {
@@ -4825,6 +4840,76 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
 $("#autoPerson").addEventListener("click",()=>autoSegmentPerson());
 $("#layerFromMask").addEventListener("click",createLayeredSceneFromMask);
 
+// ---- レイヤー修正（手動ブラシ）----
+// 自動分離の取りこぼしを人が直すための編集。人物マスクと手前の文字マスクを768px基準で編集し、適用で2層化をやり直す。
+const layerFix={active:false,w:0,h:0,person:null,front:null,pixels:null,undo:[],drawing:false};
+function layerFixRender(){
+  const canvas=$("#lfCanvas"),{w,h,person,front,pixels}=layerFix;
+  const context=canvas.getContext("2d"),image=context.createImageData(w,h);
+  for(let index=0;index<w*h;index++){
+    const o=index*4;let r=pixels[o],g=pixels[o+1],b=pixels[o+2];
+    if(front[index]){r=r*.4+255*.6;g*=.4;b*=.4}
+    else if(person[index]){r*=.7;g*=.8;b=b*.7+255*.3}
+    else{r*=.55;g*=.55;b*=.55}
+    image.data[o]=r;image.data[o+1]=g;image.data[o+2]=b;image.data[o+3]=255;
+  }
+  context.putImageData(image,0,0);
+}
+function layerFixStart(){
+  if(!sourceImage||!subjectMaskCanvas){errEl.textContent="先に「人物分離」を実行してください。";return}
+  const {data,width,height}=readScaledPixels(sourceImage,768),mask=readScaledPixels(subjectMaskCanvas,768);
+  const person=new Uint8Array(width*height),front=new Uint8Array(width*height);
+  const resized=mask.width===width&&mask.height===height?mask.data:(()=>{const c=document.createElement("canvas");c.width=width;c.height=height;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(subjectMaskCanvas,0,0,width,height);return x.getImageData(0,0,width,height).data})();
+  for(let index=0;index<person.length;index++)person[index]=resized[index*4]>127?1:0;
+  if(currentSubjectOverlay&&currentSubjectOverlay.width===width&&currentSubjectOverlay.height===height)front.set(currentSubjectOverlay.mask);
+  Object.assign(layerFix,{active:true,w:width,h:height,person,front,pixels:data,undo:[]});
+  const canvas=$("#lfCanvas");canvas.width=width;canvas.height=height;$("#lfModal").style.display="flex";
+  {const fit=Math.min((innerWidth-20)/width,(innerHeight-110)/height);canvas.style.width=Math.round(width*fit)+"px";canvas.style.height=Math.round(height*fit)+"px"}
+  $("#lfApply").disabled=false;$("#lfUndo").disabled=true;
+  layerFixRender();
+}
+function layerFixPaint(event){
+  const canvas=$("#lfCanvas"),rect=canvas.getBoundingClientRect(),scale=layerFix.w/rect.width;
+  const cx=(event.clientX-rect.left)*scale,cy=(event.clientY-rect.top)*scale,radius=Math.max(1,parseInt($("#lfSize").value,10)*scale/2+1),mode=$("#lfMode").value;
+  const {w,h,person,front}=layerFix,r2=radius*radius;
+  for(let y=Math.max(0,Math.floor(cy-radius));y<=Math.min(h-1,Math.ceil(cy+radius));y++)for(let x=Math.max(0,Math.floor(cx-radius));x<=Math.min(w-1,Math.ceil(cx+radius));x++){
+    if((x-cx)*(x-cx)+(y-cy)*(y-cy)>r2)continue;
+    const index=y*w+x;
+    if(mode==="front+"){front[index]=1;person[index]=0}
+    else if(mode==="front-")front[index]=0;
+    else if(mode==="person+"){person[index]=1;front[index]=0}
+    else person[index]=0;
+  }
+  layerFixRender();
+}
+async function layerFixApply(){
+  if(!layerFix.active)return;
+  const {w,h,person,front}=layerFix;
+  const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+  const context=canvas.getContext("2d"),image=context.createImageData(w,h);
+  let frontArea=0;
+  for(let index=0;index<w*h;index++){const v=person[index]?255:0;image.data[index*4]=image.data[index*4+1]=image.data[index*4+2]=v;image.data[index*4+3]=255;frontArea+=front[index]}
+  context.putImageData(image,0,0);
+  subjectMaskCanvas=canvas;
+  uploadMapImage(subjectMaskTex,gl.TEXTURE2,canvas);
+  updateRecognitionGuide(canvas);
+  currentSubjectOverlay=frontArea>0?{mask:Uint8Array.from(front),width:w,height:h,area:frontArea}:null;
+  $("#lfInfo").textContent="適用中…";
+  await createLayeredSceneFromMask();
+  $("#lfInfo").textContent="適用しました。続けて修正できます。赤＝手前の文字層、青＝人物の範囲。";
+}
+$("#lfStart").addEventListener("click",layerFixStart);
+$("#lfApply").addEventListener("click",layerFixApply);
+$("#lfClose").addEventListener("click",()=>{layerFix.active=false;$("#lfModal").style.display="none"});
+$("#lfUndo").addEventListener("click",()=>{const snap=layerFix.undo.pop();if(snap){layerFix.person.set(snap.person);layerFix.front.set(snap.front);layerFixRender()}$("#lfUndo").disabled=!layerFix.undo.length});
+$("#lfCanvas").addEventListener("pointerdown",event=>{
+  if(!layerFix.active)return;
+  layerFix.undo.push({person:Uint8Array.from(layerFix.person),front:Uint8Array.from(layerFix.front)});if(layerFix.undo.length>20)layerFix.undo.shift();
+  $("#lfUndo").disabled=false;layerFix.drawing=true;event.currentTarget.setPointerCapture(event.pointerId);layerFixPaint(event);
+});
+$("#lfCanvas").addEventListener("pointermove",event=>{if(layerFix.drawing)layerFixPaint(event)});
+for(const type of ["pointerup","pointercancel"])$("#lfCanvas").addEventListener(type,()=>{layerFix.drawing=false});
+
 function effectFlags(){
   if($("#combineEffects").checked){
     return {
@@ -4890,6 +4975,7 @@ function syncContourCropAvailability(){
 }
 function syncLayeringControls(){
   $("#layerFromMask").disabled=!sourceImage||!subjectMaskCanvas;
+  $("#lfStart").disabled=!sourceImage||!subjectMaskCanvas;
 }
 function characterPlacementValues(){
   return {

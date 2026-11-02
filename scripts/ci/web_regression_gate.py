@@ -1104,6 +1104,7 @@ def main() -> int:
     require("withTimeout(personMaskWithOverlay(" in html and "segmentStillImage(imageSegmenter,image)" in html, "人物分離推論にタイムアウトがありません")
     require("async function zoomRefinePersonMask(" in html and "await zoomRefinePersonMask(" in html and "zoomArea<beforeArea*.6" in html, "人物範囲の切出し拡大再分離（失敗時は元マスクへ戻す）がありません")
     require("印刷の網点や色ムラで「平坦」判定から漏れる文字" in html and "const inkNear=dilateHoleByDistance(person" in html and "Math.max(bx1-bx0,by1-by0)<=maxDim*.2" in html, "インク色の文字成分検出（髪・暗い机の誤検出抑制つき）がありません")
+    require('id="layerFixFold"' in html and "function layerFixApply(" in html and "function layerFixPaint(" in html and 'mode==="front+"' in html and "currentSubjectOverlay=frontArea>0?" in html, "レイヤー修正（手動ブラシ：手前層／人物の追加・除外と適用）がありません")
     require("function loadMattingSession(" in html and "onnxruntime-web@1.20.1" in html and "fa2fa546052fba4c08921230a26cc69a333fca12" in html and "function refinePersonMaskWithMatte(" in html and "personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn)" in html and "console.warn(\"matting skipped\"" in html, "高精度マッティング(MODNet・固定版・失敗時は従来経路)の組込がありません")
     require("withTimeout(createPoseLandmarker()" in html, "姿勢検出モデル読込にタイムアウトがありません")
     print("PASS: segmentation/pose model load and inference timeouts")

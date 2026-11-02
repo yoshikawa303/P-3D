@@ -277,3 +277,6 @@ GPUでFaceLandmarker生成
 ### 文字検出と高精度マッティング（2026-11-03）
 - `detectGraphicOverlay` は平坦成分に加え、人物マスク外のインク色連結成分（暗色／高彩度、線幅・外接長・輪郭の鋭さで文字らしさを判定）を手前要素へ追加する。
 - `personMaskWithOverlay(source,segmentFn,matteFn)`: 文字が検出されなかった画像のみ、`modnetMatte`（Xenova/modnet 固定リビジョン、onnxruntime-web 1.20.1 固定、WASM単スレッド、端末内実行）のalphaで `refinePersonMaskWithMatte` が MediaPipe 輪郭の周辺帯だけを補正する。失敗時は従来のマスクのまま。
+
+### レイヤー修正（手動ブラシ）
+- `#layerFixFold` の「修正画面を開く」で全画面の `#lfModal` を開き、人物マスク(`subjectMaskCanvas`)と手前の文字マスク(`currentSubjectOverlay`)を768px基準の配列として編集する（`layerFixStart/Paint/Apply`）。ブラシは文字追加（人物から除く）・文字除外・人物追加（文字から除く）・人物除外。適用で `subjectMaskCanvas` と `currentSubjectOverlay` を差し替え、`createLayeredSceneFromMask` で背景補完・前景・手前層を再生成する。
