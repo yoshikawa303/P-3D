@@ -22,7 +22,7 @@ function extractFn(name){
   }
   return null;
 }
-const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","loadMattingSession","modnetMatte","refinePersonMaskWithMatte","loadTextDetector","detectTextRegions","personMaskWithOverlay"];
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","loadMattingSession","modnetMatte","refinePersonMaskWithMatte","loadTextDetector","detectTextRegions","trimPersonMaskByTextRegions","personMaskWithOverlay"];
 const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
 // 新しい補助関数（NAMESに無いもの）も名前規則 qcHelper_ で拾えるよう、index.html側の追加関数を明示列挙する
 const EXTRA=(q.get("extra")||"").split(",").filter(Boolean).map(n=>[n,extractFn(n)]).filter(([,b])=>b);

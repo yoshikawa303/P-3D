@@ -4412,7 +4412,7 @@ function detectGraphicOverlay(source,personMaskSource,debug=null,textRegions=nul
     for(let index=0;index<total;index++){
       if(!region[index]||regionPerson[index]||overlay[index])continue;
       const o=index*4,hi=Math.max(data[o],data[o+1],data[o+2]),lo=Math.min(data[o],data[o+1],data[o+2]);
-      if((luma[index]<local[index]-55&&hi<120)||(hi-lo>135&&hi>140)){overlay[index]=1;area++}
+      if((luma[index]<local[index]-55&&hi<120)||(luma[index]>local[index]+55&&lo>165)||(hi-lo>135&&hi>140)){overlay[index]=1;area++}
     }
   }
   if(area<total*.008)return null;
@@ -4707,19 +4707,54 @@ function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
   return out;
 }
 
+// 文字領域のうち大半が人物の外にあるものは、人物マスクにかかった部分を文字の断片として人物から外す。
+// 文字が人物の体の上に載っている領域（大半が人物内）は触らない。
+function trimPersonMaskByTextRegions(maskCanvas,textRegions){
+  if(!textRegions)return maskCanvas;
+  const {width,height}=textRegions,total=width*height;
+  const data=readScaledPixels(maskCanvas,768);
+  if(data.width!==width||data.height!==height)return maskCanvas;
+  const person=new Uint8Array(total);for(let i=0;i<total;i++)person[i]=data.data[i*4]>127?1:0;
+  const label=new Int32Array(total),queue=new Int32Array(total),drop=new Uint8Array(total);
+  for(let start=0;start<total;start++){
+    if(!textRegions.mask[start]||label[start])continue;
+    let head=0,tail=0,inside=0;queue[tail++]=start;label[start]=1;
+    while(head<tail){
+      const index=queue[head++],x=index%width,y=(index-x)/width;if(person[index])inside++;
+      for(const next of [x>0?index-1:-1,x+1<width?index+1:-1,y>0?index-width:-1,y+1<height?index+width:-1]){
+        if(next<0||label[next]||!textRegions.mask[next])continue;label[next]=1;queue[tail++]=next;
+      }
+    }
+    if(tail>=30&&inside<=tail*.15)for(let item=0;item<tail;item++)drop[queue[item]]=1;
+  }
+  let removed=0;for(let i=0;i<total;i++)if(drop[i]&&person[i]){person[i]=0;removed++}
+  if(!removed)return maskCanvas;
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d"),image=context.createImageData(width,height);
+  for(let i=0;i<total;i++){const v=person[i]?255:0;image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
 // 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
 async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
   const first=await segmentFn(source);
   const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
-  const overlay=detectGraphicOverlay(source,firstMask,null,textFn?await textFn(source):null);
-  if(!overlay)return {result:first,maskCanvas:refinePersonMaskWithMatte(await zoomRefinePersonMask(source,firstMask,segmentFn),matteFn?await matteFn(source):null),overlay:null};
+  const textRegions=textFn?await textFn(source):null;
+  const overlay=detectGraphicOverlay(source,firstMask,null,textRegions);
+  if(!overlay){
+    const refined=refinePersonMaskWithMatte(await zoomRefinePersonMask(source,firstMask,segmentFn),matteFn?await matteFn(source):null);
+    return {result:first,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay:null};
+  }
   first.categoryMask.close();
   const cleaned=removeOverlayFromSource(source,overlay);
   const result=await segmentFn(cleaned);
   const secondMask=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
   const combined=combinePersonMasks(firstMask,secondMask,overlay);
-  // 文字除去跡が残る画像ではMODNetが人物内部を欠く例（city_camisole_overlay等）があったため、文字がある画像では併用しない。
-  return {result,maskCanvas:await zoomRefinePersonMask(cleaned,combined,segmentFn),overlay};
+  const zoomed=await zoomRefinePersonMask(cleaned,combined,segmentFn);
+  // 文字がある画像ではMODNetを併用しない（元画像・文字除去後のどちらへ適用しても輪郭と一致度が悪化した。Q7・Q10）。
+  const refined=zoomed;
+  return {result,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay};
 }
 
 // 人物マスクから背景補完・人物前景(・手前レイヤー)を作る。画像品質計測ハーネス(scripts/qc)も同じ関数で評価する。
