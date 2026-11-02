@@ -28,3 +28,16 @@
 - 記録の扱い: 計測出力のうち著作権のある雑誌表紙由来の画像は commit せず削除（自分が生成した S3_final の2枚）。既存 T0〜T13 フォルダには雑誌表紙由来の画像が既に含まれる（別セッション作成。CLAUDE.md §3 の観点で要判断）。
 - モデル: Sonnet 5.5（動的切替なし。切替権限なし）。
 - push: `b41690c` → `6fd2a95`（`6fd2a95f646e2239de8370b5f761fa822eb6c539`）を `main` へ push、`git ls-remote` で到達確認。
+
+### 2026-11-02 21:04 JST - Claude Code (Sonnet 5.5) - 種別: 依頼内容 - 高精度マッティングモデルの試作
+```
+試作する
+```
+- 方針: ブラウザ内（onnxruntime-web）で動くマッティングモデルを固定版・HTTP応答確認済みURLで試作し、QCハーネスで現行方式と比較。画像は外部送信しない。モデルが外部配布物のため、採用可否は計測結果とライセンス確認後に判断。
+- モデル: Sonnet 5.5（切替権限なし）。
+
+### 2026-11-02 21:20 JST - Claude Code (Sonnet 5.5) - 種別: 作業結果 - MODNet試作評価（概算15分）
+- 試作: `scripts/qc/matting_proto.html` で MODNet（Xenova/modnet rev fa2fa546…、Apache-2.0、6.6MB）を onnxruntime-web 1.20.1 で実行。URLはHTTP 200・サイズ確認済み。
+- 結果: 正解付き9ケースで平均IoU 0.959（現行0.935）、alphaMAE 0.0112（0.0128）。小さい人物で大幅改善（small30 0.893→0.972）。small60_heroineは背景の植木鉢を誤検出し悪化（0.936→0.904）。輪郭は柔らかく甘い。約1.1〜1.5秒/枚（デスクトップ）。
+- 未実施: index.html への組込、iPhone Safari測定、Pages確認、`web_regression_gate.py`（index.html未変更のため対象外）。
+- モデル: Sonnet 5.5（切替なし）。Git: 未commit（下記参照）。

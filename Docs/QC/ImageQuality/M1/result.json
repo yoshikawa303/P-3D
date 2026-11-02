@@ -1,0 +1,74 @@
+{
+  "trial": "M1",
+  "model": "https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model_quantized.onnx",
+  "ort": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/",
+  "cases": {
+    "swap_heroine_on_city": {
+      "iou": 0.9493,
+      "alphaMAE": 0.0359,
+      "ms": 1459,
+      "baseIou": 0.936,
+      "baseMAE": 0.042
+    },
+    "swap_city_on_pixie": {
+      "iou": 0.9759,
+      "alphaMAE": 0.0082,
+      "ms": 1161,
+      "baseIou": 0.9761,
+      "baseMAE": 0.0083
+    },
+    "swap_mint_on_heroine": {
+      "iou": 0.972,
+      "alphaMAE": 0.0079,
+      "ms": 1145,
+      "baseIou": 0.9374,
+      "baseMAE": 0.0153
+    },
+    "swap_pixie_on_mint": {
+      "iou": 0.9922,
+      "alphaMAE": 0.0033,
+      "ms": 1196,
+      "baseIou": 0.9659,
+      "baseMAE": 0.0094
+    },
+    "swap_city_on_mint": {
+      "iou": 0.949,
+      "alphaMAE": 0.0139,
+      "ms": 1138,
+      "baseIou": 0.9519,
+      "baseMAE": 0.0135
+    },
+    "small60_heroine_on_city": {
+      "iou": 0.9042,
+      "alphaMAE": 0.0257,
+      "ms": 1157,
+      "baseIou": 0.9357,
+      "baseMAE": 0.015
+    },
+    "small45_city_on_pixie": {
+      "iou": 0.9782,
+      "alphaMAE": 0.0016,
+      "ms": 1129,
+      "baseIou": 0.947,
+      "baseMAE": 0.0031
+    },
+    "small45_mint_on_heroine": {
+      "iou": 0.939,
+      "alphaMAE": 0.0031,
+      "ms": 1139,
+      "baseIou": 0.8682,
+      "baseMAE": 0.0063
+    },
+    "small30_pixie_on_mint": {
+      "iou": 0.9722,
+      "alphaMAE": 0.0008,
+      "ms": 1139,
+      "baseIou": 0.8928,
+      "baseMAE": 0.0022
+    }
+  },
+  "meanIou": 0.9591,
+  "meanMAE": 0.0112,
+  "baseMeanIou": 0.9346,
+  "baseMeanMAE": 0.0128
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>マッティングモデル試作比較</title>
+<body style="font:12px monospace;background:#222;color:#ddd;margin:8px">
+<!-- 使い方: python3 scripts/qc/serve.py 8140 → http://127.0.0.1:8140/scripts/qc/matting_proto.html?trial=M1
+     MODNet(Xenova/modnet, Apache-2.0, リビジョン固定)をonnxruntime-web(固定版)で実行し、正解付き背景入替ケースのalphaを現行(S3_final)と比較する。 -->
+<pre id="log"></pre>
+<script type="module">
+const q=new URLSearchParams(location.search),TRIAL=q.get("trial")||"M1",W=640;
+const ORT="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+const MODEL="https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model_quantized.onnx";
+const log=t=>{document.getElementById("log").textContent+=t+"\n"};
+const ort=await import(ORT+"ort.bundle.min.mjs");
+ort.env.wasm.wasmPaths=ORT;ort.env.wasm.numThreads=1;
+const sess=await ort.InferenceSession.create(MODEL,{executionProviders:["wasm"]});
+log("入力 "+sess.inputNames+" 出力 "+sess.outputNames);
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("load "+src));i.src=src});
+const cv=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c};
+const sizeOf=img=>{const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,s=Math.min(1,W/Math.max(w,h));return [Math.max(1,Math.round(w*s)),Math.max(1,Math.round(h*s))]};
+function composite(bg,fg,w,h){const c=cv(w,h),x=c.getContext("2d");x.drawImage(bg,0,0,w,h);x.drawImage(fg,0,0,w,h);return c}
+const alphaOf=(img,w,h)=>{const c=cv(w,h),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);const d=x.getImageData(0,0,w,h).data,a=new Float32Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3]/255;return a};
+// MODNet: 短辺512(32の倍数)へリサイズ、mean/std=0.5
+async function modnet(img,w,h){
+  const k=512/Math.min(w,h),rw=Math.max(32,Math.round(w*k/32)*32),rh=Math.max(32,Math.round(h*k/32)*32);
+  const c=cv(rw,rh),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,rw,rh);const d=x.getImageData(0,0,rw,rh).data;
+  const t=new Float32Array(3*rw*rh);
+  for(let i=0;i<rw*rh;i++){t[i]=(d[i*4]/255-.5)/.5;t[rw*rh+i]=(d[i*4+1]/255-.5)/.5;t[2*rw*rh+i]=(d[i*4+2]/255-.5)/.5}
+  const out=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",t,[1,3,rh,rw])});
+  const o=out[sess.outputNames[0]],od=o.data,oh=o.dims[o.dims.length-2],ow=o.dims[o.dims.length-1];
+  const m=cv(ow,oh),mx=m.getContext("2d"),id=mx.createImageData(ow,oh);
+  for(let i=0;i<ow*oh;i++){const v=Math.max(0,Math.min(255,Math.round(od[i]*255)));id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}
+  mx.putImageData(id,0,0);
+  const r=cv(w,h),rx=r.getContext("2d",{willReadFrequently:true});rx.drawImage(m,0,0,w,h);const rd=rx.getImageData(0,0,w,h).data,a=new Float32Array(w*h);
+  for(let i=0;i<a.length;i++)a[i]=rd[i*4]/255;return {alpha:a,canvas:r};
+}
+const A="/assets/demos/";
+const CASES=[
+  ["swap_heroine_on_city",A+"demo-heroine-foreground.png",A+"demo-auto-city-camisole-background.png"],
+  ["swap_city_on_pixie",A+"demo-auto-city-camisole-foreground.png",A+"demo-auto-navy-pixie-background.png"],
+  ["swap_mint_on_heroine",A+"demo-auto-mint-ponytail-foreground.png",A+"demo-heroine-background.jpg"],
+  ["swap_pixie_on_mint",A+"demo-auto-navy-pixie-foreground.png",A+"demo-auto-mint-ponytail-background.png"],
+  ["swap_city_on_mint",A+"demo-auto-city-camisole-foreground.png",A+"demo-auto-mint-ponytail-background.png"],
+  ["small60_heroine_on_city",A+"demo-heroine-foreground.png",A+"demo-auto-city-camisole-background.png",.6,.5],
+  ["small45_city_on_pixie",A+"demo-auto-city-camisole-foreground.png",A+"demo-auto-navy-pixie-background.png",.45,.38],
+  ["small45_mint_on_heroine",A+"demo-auto-mint-ponytail-foreground.png",A+"demo-heroine-background.jpg",.45,.62],
+  ["small30_pixie_on_mint",A+"demo-auto-navy-pixie-foreground.png",A+"demo-auto-mint-ponytail-background.png",.3,.5]
+];
+const base=await (await fetch("/Docs/QC/ImageQuality/S3_final/result.json")).json();
+const res={trial:TRIAL,model:MODEL,ort:ORT,cases:{}};
+for(const [id,fgU,bgU,k,cx] of CASES){
+  try{
+    let fg=await loadImg(fgU);const bg=await loadImg(bgU);const [w,h]=sizeOf(fg);
+    if(k){const c=cv(w,h);c.getContext("2d").drawImage(fg,w*(cx??.5)-w*k/2,h*.97-h*k,w*k,h*k);fg=c}
+    const img=composite(bg,fg,w,h),gt=alphaOf(fg,w,h);
+    const t0=performance.now(),{alpha,canvas}=await modnet(img,w,h),ms=Math.round(performance.now()-t0);
+    let inter=0,uni=0,mae=0;for(let i=0;i<gt.length;i++){const a=alpha[i]>.5,b=gt[i]>.5;if(a&&b)inter++;if(a||b)uni++;mae+=Math.abs(alpha[i]-gt[i])}
+    const b=base.cases[id]?.gt||{};
+    res.cases[id]={iou:+(inter/uni).toFixed(4),alphaMAE:+(mae/gt.length).toFixed(4),ms,baseIou:b.iou,baseMAE:b.alphaMAE};
+    log(id+": "+JSON.stringify(res.cases[id]));
+    const s=cv(w*3+20,h),sx=s.getContext("2d");sx.fillStyle="#555";sx.fillRect(0,0,s.width,h);sx.drawImage(img,0,0);sx.drawImage(canvas,w+10,0);
+    const gc=cv(w,h),gx=gc.getContext("2d");gx.fillStyle="#000";gx.fillRect(0,0,w,h);gx.globalCompositeOperation="source-over";
+    const id2=gx.createImageData(w,h);for(let i=0;i<gt.length;i++){const v=gt[i]*255;id2.data[i*4]=id2.data[i*4+1]=id2.data[i*4+2]=v;id2.data[i*4+3]=255}gx.putImageData(id2,0,0);sx.drawImage(gc,2*(w+10),0);
+    await fetch("/save/"+TRIAL+"/"+id+".png",{method:"POST",body:s.toDataURL("image/png"),headers:{"X-Encoding":"dataurl"}});
+  }catch(e){res.cases[id]={error:String(e&&e.stack||e)};log(id+" ERROR "+e)}
+}
+const v=Object.values(res.cases).filter(c=>c.iou!=null);
+res.meanIou=+(v.reduce((a,c)=>a+c.iou,0)/v.length).toFixed(4);res.meanMAE=+(v.reduce((a,c)=>a+c.alphaMAE,0)/v.length).toFixed(4);
+res.baseMeanIou=+(v.reduce((a,c)=>a+c.baseIou,0)/v.length).toFixed(4);res.baseMeanMAE=+(v.reduce((a,c)=>a+c.baseMAE,0)/v.length).toFixed(4);
+await fetch("/save/"+TRIAL+"/result.json",{method:"POST",body:JSON.stringify(res,null,2)});
+log("MODNet 平均 IoU "+res.meanIou+" MAE "+res.meanMAE+" / 現行 IoU "+res.baseMeanIou+" MAE "+res.baseMeanMAE);
+window.QC_DONE=res;
+</script>
