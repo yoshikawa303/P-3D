@@ -4291,7 +4291,7 @@ function readScaledPixels(source,maxDimension){
 }
 
 // 平坦な単色領域で、境界が鋭く、細く、人物モデルが人物と見なさなかった連結成分を文字・図形として検出する。
-function detectGraphicOverlay(source,personMaskSource,debug=null){
+function detectGraphicOverlay(source,personMaskSource,debug=null,textRegions=null){
   const {data,width,height}=readScaledPixels(source,768),total=width*height,maxDim=Math.max(width,height);
   // 平坦判定: 3x3の各チャンネル幅と、成分の種画素からの色差。緩めると背景のボケ領域まで文字と誤検出する。
   const FLAT_RANGE=12,SEED_TOLERANCE=16;
@@ -4399,6 +4399,20 @@ function detectGraphicOverlay(source,personMaskSource,debug=null){
         for(let item=0;item<tail;item++)overlay[queue[item]]=1;
         area+=tail;
       }
+    }
+  }
+  // 文字領域検出モデルが「文字がある」と示した範囲の内側に限り、周囲より暗い画素と鮮やかな画素を文字として追加する。
+  // 領域の内側だけに緩い判定を許すので、小さな本文を拾っても、領域外の影や髪は巻き込まない。
+  if(textRegions&&textRegions.width===width&&textRegions.height===height){
+    const regionPerson=dilateHoleByDistance(person,width,height,Math.max(3,Math.round(maxDim*.006)));
+    const region=textRegions.mask;
+    const luma=new Float32Array(total);
+    for(let index=0;index<total;index++)luma[index]=data[index*4]*.299+data[index*4+1]*.587+data[index*4+2]*.114;
+    const local=boxBlurFloat(luma,width,height,Math.max(4,Math.round(maxDim*.01)));
+    for(let index=0;index<total;index++){
+      if(!region[index]||regionPerson[index]||overlay[index])continue;
+      const o=index*4,hi=Math.max(data[o],data[o+1],data[o+2]),lo=Math.min(data[o],data[o+1],data[o+2]);
+      if((luma[index]<local[index]-55&&hi<120)||(hi-lo>135&&hi>140)){overlay[index]=1;area++}
     }
   }
   if(area<total*.008)return null;
@@ -4606,6 +4620,47 @@ async function modnetMatte(source){
   return out;
 }
 
+// 文字領域検出(PP-OCRv3 det, RapidOCR配布, Apache-2.0)。文字の認識はせず「文字がありそうな領域」だけを得る。
+// モデルは固定リビジョンから取得し、画像は送信しない。失敗時は null を返し、従来の検出だけで続行する。
+function loadTextDetector(){
+  if(loadTextDetector.cache)return loadTextDetector.cache;
+  const base="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+  const model="https://huggingface.co/SWHL/RapidOCR/resolve/1cfba2e90fc938db55889873735088de210cc173/PP-OCRv3/ch_PP-OCRv3_det_infer.onnx";
+  loadTextDetector.cache=(async()=>{
+    const ort=await import(base+"ort.bundle.min.mjs");
+    ort.env.wasm.wasmPaths=base;ort.env.wasm.numThreads=1;
+    const session=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return {ort,session};
+  })().catch(error=>{loadTextDetector.cache=null;loadTextDetector.lastError=error;return null});
+  return loadTextDetector.cache;
+}
+
+// 戻り値: {width,height,mask:Uint8Array} 。width/height は readScaledPixels(source,768) と同じ寸法。
+async function detectTextRegions(source){
+  const loaded=await loadTextDetector();
+  if(!loaded)return null;
+  const {width,height}=readScaledPixels(source,768);
+  // 入力は長辺を960以下・32の倍数に揃える（PP-OCR det の標準的な前処理）。
+  const scale=Math.min(960/Math.max(width,height),Math.max(1,640/Math.max(width,height)));
+  const rw=Math.max(32,Math.round(width*scale/32)*32),rh=Math.max(32,Math.round(height*scale/32)*32);
+  const canvas=document.createElement("canvas");canvas.width=rw;canvas.height=rh;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,rw,rh);
+  const pixels=context.getImageData(0,0,rw,rh).data,plane=rw*rh,input=new Float32Array(3*plane);
+  // 学習時の前処理に合わせ BGR 順・ImageNet 平均／標準偏差で正規化する。
+  for(let i=0;i<plane;i++){
+    input[i]=(pixels[i*4+2]/255-.485)/.229;input[plane+i]=(pixels[i*4+1]/255-.456)/.224;input[2*plane+i]=(pixels[i*4]/255-.406)/.225;
+  }
+  const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,3,rh,rw])});
+  const tensor=output[loaded.session.outputNames[0]],oh=tensor.dims[tensor.dims.length-2],ow=tensor.dims[tensor.dims.length-1];
+  const mask=new Uint8Array(width*height);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const sx=Math.min(ow-1,Math.floor(x/width*ow)),sy=Math.min(oh-1,Math.floor(y/height*oh));
+    if(tensor.data[sy*ow+sx]>.3)mask[y*width+x]=1;
+  }
+  return {width,height,mask};
+}
+
 // MediaPipeの人物マスクを、MODNetのalphaで補正する。MODNetの人物候補のうちMediaPipeマスクと重なる連結成分だけを採用し、
 // 背景の誤検出（植木鉢など）を捨てる。面積が大きく食い違うときはMODNetを信用せず元のマスクを返す。
 function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
@@ -4653,10 +4708,10 @@ function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
 }
 
 // 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
-async function personMaskWithOverlay(source,segmentFn,matteFn=null){
+async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
   const first=await segmentFn(source);
   const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
-  const overlay=detectGraphicOverlay(source,firstMask);
+  const overlay=detectGraphicOverlay(source,firstMask,null,textFn?await textFn(source):null);
   if(!overlay)return {result:first,maskCanvas:refinePersonMaskWithMatte(await zoomRefinePersonMask(source,firstMask,segmentFn),matteFn?await matteFn(source):null),overlay:null};
   first.categoryMask.close();
   const cleaned=removeOverlayFromSource(source,overlay);
@@ -4815,9 +4870,10 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     statusEl.textContent="人物と背景を分離中…";
     // 高精度マッティングは任意。取得・実行に失敗したら従来の分離結果をそのまま使う。
     const matteFn=async image=>{if(new URLSearchParams(location.search).has("noMatte"))return null;statusEl.textContent="高精度マッティングで輪郭を補正中…";try{return await withTimeout(modnetMatte(image),30000,"高精度マッティング")}catch(error){console.warn("matting skipped",error);return null}};
+    const textFn=async image=>{if(new URLSearchParams(location.search).has("noText"))return null;statusEl.textContent="文字領域を検出中…";try{return await withTimeout(detectTextRegions(image),30000,"文字領域の検出")}catch(error){console.warn("text detection skipped",error);return null}};
     // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
     currentSubjectOverlay=null;
-    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn),90000,"人物分離の推論");
+    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn),120000,"人物分離の推論");
     currentSubjectOverlay=separated.overlay;
     personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
     await createLayeredSceneFromMask();

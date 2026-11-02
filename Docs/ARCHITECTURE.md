@@ -280,3 +280,6 @@ GPUでFaceLandmarker生成
 
 ### レイヤー修正（手動ブラシ）
 - `#layerFixFold` の「修正画面を開く」で全画面の `#lfModal` を開き、人物マスク(`subjectMaskCanvas`)と手前の文字マスク(`currentSubjectOverlay`)を768px基準の配列として編集する（`layerFixStart/Paint/Apply`）。ブラシは文字追加（人物から除く）・文字除外・人物追加（文字から除く）・人物除外。適用で `subjectMaskCanvas` と `currentSubjectOverlay` を差し替え、`createLayeredSceneFromMask` で背景補完・前景・手前層を再生成する。
+
+### 文字領域検出モデルの併用（2026-11-03）
+- `detectTextRegions(source)`: PP-OCRv3 det（SWHL/RapidOCR rev 1cfba2e9…、ch_PP-OCRv3_det_infer.onnx）をBGR・ImageNet正規化で実行し、確率>0.3の領域を768px基準のマスクとして返す（認識はしない）。`detectGraphicOverlay(...,textRegions)` はその領域内で、周囲より暗い（輝度が局所平均−55未満かつ最大値<120）または鮮やか（彩度>135）かつ人物近傍外の画素だけを手前の文字へ追加する。`autoSegmentPerson` は失敗時 null で従来経路、`?noText` で無効。
