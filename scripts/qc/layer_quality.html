@@ -208,6 +208,7 @@ for(const cs of CASES){
     const r={proxy:proxyMetrics(layers,img,w,h),ms};
     let ideal=null,mine=null;
     if(gt){const g=gtMetrics(layers,img,gt,w,h);r.gt=g.m;ideal=g.ideal;mine=g.mine}
+    if(overlay){const md=lib.readScaledPixels(mask,768);let inside=0,cnt=0;if(md.width===overlay.width&&md.height===overlay.height){for(let i=0;i<overlay.mask.length;i++)if(overlay.mask[i]){cnt++;if(md.data[i*4]>127)inside++}}r.overlayInsidePerson=cnt?+(inside/cnt).toFixed(3):null}
     r.overlayArea=overlay?+(overlay.area/(overlay.width*overlay.height)).toFixed(4):0;
     results.cases[cs.id]=r;
     log(cs.id+": "+JSON.stringify(r));
