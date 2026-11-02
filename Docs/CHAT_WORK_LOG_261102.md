@@ -27,3 +27,4 @@
 - 検証: QC ハーネス（実 MediaPipe モデル、デスクトップChrome系）、`web_regression_gate.py` PASS。iPhone Safari・Pages 未検証。
 - 記録の扱い: 計測出力のうち著作権のある雑誌表紙由来の画像は commit せず削除（自分が生成した S3_final の2枚）。既存 T0〜T13 フォルダには雑誌表紙由来の画像が既に含まれる（別セッション作成。CLAUDE.md §3 の観点で要判断）。
 - モデル: Sonnet 5.5（動的切替なし。切替権限なし）。
+- push: `b41690c` → `6fd2a95`（`6fd2a95f646e2239de8370b5f761fa822eb6c539`）を `main` へ push、`git ls-remote` で到達確認。
