@@ -285,3 +285,6 @@ GPUでFaceLandmarker生成
 - `detectTextRegions(source)`: PP-OCRv3 det（SWHL/RapidOCR rev 1cfba2e9…、ch_PP-OCRv3_det_infer.onnx）をBGR・ImageNet正規化で実行し、確率>0.3の領域を768px基準のマスクとして返す（認識はしない）。`detectGraphicOverlay(...,textRegions)` はその領域内で、周囲より暗い（輝度が局所平均−55未満かつ最大値<120）または鮮やか（彩度>135）かつ人物近傍外の画素だけを手前の文字へ追加する。`autoSegmentPerson` は失敗時 null で従来経路、`?noText` で無効。
 
 - `trimPersonMaskByTextRegions`: 文字領域の連結成分のうち人物マスク内の割合が15%以下のものは、人物マスクにかかった画素を人物から外す（文字が体の上に載る領域は触らない）。`detectGraphicOverlay` の文字領域内判定には、暗い・鮮やか・局所平均より明るい白文字（最小輝度165超）を追加。文字がある画像ではMODNetは併用しない（Q7・Q10で悪化）。
+
+### 人物分離モデルの切替（標準／高精度）
+- `#segTier`（localStorage `p3dSegTier`）。標準=既存の `modnetMatte`。高精度=`highMatte`（IS-Net general-use int8、xrds/isnet-general-onnx-int8 rev 71eff237…、MIT、約44MB、onnxruntime-web 1.20.1 WASM単スレッド、1024px、前処理 (x-128)/256、最初の出力が最終マスク）。`autoSegmentPerson` の `matteFn` が高精度を先に試し（180秒タイムアウト）、失敗時は `modnetMatte`、それも失敗なら補正なし。どちらも `refinePersonMaskWithMatte`（MediaPipe輪郭の周辺帯のみ補正・面積ガード）に渡す。文字がある画像（overlayあり）では従来どおりMatteを併用しない。

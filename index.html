@@ -300,6 +300,8 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <label class="filelabel ibtn"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span>Depth</span><input id="depthFile" type="file" accept="image/*"></label>
         <label class="filelabel ibtn"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="10" r="2.6"/><path d="M7.5 17a4.8 4.8 0 0 1 9 0"/></svg><span>マスク</span><input id="subjectMaskFile" type="file" accept="image/*"></label>
       </div>
+      <div class="row"><label for="segTier">人物分離モデル</label><select id="segTier"><option value="standard">標準（小容量 約9MB）</option><option value="high">高精度（大容量 約44MB・処理に約25秒）</option></select></div>
+      <div class="hint" id="segTierHint">標準はMediaPipe＋MODNet＋文字領域モデル（小容量、合計約9MB）。高精度はIS-Netを追加で取得して輪郭を補正します（初回約44MBの通信、1枚あたり約25秒。失敗時は標準で処理します）。</div>
       <div class="tripleButtons">
         <button id="autoPerson" class="ibtn secondary"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>人物分離</span></button>
         <button id="layerFromMask" class="ibtn" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 12 9 5 9-5"/></svg><span>2層化</span></button>
@@ -4668,6 +4670,39 @@ async function detectTextRegions(source){
   return {width,height,mask};
 }
 
+// 高精度モデル(IS-Net general-use int8, MIT, 約44MB)をonnxruntime-web(WASM)で端末内実行する。利用者が「高精度」を選んだときだけ取得する。
+// 取得・推論に失敗した場合は null を返し、呼び出し側が標準(MODNet)へ戻す。BiRefNet_lite(224MB)はWebGPU/WASMとも8分超で未完了のため採用しない。
+function loadHighMatting(){
+  if(loadHighMatting.cache)return loadHighMatting.cache;
+  const base="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+  const model="https://huggingface.co/xrds/isnet-general-onnx-int8/resolve/71eff2372ec9c8edbc6ca637ded591423d23b65a/onnx/model_quantized.onnx";
+  loadHighMatting.cache=(async()=>{
+    const ort=await import(base+"ort.bundle.min.mjs");
+    ort.env.wasm.wasmPaths=base;ort.env.wasm.numThreads=1;
+    const session=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return {ort,session};
+  })().catch(error=>{loadHighMatting.cache=null;loadHighMatting.lastError=error;return null});
+  return loadHighMatting.cache;
+}
+
+async function highMatte(source){
+  const loaded=await loadHighMatting();
+  if(!loaded)return null;
+  const size=1024,canvas=document.createElement("canvas");canvas.width=canvas.height=size;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,size,size);
+  const pixels=context.getImageData(0,0,size,size).data,plane=size*size,input=new Float32Array(3*plane);
+  for(let i=0;i<plane;i++)for(let k=0;k<3;k++)input[k*plane+i]=(pixels[i*4+k]-128)/256;
+  const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,3,size,size])});
+  // 最初の出力が最終マスク（以降は中間特徴）。
+  const tensor=output[loaded.session.outputNames[0]];
+  const out=document.createElement("canvas");out.width=out.height=size;
+  const outContext=out.getContext("2d"),image=outContext.createImageData(size,size);
+  for(let i=0;i<plane;i++){const v=Math.max(0,Math.min(255,Math.round(tensor.data[i]*255)));image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
+  outContext.putImageData(image,0,0);
+  return out;
+}
+
 // MediaPipeの人物マスクを、MODNetのalphaで補正する。MODNetの人物候補のうちMediaPipeマスクと重なる連結成分だけを採用し、
 // 背景の誤検出（植木鉢など）を捨てる。面積が大きく食い違うときはMODNetを信用せず元のマスクを返す。
 function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
@@ -4911,11 +4946,17 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     if(!imageSegmenter)imageSegmenter=await withTimeout(createImageSegmenter(),45000,"人物分離モデルの読込");
     statusEl.textContent="人物と背景を分離中…";
     // 高精度マッティングは任意。取得・実行に失敗したら従来の分離結果をそのまま使う。
-    const matteFn=async image=>{if(new URLSearchParams(location.search).has("noMatte"))return null;statusEl.textContent="高精度マッティングで輪郭を補正中…";try{return await withTimeout(modnetMatte(image),30000,"高精度マッティング")}catch(error){console.warn("matting skipped",error);return null}};
+    const matteFn=async image=>{if(new URLSearchParams(location.search).has("noMatte"))return null;
+      if($("#segTier").value==="high"){
+        statusEl.textContent="高精度モデルを取得・実行中…（初回は約44MB）";
+        try{const high=await withTimeout(highMatte(image),180000,"高精度マッティング");if(high)return high}catch(error){console.warn("high matting skipped",error)}
+        statusEl.textContent="高精度モデルを使えないため標準で処理します…";
+      }
+      statusEl.textContent="高精度マッティングで輪郭を補正中…";try{return await withTimeout(modnetMatte(image),30000,"高精度マッティング")}catch(error){console.warn("matting skipped",error);return null}};
     const textFn=async image=>{if(new URLSearchParams(location.search).has("noText"))return null;statusEl.textContent="文字領域を検出中…";try{return await withTimeout(detectTextRegions(image),30000,"文字領域の検出")}catch(error){console.warn("text detection skipped",error);return null}};
     // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
     currentSubjectOverlay=null;
-    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn),120000,"人物分離の推論");
+    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn),420000,"人物分離の推論");
     currentSubjectOverlay=separated.overlay;
     personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
     await createLayeredSceneFromMask();
@@ -4934,6 +4975,12 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     setButtonLabel(button,"人物分離");
     syncLayeringControls();
   }
+}
+// 人物分離モデルの切替（標準=小容量 / 高精度=大容量）。選択は端末内にだけ保存する。
+{
+  const tier=$("#segTier");
+  try{if(localStorage.getItem("p3dSegTier")==="high")tier.value="high"}catch(error){/* 保存できない環境では既定の標準で動く */}
+  tier.addEventListener("change",()=>{try{localStorage.setItem("p3dSegTier",tier.value)}catch(error){/* 保存失敗は無視 */}});
 }
 $("#autoPerson").addEventListener("click",()=>autoSegmentPerson());
 $("#layerFromMask").addEventListener("click",createLayeredSceneFromMask);
