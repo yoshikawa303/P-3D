@@ -1,0 +1,125 @@
+{
+  "trial": "Q29_sanity",
+  "src": "/index.html",
+  "date": "2026-11-03T12:23:28.311Z",
+  "cases": {
+    "heroine": {
+      "proxy": {
+        "fillSharpRatio": 0.15,
+        "personArea": 0.5449,
+        "edgeAlign": 2.16,
+        "roughness": 1.5,
+        "skinMissRatio": 0.2094,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 9455,
+      "gt": {
+        "iou": 0.9226,
+        "alphaMAE": 0.0482,
+        "bgHolePSNR": 13.53,
+        "ringPSNR": 16.57,
+        "shiftPSNR": 19.46,
+        "shiftChangedPSNR": 18.1,
+        "recompPSNR": 29.49,
+        "score": 36.9
+      },
+      "overlayArea": 0
+    },
+    "navy_pixie_overlay": {
+      "proxy": {
+        "fillSharpRatio": 0.413,
+        "personArea": 0.1837,
+        "edgeAlign": 2.156,
+        "roughness": 1.137,
+        "skinMissRatio": 0.4006,
+        "bgFarDrift": 8.436,
+        "frontArea": 0.0926
+      },
+      "ms": 839,
+      "gt": {
+        "iou": 0.8953,
+        "alphaMAE": 0.0225,
+        "bgHolePSNR": 15.93,
+        "ringPSNR": 21.26,
+        "shiftPSNR": 24.04,
+        "shiftChangedPSNR": 19.1,
+        "recompPSNR": 34.09,
+        "overlayIoU": 0.622,
+        "score": 43.3
+      },
+      "overlayInsidePerson": 0.136,
+      "overlayArea": 0.0907
+    },
+    "small60_heroine_on_city": {
+      "proxy": {
+        "fillSharpRatio": 0.311,
+        "personArea": 0.2048,
+        "edgeAlign": 2.449,
+        "roughness": 1.268,
+        "skinMissRatio": 0.0856,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 2586,
+      "gt": {
+        "iou": 0.9436,
+        "alphaMAE": 0.0136,
+        "bgHolePSNR": 16.63,
+        "ringPSNR": 21.22,
+        "shiftPSNR": 30.21,
+        "shiftChangedPSNR": 24.84,
+        "recompPSNR": 34.7,
+        "score": 55.5
+      },
+      "overlayArea": 0
+    },
+    "small45_mint_on_heroine": {
+      "proxy": {
+        "fillSharpRatio": 0.455,
+        "personArea": 0.0414,
+        "edgeAlign": 1.922,
+        "roughness": 1.233,
+        "skinMissRatio": 0.4025,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 2037,
+      "gt": {
+        "iou": 0.9028,
+        "alphaMAE": 0.0047,
+        "bgHolePSNR": 13.14,
+        "ringPSNR": 16.76,
+        "shiftPSNR": 28.28,
+        "shiftChangedPSNR": 17.06,
+        "recompPSNR": 34.02,
+        "score": 48.5
+      },
+      "overlayArea": 0
+    },
+    "small30_pixie_on_mint": {
+      "proxy": {
+        "fillSharpRatio": 0.754,
+        "personArea": 0.0169,
+        "edgeAlign": 4.334,
+        "roughness": 1.544,
+        "skinMissRatio": 0.1441,
+        "bgFarDrift": 0,
+        "frontArea": 0
+      },
+      "ms": 2238,
+      "gt": {
+        "iou": 0.9156,
+        "alphaMAE": 0.0018,
+        "bgHolePSNR": 25.53,
+        "ringPSNR": 27.08,
+        "shiftPSNR": 41.26,
+        "shiftChangedPSNR": 27.73,
+        "recompPSNR": 44.44,
+        "score": 82.4
+      },
+      "overlayArea": 0
+    }
+  },
+  "meanScore": 53.3
+}

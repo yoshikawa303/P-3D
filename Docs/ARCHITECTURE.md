@@ -288,3 +288,8 @@ GPUでFaceLandmarker生成
 
 ### 人物分離モデルの切替（標準／高精度）
 - `#segTier`（localStorage `p3dSegTier`）。標準=既存の `modnetMatte`。高精度=`highMatte`（IS-Net general-use int8、xrds/isnet-general-onnx-int8 rev 71eff237…、MIT、約44MB、onnxruntime-web 1.20.1 WASM単スレッド、1024px、前処理 (x-128)/256、最初の出力が最終マスク）。`autoSegmentPerson` の `matteFn` が高精度を先に試し（180秒タイムアウト）、失敗時は `modnetMatte`、それも失敗なら補正なし。どちらも `refinePersonMaskWithMatte`（MediaPipe輪郭の周辺帯のみ補正・面積ガード）に渡す。文字がある画像（overlayあり）では従来どおりMatteを併用しない。
+
+### 合意マスク（A・2026-11-04）
+- `createImageSegmenter` は `outputConfidenceMasks:true`。`personConfidenceCanvas(result)` が背景クラスの確率から人物信頼度のグレー画像を作り、GPUマスクを閉じる。
+- `refinePersonMaskConsensus(mask,candidates,{protect,anchor})`: MediaPipe輪郭の周辺帯（長辺3%）の中だけを判定する。候補はMediaPipeマスクと重なる連結成分に限定。anchor（MediaPipe信頼度）＋候補が3つ以上なら過半数、2つなら平均alpha>0.5。anchor<0.25 の画素は人物への追加を拒否（人物専用モデルの拒否権）。面積が元の0.8〜1.25倍を外れたら元のマスクに戻す。protect（手前の文字層）の画素は変更しない。
+- `personMaskWithOverlay`: 文字のない画像は `zoomRefinePersonMask` → 合意マスク。文字がある画像では合意マスクを使わない（文字除去跡で信頼度が落ち肌を削るため。`matteFn.withText===true` の計測時のみ有効）。`matteFn` は alpha 画像の配列（高精度時は IS-Net＋MODNet）を返す。
