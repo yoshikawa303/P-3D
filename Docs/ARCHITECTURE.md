@@ -299,3 +299,4 @@ GPUでFaceLandmarker生成
 - `personMaskWithOverlay(...,trimapFn)`: 文字なし画像は `refinePersonMaskConsensus(zoomed,[MODNet,ViTMatte],{anchor})`（3票の過半数）。文字あり画像は `refinePersonMaskWithMatte(zoomed,ViTMatte)`（元マスクが文字を人物に含めた断片は帯の中で ViTMatte が背景と判定して消える）。ViTMatte が失敗（null）なら標準経路（文字なし: MODNet合意、文字あり: 補正なし）。
 - IS-Net（`loadHighMatting`／`highMatte`）は削除。
 - `trimapMatte(...,unknownRegions)`／`refinePersonMaskWithMatte(...,unknownRegions)`: `detectTextRegions` の領域と元マスクが重なる画素は、帯の内側でも「不明」として ViTMatte の判定に従う（`personMaskWithOverlay.textUnknown=false` で無効化、計測用）。
+- 標準ティアの文字あり画像: `trimapFn` は常に定義し、`trimapFn.plain=(高精度)` で文字なし画像への適用を切り替える。文字が検出された画像（overlayあり）は標準でも ViTMatte を使う。`trimapFn` は帯の幅（`personMaskWithOverlay.textBand`、3%）と文字領域を `trimapMatte` へ渡す。`#segTier` の change は、分離済み（`subjectMaskCanvas` あり、実行中でない）なら `autoSegmentPerson()` を再実行する。

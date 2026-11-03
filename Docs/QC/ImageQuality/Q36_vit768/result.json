@@ -1,0 +1,97 @@
+{
+  "trial": "Q36_vit768",
+  "src": "/index.html",
+  "date": "2026-11-03T14:17:04.961Z",
+  "cases": {
+    "magazine": {
+      "proxy": {
+        "fillSharpRatio": 0.206,
+        "personArea": 0.5014,
+        "edgeAlign": 2.48,
+        "roughness": 1.074,
+        "skinMissRatio": 0.0031,
+        "bgFarDrift": 37.423,
+        "frontArea": 0.1849
+      },
+      "ms": 27503,
+      "overlayInsidePerson": 0.003,
+      "overlayArea": 0.1764
+    },
+    "heroine_overlay": {
+      "proxy": {
+        "fillSharpRatio": 0.194,
+        "personArea": 0.5169,
+        "edgeAlign": 2.038,
+        "roughness": 1.28,
+        "skinMissRatio": 0.205,
+        "bgFarDrift": 5.412,
+        "frontArea": 0.0894
+      },
+      "ms": 18673,
+      "gt": {
+        "iou": 0.883,
+        "alphaMAE": 0.07,
+        "bgHolePSNR": 12.98,
+        "ringPSNR": 17.88,
+        "shiftPSNR": 21.23,
+        "shiftChangedPSNR": 18.8,
+        "recompPSNR": 31.16,
+        "overlayIoU": 0.7333,
+        "score": 37.2
+      },
+      "overlayInsidePerson": 0.666,
+      "overlayArea": 0.0877
+    },
+    "city_camisole_overlay": {
+      "proxy": {
+        "fillSharpRatio": 0.376,
+        "personArea": 0.1925,
+        "edgeAlign": 2.272,
+        "roughness": 1.281,
+        "skinMissRatio": 0.1811,
+        "bgFarDrift": 6.975,
+        "frontArea": 0.0899
+      },
+      "ms": 20336,
+      "gt": {
+        "iou": 0.8458,
+        "alphaMAE": 0.0366,
+        "bgHolePSNR": 14.56,
+        "ringPSNR": 17.44,
+        "shiftPSNR": 24.01,
+        "shiftChangedPSNR": 18.45,
+        "recompPSNR": 31.53,
+        "overlayIoU": 0.7199,
+        "score": 39.8
+      },
+      "overlayInsidePerson": 0.186,
+      "overlayArea": 0.0882
+    },
+    "navy_pixie_overlay": {
+      "proxy": {
+        "fillSharpRatio": 0.405,
+        "personArea": 0.1872,
+        "edgeAlign": 2.03,
+        "roughness": 1.138,
+        "skinMissRatio": 0.3896,
+        "bgFarDrift": 8.405,
+        "frontArea": 0.0926
+      },
+      "ms": 5679,
+      "gt": {
+        "iou": 0.9104,
+        "alphaMAE": 0.0199,
+        "bgHolePSNR": 15.94,
+        "ringPSNR": 21.01,
+        "shiftPSNR": 24.2,
+        "shiftChangedPSNR": 19.41,
+        "recompPSNR": 34.83,
+        "overlayIoU": 0.622,
+        "score": 44.1
+      },
+      "overlayInsidePerson": 0.13,
+      "overlayArea": 0.0907
+    }
+  },
+  "meanScore": 40.4
+}
