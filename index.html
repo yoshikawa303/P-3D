@@ -4794,7 +4794,7 @@ async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
   const secondMask=personMaskCanvasFromCategories(result.categoryMask.getAsUint8Array(),result.categoryMask.width,result.categoryMask.height);
   const combined=combinePersonMasks(firstMask,secondMask,overlay);
   const zoomed=await zoomRefinePersonMask(cleaned,combined,segmentFn);
-  // 文字がある画像ではMODNetを併用しない（重ならない画像に限っても Sample1 で肌の取りこぼし 0.0031→0.0215、粗さ 1.049→1.147 と悪化。Q7・Q10・Q15）。
+  // 文字がある画像ではMatte(MODNet・IS-Net)を併用しない。IS-Netは合成の文字重ねで改善(IoU +0.03)したが、実画像Sample1では下端の文字・机を人物へ取り込み悪化した（Q19・Q20）。
   const refined=zoomed;
   return {result,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay};
 }
