@@ -4773,7 +4773,7 @@ function loadTrimapMatting(){
 }
 
 // 長辺 size（32の倍数）で推論し、画像全体の alpha（グレー画像）を返す。帯の幅は長辺の2%。
-async function trimapMatte(source,maskCanvas,overlay=null,size=512,bandRatio=.02){
+async function trimapMatte(source,maskCanvas,overlay=null,size=512,bandRatio=.02,unknownRegions=null){
   const loaded=await loadTrimapMatting();
   if(!loaded)return null;
   const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
@@ -4790,7 +4790,10 @@ async function trimapMatte(source,maskCanvas,overlay=null,size=512,bandRatio=.02
   for(let i=0;i<total;i++){
     input[i]=(pixels[i*4]/255-.5)/.5;input[total+i]=(pixels[i*4+1]/255-.5)/.5;input[2*total+i]=(pixels[i*4+2]/255-.5)/.5;
     // 文字層の画素も幾何（帯の内外）だけで決める。文字を元マスクの値に固定すると、元マスクが文字を人物に含めた断片が残る（APP_vit）。
-    input[3*total+i]=inner[i]?1:outer[i]?.5:0;
+    // unknownRegions（文字領域）と元マスクが重なる画素は、帯の内側でも「不明」にして ViTMatte に判定させる。
+    let forcedUnknown=false;
+    if(unknownRegions&&binary[i]){const x=i%width,y=(i-x)/width,px=Math.min(unknownRegions.width-1,Math.floor(x/width*unknownRegions.width)),py=Math.min(unknownRegions.height-1,Math.floor(y/height*unknownRegions.height));forcedUnknown=!!unknownRegions.mask[py*unknownRegions.width+px]}
+    input[3*total+i]=forcedUnknown?.5:inner[i]?1:outer[i]?.5:0;
   }
   const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,4,height,width])});
   const tensor=output[loaded.session.outputNames[0]],oh=tensor.dims[tensor.dims.length-2],ow=tensor.dims[tensor.dims.length-1];
@@ -4803,7 +4806,7 @@ async function trimapMatte(source,maskCanvas,overlay=null,size=512,bandRatio=.02
 
 // MediaPipeの人物マスクを、MODNetのalphaで補正する。MODNetの人物候補のうちMediaPipeマスクと重なる連結成分だけを採用し、
 // 背景の誤検出（植木鉢など）を捨てる。面積が大きく食い違うときはMODNetを信用せず元のマスクを返す。
-function refinePersonMaskWithMatte(maskCanvas,matteCanvas,bandRatio=.03){
+function refinePersonMaskWithMatte(maskCanvas,matteCanvas,bandRatio=.03,unknownRegions=null){
   if(!matteCanvas)return maskCanvas;
   const long=Math.max(maskCanvas.width,maskCanvas.height,512),scale=long/Math.max(maskCanvas.width,maskCanvas.height);
   const width=Math.max(1,Math.round(maskCanvas.width*scale)),height=Math.max(1,Math.round(maskCanvas.height*scale));
@@ -4838,7 +4841,10 @@ function refinePersonMaskWithMatte(maskCanvas,matteCanvas,bandRatio=.03){
   if(!baseArea)return maskCanvas;
   const inner=window(binary,false),outer=window(binary,true),result=new Uint8Array(total);
   let keptArea=0;
-  for(let i=0;i<total;i++){result[i]=inner[i]||(outer[i]&&label[i]&&keep[label[i]-1])?1:0;keptArea+=result[i]}
+  let forced=null;
+  if(unknownRegions){forced=new Uint8Array(total);for(let y=0;y<height;y++)for(let x=0;x<width;x++){const px=Math.min(unknownRegions.width-1,Math.floor(x/width*unknownRegions.width)),py=Math.min(unknownRegions.height-1,Math.floor(y/height*unknownRegions.height));forced[y*width+x]=unknownRegions.mask[py*unknownRegions.width+px]}}
+  // forced（文字領域）の画素は帯の内側でもマッティングの判定に従う。
+  for(let i=0;i<total;i++){const judged=label[i]&&keep[label[i]-1]?1:0;result[i]=forced&&forced[i]&&binary[i]?judged:inner[i]||(outer[i]&&judged)?1:0;keptArea+=result[i]}
   if(keptArea<baseArea*.8||keptArea>baseArea*1.25)return maskCanvas;
   const out=document.createElement("canvas");out.width=width;out.height=height;
   const context=out.getContext("2d"),image=context.createImageData(width,height);
@@ -4904,8 +4910,9 @@ async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null,t
   // 文字がある画像では、トライマップ型だけを併用する。顕著物体系のマッティング（MODNet）は腕を削るため使わない。
   // 帯は3%。広げる（5%）と腕の横の文字・机の塊まで人物に入る（Q34）。
   const textBand=Number.isFinite(personMaskWithOverlay.textBand)?personMaskWithOverlay.textBand:.03;
-  const trimapAlpha=trimapFn?await trimapFn(source,zoomed,overlay,textBand):null;
-  const refined=trimapAlpha?refinePersonMaskWithMatte(zoomed,trimapAlpha,textBand):zoomed;
+  const unknown=personMaskWithOverlay.textUnknown===false?null:textRegions;
+  const trimapAlpha=trimapFn?await trimapFn(source,zoomed,overlay,textBand,unknown):null;
+  const refined=trimapAlpha?refinePersonMaskWithMatte(zoomed,trimapAlpha,textBand,unknown):zoomed;
   return {result,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay};
 }
 

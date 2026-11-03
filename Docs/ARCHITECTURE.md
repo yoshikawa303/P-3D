@@ -298,3 +298,4 @@ GPUでFaceLandmarker生成
 - `loadTrimapMatting`／`trimapMatte(source,mask,overlay,size=512)`: Xenova/vitmatte-small-composition-1k rev 6bc1297f…（model_quantized.onnx 27.5MB、元モデル hustvl Apache-2.0）を onnxruntime-web 1.20.1 WASM で実行。入力は RGB（mean/std 0.5）＋トライマップ（収縮=1、膨張帯=0.5、他=0、帯幅は長辺2%。文字層の画素も幾何だけで決める）の4チャンネル、長辺512の32倍数。出力 `alphas`。
 - `personMaskWithOverlay(...,trimapFn)`: 文字なし画像は `refinePersonMaskConsensus(zoomed,[MODNet,ViTMatte],{anchor})`（3票の過半数）。文字あり画像は `refinePersonMaskWithMatte(zoomed,ViTMatte)`（元マスクが文字を人物に含めた断片は帯の中で ViTMatte が背景と判定して消える）。ViTMatte が失敗（null）なら標準経路（文字なし: MODNet合意、文字あり: 補正なし）。
 - IS-Net（`loadHighMatting`／`highMatte`）は削除。
+- `trimapMatte(...,unknownRegions)`／`refinePersonMaskWithMatte(...,unknownRegions)`: `detectTextRegions` の領域と元マスクが重なる画素は、帯の内側でも「不明」として ViTMatte の判定に従う（`personMaskWithOverlay.textUnknown=false` で無効化、計測用）。
