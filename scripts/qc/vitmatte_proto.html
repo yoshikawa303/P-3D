@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ViTMatte試作</title>
+<body style="font:12px monospace;background:#222;color:#ddd;margin:8px">
+<!-- 使い方: python3 scripts/qc/serve.py 8140 → http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512
+     MediaPipeマスク→トライマップ→ViTMatte(small, 量子化27.5MB, 固定リビジョン)。正解付きケースはIoU/MAE、Sample1は画像で確認。画像は外部送信しない。 -->
+<pre id="log"></pre>
+<script type="module">
+const q=new URLSearchParams(location.search),TRIAL=q.get("trial")||"V1",W=640,SIZE=parseInt(q.get("size")||"512",10),BAND=parseFloat(q.get("band")||"0.02");
+const log=t=>{document.getElementById("log").textContent+=t+"\n"};
+const html=await (await fetch("/index.html",{cache:"no-store"})).text();
+function extractFn(name){const m=new RegExp("(?:async )?function "+name+"\\(").exec(html);if(!m)return null;let i=html.indexOf("{",html.indexOf(")",m.index)),d=0;for(let j=i;j<html.length;j++){const c=html[j];if(c==="{")d++;else if(c==="}"){d--;if(d===0)return html.slice(m.index,j+1)}}return null}
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","readScaledPixels","detectGraphicOverlay","removeOverlayFromSource","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","personConfidenceCanvas","morphSquare","refinePersonMaskWithMatte","refinePersonMaskConsensus","trimPersonMaskByTextRegions","loadTextDetector","detectTextRegions","personMaskWithOverlay"];
+const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
+const lib=new Function(found.map(([,b])=>b).join("\n")+"\nreturn {"+found.map(([n])=>n).join(",")+"}")();
+log("抽出: "+found.length+"/"+NAMES.length);
+const VISION="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1";
+const MODEL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
+const mod=await import(VISION+"/vision_bundle.mjs"),vision=await mod.FilesetResolver.forVisionTasks(VISION+"/wasm");
+let segmenter;try{segmenter=await mod.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL,delegate:"GPU"},runningMode:"IMAGE",outputCategoryMask:true,outputConfidenceMasks:true})}catch(e){segmenter=await mod.ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL},runningMode:"IMAGE",outputCategoryMask:true,outputConfidenceMasks:true})}
+const segment=img=>new Promise((res,rej)=>{let d=false;const f=r=>{if(!d){d=true;res(r)}};try{const p=segmenter.segment(img,f);if(p&&p.then)p.then(r=>{if(r)f(r)}).catch(rej)}catch(e){rej(e)}});
+const ORT="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+const VM="https://huggingface.co/Xenova/vitmatte-small-composition-1k/resolve/6bc1297f6140f055a227b6d2cfe8c093281f35d2/onnx/model_quantized.onnx";
+const ort=await import(ORT+"ort.bundle.min.mjs");ort.env.wasm.wasmPaths=ORT;ort.env.wasm.numThreads=1;
+let t0=performance.now();const sess=await ort.InferenceSession.create(VM,{executionProviders:["wasm"]});
+log("ViTMatte 読込 "+Math.round(performance.now()-t0)+"ms in="+sess.inputNames+" out="+sess.outputNames);
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("load "+src));i.src=src});
+const cv=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c};
+const sizeOf=img=>{const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,s=Math.min(1,W/Math.max(w,h));return [Math.max(1,Math.round(w*s)),Math.max(1,Math.round(h*s))]};
+function composite(bg,fg,w,h){const c=cv(w,h),x=c.getContext("2d");x.drawImage(bg,0,0,w,h);x.drawImage(fg,0,0,w,h);return c}
+const alphaOf=(img,w,h)=>{const c=cv(w,h),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);const d=x.getImageData(0,0,w,h).data,a=new Float32Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4+3]/255;return a};
+const grayOf=(cvs,w,h)=>{const c=cv(w,h),x=c.getContext("2d",{willReadFrequently:true});x.imageSmoothingQuality="high";x.drawImage(cvs,0,0,w,h);const d=x.getImageData(0,0,w,h).data,a=new Float32Array(w*h);for(let i=0;i<a.length;i++)a[i]=d[i*4]/255;return a};
+// トライマップ: マスクを収縮した内側=人物(1)、膨張帯=不明(0.5)、その他=背景(0)。
+function trimap(mask,overlay,w,h){
+  const m=grayOf(mask,w,h),bin=new Uint8Array(w*h);for(let i=0;i<bin.length;i++)bin[i]=m[i]>.5?1:0;
+  const r=Math.max(4,Math.round(Math.max(w,h)*BAND));
+  const inner=lib.morphSquare(bin,w,h,r,false),outer=lib.morphSquare(bin,w,h,r,true),t=new Float32Array(w*h);
+  let ov=null;if(overlay){ov=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const px=Math.min(overlay.width-1,Math.floor(x/w*overlay.width)),py=Math.min(overlay.height-1,Math.floor(y/h*overlay.height));ov[y*w+x]=overlay.mask[py*overlay.width+px]}}
+  // 文字層の画素は判断させず、元マスクの値をそのまま使う（人物の上に載る文字の下は人物のまま）。
+  for(let i=0;i<t.length;i++)t[i]=ov&&ov[i]?(bin[i]?1:0):inner[i]?1:outer[i]?.5:0;
+  return t;
+}
+async function vitmatte(img,mask,overlay,w,h){
+  const k=SIZE/Math.max(w,h),rw=Math.max(32,Math.round(w*k/32)*32),rh=Math.max(32,Math.round(h*k/32)*32);
+  const c=cv(rw,rh),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,rw,rh);const d=x.getImageData(0,0,rw,rh).data;
+  const tri=trimap(mask,overlay,rw,rh),p=rw*rh,t=new Float32Array(4*p);
+  for(let i=0;i<p;i++){t[i]=(d[i*4]/255-.5)/.5;t[p+i]=(d[i*4+1]/255-.5)/.5;t[2*p+i]=(d[i*4+2]/255-.5)/.5;t[3*p+i]=tri[i]}
+  const s=performance.now();const out=await sess.run({[sess.inputNames[0]]:new ort.Tensor("float32",t,[1,4,rh,rw])});const ms=Math.round(performance.now()-s);
+  const o=out[sess.outputNames[0]],oh=o.dims[o.dims.length-2],ow=o.dims[o.dims.length-1];
+  const ac=cv(ow,oh),ax=ac.getContext("2d"),id=ax.createImageData(ow,oh);for(let i=0;i<ow*oh;i++){const v=Math.max(0,Math.min(255,Math.round(o.data[i]*255)));id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}ax.putImageData(id,0,0);
+  const tc=cv(rw,rh),tx=tc.getContext("2d"),td=tx.createImageData(rw,rh);for(let i=0;i<p;i++){const v=Math.round(tri[i]*255);td.data[i*4]=td.data[i*4+1]=td.data[i*4+2]=v;td.data[i*4+3]=255}tx.putImageData(td,0,0);
+  return {alphaCanvas:ac,trimapCanvas:tc,ms};
+}
+const A="/assets/demos/";
+const CASES=[
+  {id:"magazine",src:"/test_img/Sample1.png"},
+  {id:"heroine",src:A+"demo-heroine.jpg",gt:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-heroine-background.jpg"}},
+  {id:"heroine_overlay",src:A+"demo-heroine.jpg",gt:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-heroine-background.jpg"},overlay:true},
+  {id:"city_camisole_overlay",src:A+"demo-auto-city-camisole.png",gt:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-city-camisole-background.png"},overlay:true},
+  {id:"navy_pixie_overlay",src:A+"demo-auto-navy-pixie.png",gt:{fg:A+"demo-auto-navy-pixie-foreground.png",bg:A+"demo-auto-navy-pixie-background.png"},overlay:true},
+  {id:"swap_city_on_mint",swap:{fg:A+"demo-auto-city-camisole-foreground.png",bg:A+"demo-auto-mint-ponytail-background.png"}},
+  {id:"small60_heroine_on_city",swap:{fg:A+"demo-heroine-foreground.png",bg:A+"demo-auto-city-camisole-background.png",scale:.6}},
+  {id:"small45_mint_on_heroine",swap:{fg:A+"demo-auto-mint-ponytail-foreground.png",bg:A+"demo-heroine-background.jpg",scale:.45,cx:.62}}
+];
+function makeOverlay(w,h,gtAlpha){
+  let x0=w,x1=0,y0=h,y1=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(gtAlpha[y*w+x]>.5){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  const bw=x1-x0,bh=y1-y0,c=cv(w,h),g=c.getContext("2d");
+  g.textBaseline="top";g.font=`900 ${Math.round(bh*.16)}px sans-serif`;g.fillStyle="#111";g.strokeStyle="#fff";g.lineWidth=Math.max(2,bh*.008);
+  g.strokeText("見出し",x0+bw*.52,y0+bh*.30);g.fillText("見出し",x0+bw*.52,y0+bh*.30);
+  g.save();g.translate(x0+bw*.08,y0+bh*.55);g.rotate(-.12);g.font=`900 ${Math.round(bh*.09)}px sans-serif`;g.fillStyle="#e6007e";g.strokeStyle="#fff";g.strokeText("ピンク文字",0,0);g.fillText("ピンク文字",0,0);g.restore();
+  g.fillStyle="#00a0e9";g.fillRect(x0+bw*.60,y0+bh*.62,bw*.30,bh*.035);g.fillStyle="#f5d000";g.beginPath();g.arc(x0+bw*.2,y0+bh*.2,bh*.04,0,7);g.fill();return c;
+}
+const only=(q.get("only")||"").split(",").filter(Boolean);
+const res={trial:TRIAL,size:SIZE,band:BAND,cases:{}};
+const save=(path,body,dataurl)=>fetch("/save/"+path,{method:"POST",body,headers:dataurl?{"X-Encoding":"dataurl"}:{}});
+for(const cs of CASES){
+  if(only.length&&!only.includes(cs.id))continue;
+  try{
+    let img,gt=null;
+    if(cs.swap){let fgImg=await loadImg(cs.swap.fg);const bgImg=await loadImg(cs.swap.bg);const [sw,sh]=sizeOf(fgImg);
+      if(cs.swap.scale){const k=cs.swap.scale,c=cv(sw,sh);c.getContext("2d").drawImage(fgImg,sw*(cs.swap.cx??.5)-sw*k/2,sh*.97-sh*k,sw*k,sh*k);fgImg=c}
+      img=composite(bgImg,fgImg,sw,sh);gt={fg:fgImg}}
+    else img=await loadImg(cs.src);
+    const [w,h]=sizeOf(img);
+    if(cs.gt){gt={fg:await loadImg(cs.gt.fg)};if(cs.overlay){const gtA=alphaOf(gt.fg,w,h),ov=makeOverlay(w,h,gtA);const base=composite(await loadImg(cs.gt.bg),gt.fg,w,h);base.getContext("2d").drawImage(ov,0,0);img=base}}
+    const pm=await lib.personMaskWithOverlay(img,segment,null,lib.detectTextRegions);pm.result.categoryMask.close();
+    const {alphaCanvas,trimapCanvas,ms}=await vitmatte(img,pm.maskCanvas,pm.overlay,w,h);
+    const r={ms};
+    if(gt){const g=alphaOf(gt.fg,w,h),a=grayOf(alphaCanvas,w,h),b=grayOf(pm.maskCanvas,w,h);
+      let ia=0,ua=0,ib=0,ub=0,mae=0;for(let i=0;i<g.length;i++){const t=g[i]>.5,pa=a[i]>.5,pb=b[i]>.5;if(pa&&t)ia++;if(pa||t)ua++;if(pb&&t)ib++;if(pb||t)ub++;mae+=Math.abs(a[i]-g[i])}
+      r.iou=+(ia/ua).toFixed(4);r.baseIou=+(ib/ub).toFixed(4);r.alphaMAE=+(mae/g.length).toFixed(4)}
+    res.cases[cs.id]=r;log(cs.id+": "+JSON.stringify(r));
+    const s=cv(w*4+30,h),sx=s.getContext("2d");sx.fillStyle="#555";sx.fillRect(0,0,s.width,h);sx.drawImage(img,0,0,w,h);sx.drawImage(pm.maskCanvas,w+10,0,w,h);sx.drawImage(trimapCanvas,2*(w+10),0,w,h);sx.drawImage(alphaCanvas,3*(w+10),0,w,h);
+    await save(TRIAL+"/"+cs.id+".png",s.toDataURL("image/png"),true);
+  }catch(e){res.cases[cs.id]={error:String(e&&e.stack||e)};log(cs.id+" ERROR "+e)}
+}
+await save(TRIAL+"/result.json",JSON.stringify(res,null,2));log("done");window.QC_DONE=res;
+</script>

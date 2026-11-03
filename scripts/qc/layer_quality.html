@@ -22,12 +22,12 @@ function extractFn(name){
   }
   return null;
 }
-const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","loadMattingSession","modnetMatte","refinePersonMaskWithMatte","loadHighMatting","highMatte","personConfidenceCanvas","morphSquare","refinePersonMaskConsensus","loadTextDetector","detectTextRegions","trimPersonMaskByTextRegions","personMaskWithOverlay"];
+const NAMES=["isPersonCategory","filterSubjectComponents","includeAttachedOtherRegions","fillEnclosedSubjectHoles","dilateHoleByDistance","pushPullFill","boxBlurFloat","refinedSubjectAlpha","addFillDetail","pseudoInpaintBackground","transparentForegroundFromMask","decontaminateEdgeColors","buildLayerSet","readScaledPixels","detectGraphicOverlay","overlayAlphaCanvas","removeOverlayFromSource","cleanSourceAtSize","overlayFrontCanvas","smoothMaskShape","personMaskCanvasFromCategories","combinePersonMasks","zoomRefinePersonMask","loadMattingSession","modnetMatte","refinePersonMaskWithMatte","personConfidenceCanvas","morphSquare","refinePersonMaskConsensus","loadTrimapMatting","trimapMatte","loadTextDetector","detectTextRegions","trimPersonMaskByTextRegions","personMaskWithOverlay"];
 const found=NAMES.map(n=>[n,extractFn(n)]).filter(([,b])=>b);
 // 新しい補助関数（NAMESに無いもの）も名前規則 qcHelper_ で拾えるよう、index.html側の追加関数を明示列挙する
 const EXTRA=(q.get("extra")||"").split(",").filter(Boolean).map(n=>[n,extractFn(n)]).filter(([,b])=>b);
 const lib=new Function(found.concat(EXTRA).map(([,b])=>b).join("\n")+"\nreturn {"+found.concat(EXTRA).map(([n])=>n).join(",")+"}")();
-window.QC_LIB=lib;if(q.get("strict")&&lib.refinePersonMaskConsensus)lib.refinePersonMaskConsensus.strictPair=true;log("抽出関数: "+found.concat(EXTRA).map(([n])=>n).join(", "));
+window.QC_LIB=lib;if(q.get("textband")&&lib.personMaskWithOverlay)lib.personMaskWithOverlay.textBand=parseFloat(q.get("textband"));if(q.get("strict")&&lib.refinePersonMaskConsensus)lib.refinePersonMaskConsensus.strictPair=true;log("抽出関数: "+found.concat(EXTRA).map(([n])=>n).join(", "));
 const hasBuild=!!lib.buildLayerSet;
 const buildLayers=(img,mask,overlay)=>hasBuild?lib.buildLayerSet(img,mask,overlay):{background:lib.pseudoInpaintBackground(img,mask),foreground:lib.transparentForegroundFromMask(img,mask),front:null};
 
@@ -201,7 +201,7 @@ for(const cs of CASES){
     }
     const t0=performance.now();
     let mask,overlay=null;
-    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment,(q.get("matte")?(q.get("legacy")?(q.get("matte")==="high"?lib.highMatte:lib.modnetMatte):Object.assign(async i=>q.get("matte")==="high"?[await lib.highMatte(i),await lib.modnetMatte(i)]:[await lib.modnetMatte(i)],{withText:q.get("withtext")==="1"})):null),q.get("text")?lib.detectTextRegions:null);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
+    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment,(q.get("matte")?(q.get("legacy")?lib.modnetMatte:(async i=>[await lib.modnetMatte(i)])):null),q.get("text")?lib.detectTextRegions:null,q.get("vit")?(async(s,m,o,b)=>lib.trimapMatte(s,m,o,parseInt(q.get("vit"),10)||512,b)):null);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
     else mask=maskFromResult(await segment(img));
     const layers=buildLayers(img,mask,overlay);
     const ms=Math.round(performance.now()-t0);

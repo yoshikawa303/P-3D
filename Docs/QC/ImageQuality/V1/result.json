@@ -1,0 +1,43 @@
+{
+  "trial": "V1",
+  "size": 512,
+  "band": 0.02,
+  "cases": {
+    "magazine": {
+      "error": "ReferenceError: pushPullFill is not defined\n    at removeOverlayFromSource (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:344:3)\n    at Object.personMaskWithOverlay (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:633:17)\n    at async http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:85:14"
+    },
+    "heroine": {
+      "ms": 2125,
+      "iou": 0.8943,
+      "baseIou": 0.8854,
+      "alphaMAE": 0.0623
+    },
+    "heroine_overlay": {
+      "error": "ReferenceError: pushPullFill is not defined\n    at removeOverlayFromSource (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:344:3)\n    at Object.personMaskWithOverlay (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:633:17)\n    at async http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:85:14"
+    },
+    "city_camisole_overlay": {
+      "error": "ReferenceError: pushPullFill is not defined\n    at removeOverlayFromSource (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:344:3)\n    at Object.personMaskWithOverlay (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:633:17)\n    at async http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:85:14"
+    },
+    "navy_pixie_overlay": {
+      "error": "ReferenceError: pushPullFill is not defined\n    at removeOverlayFromSource (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:344:3)\n    at Object.personMaskWithOverlay (eval at <anonymous> (http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:8:11), <anonymous>:633:17)\n    at async http://127.0.0.1:8140/scripts/qc/vitmatte_proto.html?trial=V1&size=512:85:14"
+    },
+    "swap_city_on_mint": {
+      "ms": 2290,
+      "iou": 0.9639,
+      "baseIou": 0.958,
+      "alphaMAE": 0.0112
+    },
+    "small60_heroine_on_city": {
+      "ms": 2512,
+      "iou": 0.9598,
+      "baseIou": 0.9349,
+      "alphaMAE": 0.0105
+    },
+    "small45_mint_on_heroine": {
+      "ms": 2203,
+      "iou": 0.8942,
+      "baseIou": 0.8846,
+      "alphaMAE": 0.0048
+    }
+  }
+}

@@ -293,3 +293,8 @@ GPUでFaceLandmarker生成
 - `createImageSegmenter` は `outputConfidenceMasks:true`。`personConfidenceCanvas(result)` が背景クラスの確率から人物信頼度のグレー画像を作り、GPUマスクを閉じる。
 - `refinePersonMaskConsensus(mask,candidates,{protect,anchor})`: MediaPipe輪郭の周辺帯（長辺3%）の中だけを判定する。候補はMediaPipeマスクと重なる連結成分に限定。anchor（MediaPipe信頼度）＋候補が3つ以上なら過半数、2つなら平均alpha>0.5。anchor<0.25 の画素は人物への追加を拒否（人物専用モデルの拒否権）。面積が元の0.8〜1.25倍を外れたら元のマスクに戻す。protect（手前の文字層）の画素は変更しない。
 - `personMaskWithOverlay`: 文字のない画像は `zoomRefinePersonMask` → 合意マスク。文字がある画像では合意マスクを使わない（文字除去跡で信頼度が落ち肌を削るため。`matteFn.withText===true` の計測時のみ有効）。`matteFn` は alpha 画像の配列（高精度時は IS-Net＋MODNet）を返す。
+
+### 高精度ティア: トライマップ型マッティング（2026-11-04）
+- `loadTrimapMatting`／`trimapMatte(source,mask,overlay,size=512)`: Xenova/vitmatte-small-composition-1k rev 6bc1297f…（model_quantized.onnx 27.5MB、元モデル hustvl Apache-2.0）を onnxruntime-web 1.20.1 WASM で実行。入力は RGB（mean/std 0.5）＋トライマップ（収縮=1、膨張帯=0.5、他=0、帯幅は長辺2%。文字層の画素も幾何だけで決める）の4チャンネル、長辺512の32倍数。出力 `alphas`。
+- `personMaskWithOverlay(...,trimapFn)`: 文字なし画像は `refinePersonMaskConsensus(zoomed,[MODNet,ViTMatte],{anchor})`（3票の過半数）。文字あり画像は `refinePersonMaskWithMatte(zoomed,ViTMatte)`（元マスクが文字を人物に含めた断片は帯の中で ViTMatte が背景と判定して消える）。ViTMatte が失敗（null）なら標準経路（文字なし: MODNet合意、文字あり: 補正なし）。
+- IS-Net（`loadHighMatting`／`highMatte`）は削除。

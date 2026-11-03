@@ -300,8 +300,8 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <label class="filelabel ibtn"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span>Depth</span><input id="depthFile" type="file" accept="image/*"></label>
         <label class="filelabel ibtn"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="10" r="2.6"/><path d="M7.5 17a4.8 4.8 0 0 1 9 0"/></svg><span>マスク</span><input id="subjectMaskFile" type="file" accept="image/*"></label>
       </div>
-      <div class="row"><label for="segTier">人物分離モデル</label><select id="segTier"><option value="standard">標準（小容量 約9MB）</option><option value="high">高精度（大容量 約44MB・処理に約25秒）</option></select></div>
-      <div class="hint" id="segTierHint">標準はMediaPipe＋MODNet＋文字領域モデル（小容量、合計約9MB）。高精度はIS-Netを追加で取得して輪郭を補正します（初回約44MBの通信、1枚あたり約25秒。失敗時は標準で処理します）。</div>
+      <div class="row"><label for="segTier">人物分離モデル</label><select id="segTier"><option value="standard">標準（小容量 約9MB）</option><option value="high">高精度（大容量 約28MB・処理に数秒）</option></select></div>
+      <div class="hint" id="segTierHint">標準はMediaPipe＋MODNet＋文字領域モデル（小容量、合計約9MB）。高精度はトライマップ型のViTMatteを追加で取得し、人物の輪郭の帯だけを細かく判定します（初回約28MBの通信、1枚あたり数秒。失敗時は標準で処理します）。</div>
       <div class="tripleButtons">
         <button id="autoPerson" class="ibtn secondary"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>人物分離</span></button>
         <button id="layerFromMask" class="ibtn" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 12 9 5 9-5"/></svg><span>2層化</span></button>
@@ -4671,39 +4671,6 @@ async function detectTextRegions(source){
   return {width,height,mask};
 }
 
-// 高精度モデル(IS-Net general-use int8, MIT, 約44MB)をonnxruntime-web(WASM)で端末内実行する。利用者が「高精度」を選んだときだけ取得する。
-// 取得・推論に失敗した場合は null を返し、呼び出し側が標準(MODNet)へ戻す。BiRefNet_lite(224MB)はWebGPU/WASMとも8分超で未完了のため採用しない。
-function loadHighMatting(){
-  if(loadHighMatting.cache)return loadHighMatting.cache;
-  const base="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
-  const model="https://huggingface.co/xrds/isnet-general-onnx-int8/resolve/71eff2372ec9c8edbc6ca637ded591423d23b65a/onnx/model_quantized.onnx";
-  loadHighMatting.cache=(async()=>{
-    const ort=await import(base+"ort.bundle.min.mjs");
-    ort.env.wasm.wasmPaths=base;ort.env.wasm.numThreads=1;
-    const session=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
-    return {ort,session};
-  })().catch(error=>{loadHighMatting.cache=null;loadHighMatting.lastError=error;return null});
-  return loadHighMatting.cache;
-}
-
-async function highMatte(source){
-  const loaded=await loadHighMatting();
-  if(!loaded)return null;
-  const size=1024,canvas=document.createElement("canvas");canvas.width=canvas.height=size;
-  const context=canvas.getContext("2d",{willReadFrequently:true});
-  context.drawImage(source,0,0,size,size);
-  const pixels=context.getImageData(0,0,size,size).data,plane=size*size,input=new Float32Array(3*plane);
-  for(let i=0;i<plane;i++)for(let k=0;k<3;k++)input[k*plane+i]=(pixels[i*4+k]-128)/256;
-  const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,3,size,size])});
-  // 最初の出力が最終マスク（以降は中間特徴）。
-  const tensor=output[loaded.session.outputNames[0]];
-  const out=document.createElement("canvas");out.width=out.height=size;
-  const outContext=out.getContext("2d"),image=outContext.createImageData(size,size);
-  for(let i=0;i<plane;i++){const v=Math.max(0,Math.min(255,Math.round(tensor.data[i]*255)));image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
-  outContext.putImageData(image,0,0);
-  return out;
-}
-
 // MediaPipeの信頼度マスク（背景クラスの確率）から「人物らしさ」のグレー画像を作る。読み出したGPUマスクはここで閉じる。
 function personConfidenceCanvas(result){
   const masks=result&&result.confidenceMasks;
@@ -4789,9 +4756,54 @@ function refinePersonMaskConsensus(maskCanvas,candidates,{protect=null,anchor=nu
   return out;
 }
 
+// トライマップ入力型マッティング(ViTMatte-small, 量子化 約27.5MB, 元モデル Apache-2.0)。MediaPipeマスクから作った
+// 「人物／背景／不明の帯」を一緒に入力するため、机や文字を人物と取り違える誤りが帯の外では原理的に起きない。
+// 取得・実行に失敗した場合は null を返し、呼び出し側は従来の経路で続行する。
+function loadTrimapMatting(){
+  if(loadTrimapMatting.cache)return loadTrimapMatting.cache;
+  const base="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+  const model="https://huggingface.co/Xenova/vitmatte-small-composition-1k/resolve/6bc1297f6140f055a227b6d2cfe8c093281f35d2/onnx/model_quantized.onnx";
+  loadTrimapMatting.cache=(async()=>{
+    const ort=await import(base+"ort.bundle.min.mjs");
+    ort.env.wasm.wasmPaths=base;ort.env.wasm.numThreads=1;
+    const session=await ort.InferenceSession.create(model,{executionProviders:["wasm"]});
+    return {ort,session};
+  })().catch(error=>{loadTrimapMatting.cache=null;loadTrimapMatting.lastError=error;return null});
+  return loadTrimapMatting.cache;
+}
+
+// 長辺 size（32の倍数）で推論し、画像全体の alpha（グレー画像）を返す。帯の幅は長辺の2%。
+async function trimapMatte(source,maskCanvas,overlay=null,size=512,bandRatio=.02){
+  const loaded=await loadTrimapMatting();
+  if(!loaded)return null;
+  const sourceWidth=source.naturalWidth||source.width,sourceHeight=source.naturalHeight||source.height;
+  const k=size/Math.max(sourceWidth,sourceHeight),width=Math.max(32,Math.round(sourceWidth*k/32)*32),height=Math.max(32,Math.round(sourceHeight*k/32)*32),total=width*height;
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  context.drawImage(source,0,0,width,height);
+  const pixels=context.getImageData(0,0,width,height).data;
+  const maskPixels=(()=>{const c=document.createElement("canvas");c.width=width;c.height=height;const x=c.getContext("2d",{willReadFrequently:true});x.imageSmoothingQuality="high";x.drawImage(maskCanvas,0,0,width,height);return x.getImageData(0,0,width,height).data})();
+  const binary=new Uint8Array(total);for(let i=0;i<total;i++)binary[i]=maskPixels[i*4]>127?1:0;
+  const radius=Math.max(4,Math.round(Math.max(width,height)*bandRatio));
+  const inner=morphSquare(binary,width,height,radius,false),outer=morphSquare(binary,width,height,radius,true);
+  const input=new Float32Array(4*total);
+  for(let i=0;i<total;i++){
+    input[i]=(pixels[i*4]/255-.5)/.5;input[total+i]=(pixels[i*4+1]/255-.5)/.5;input[2*total+i]=(pixels[i*4+2]/255-.5)/.5;
+    // 文字層の画素も幾何（帯の内外）だけで決める。文字を元マスクの値に固定すると、元マスクが文字を人物に含めた断片が残る（APP_vit）。
+    input[3*total+i]=inner[i]?1:outer[i]?.5:0;
+  }
+  const output=await loaded.session.run({[loaded.session.inputNames[0]]:new loaded.ort.Tensor("float32",input,[1,4,height,width])});
+  const tensor=output[loaded.session.outputNames[0]],oh=tensor.dims[tensor.dims.length-2],ow=tensor.dims[tensor.dims.length-1];
+  const out=document.createElement("canvas");out.width=ow;out.height=oh;
+  const outContext=out.getContext("2d"),image=outContext.createImageData(ow,oh);
+  for(let i=0;i<ow*oh;i++){const v=Math.max(0,Math.min(255,Math.round(tensor.data[i]*255)));image.data[i*4]=image.data[i*4+1]=image.data[i*4+2]=v;image.data[i*4+3]=255}
+  outContext.putImageData(image,0,0);
+  return out;
+}
+
 // MediaPipeの人物マスクを、MODNetのalphaで補正する。MODNetの人物候補のうちMediaPipeマスクと重なる連結成分だけを採用し、
 // 背景の誤検出（植木鉢など）を捨てる。面積が大きく食い違うときはMODNetを信用せず元のマスクを返す。
-function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
+function refinePersonMaskWithMatte(maskCanvas,matteCanvas,bandRatio=.03){
   if(!matteCanvas)return maskCanvas;
   const long=Math.max(maskCanvas.width,maskCanvas.height,512),scale=long/Math.max(maskCanvas.width,maskCanvas.height);
   const width=Math.max(1,Math.round(maskCanvas.width*scale)),height=Math.max(1,Math.round(maskCanvas.height*scale));
@@ -4814,7 +4826,7 @@ function refinePersonMaskWithMatte(maskCanvas,matteCanvas){
   const keep=stats.map(s=>s.overlap>=s.size*.35);
   // MODNetが効くのはMediaPipe輪郭の周辺帯(半径radius)だけ。帯の内側は常に人物、外側は常に背景として、
   // 文字除去跡などでMODNetが内部を欠いても人物本体は失わない。
-  const radius=Math.max(2,Math.round(Math.max(width,height)*.03));
+  const radius=Math.max(2,Math.round(Math.max(width,height)*bandRatio));
   const window=(source,grow)=>{
     const tmp=new Uint8Array(total),res=new Uint8Array(total);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){let hit=grow?0:1;for(let dx=-radius;dx<=radius;dx++){const nx=x+dx;const v=nx<0||nx>=width?0:source[y*width+nx];if(grow){if(v){hit=1;break}}else if(!v){hit=0;break}}tmp[y*width+x]=hit}
@@ -4865,7 +4877,7 @@ function trimPersonMaskByTextRegions(maskCanvas,textRegions){
 }
 
 // 1回目の人物分離で手前の文字・図形を検出し、あれば取り除いた画像で人物分離をやり直す。
-async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
+async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null,trimapFn=null){
   const first=await segmentFn(source);
   const firstMask=personMaskCanvasFromCategories(first.categoryMask.getAsUint8Array(),first.categoryMask.width,first.categoryMask.height);
   const firstConfidence=personConfidenceCanvas(first);
@@ -4875,7 +4887,9 @@ async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
   const mattes=async image=>{if(!matteFn)return [];const out=await matteFn(image);return (Array.isArray(out)?out:[out]).filter(Boolean)};
   if(!overlay){
     const zoomed=await zoomRefinePersonMask(source,firstMask,segmentFn);
-    const refined=refinePersonMaskConsensus(zoomed,await mattes(source),{anchor:firstConfidence});
+    // トライマップ型（高精度）の alpha も合意の一票にする（MediaPipe信頼度＋MODNet＋ViTMatte の過半数）。無ければ標準の合意。
+    const trimapAlpha=trimapFn?await trimapFn(source,zoomed,null):null;
+    const refined=refinePersonMaskConsensus(zoomed,[...await mattes(source),trimapAlpha],{anchor:firstConfidence});
     return {result:first,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay:null};
   }
   first.categoryMask.close();
@@ -4887,7 +4901,11 @@ async function personMaskWithOverlay(source,segmentFn,matteFn=null,textFn=null){
   const zoomed=await zoomRefinePersonMask(cleaned,combined,segmentFn);
   // 文字がある画像では合意マスクを使わない（文字除去跡で信頼度が落ち、腕などの肌を削る: Q21〜Q23で Sample1 の肌取りこぼし 0.003→0.010）。
   // 計測用に matteFn.withText=true のときだけ、文字除去後の画像で得た合意を帯の中で採用し、文字（手前層）の画素は変更しない。
-  const refined=matteFn&&matteFn.withText===true?refinePersonMaskConsensus(zoomed,await mattes(cleaned),{protect:overlay,anchor:secondConfidence}):zoomed;
+  // 文字がある画像では、トライマップ型だけを併用する。顕著物体系のマッティング（MODNet）は腕を削るため使わない。
+  // 帯は3%。広げる（5%）と腕の横の文字・机の塊まで人物に入る（Q34）。
+  const textBand=Number.isFinite(personMaskWithOverlay.textBand)?personMaskWithOverlay.textBand:.03;
+  const trimapAlpha=trimapFn?await trimapFn(source,zoomed,overlay,textBand):null;
+  const refined=trimapAlpha?refinePersonMaskWithMatte(zoomed,trimapAlpha,textBand):zoomed;
   return {result,maskCanvas:trimPersonMaskByTextRegions(refined,textRegions),overlay};
 }
 
@@ -5040,19 +5058,18 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     // 高精度マッティングは任意。取得・実行に失敗したら従来の分離結果をそのまま使う。
     const matteFn=async image=>{
       if(new URLSearchParams(location.search).has("noMatte"))return [];
-      const list=[];
-      if($("#segTier").value==="high"){
-        statusEl.textContent="高精度モデルを取得・実行中…（初回は約44MB）";
-        try{const high=await withTimeout(highMatte(image),180000,"高精度マッティング");if(high)list.push(high)}catch(error){console.warn("high matting skipped",error)}
-      }
       statusEl.textContent="マッティングで輪郭を補正中…";
-      try{const standard=await withTimeout(modnetMatte(image),30000,"マッティング");if(standard)list.push(standard)}catch(error){console.warn("matting skipped",error)}
-      return list;
+      try{const standard=await withTimeout(modnetMatte(image),30000,"マッティング");return standard?[standard]:[]}catch(error){console.warn("matting skipped",error);return []}
     };
+    // 高精度: トライマップ型（ViTMatte）。失敗時は null を返して標準の合意マスクへ戻る。
+    const trimapFn=$("#segTier").value==="high"?async(image,mask,overlay)=>{
+      statusEl.textContent="高精度マッティングを取得・実行中…（初回は約28MB）";
+      try{return await withTimeout(trimapMatte(image,mask,overlay),180000,"高精度マッティング")}catch(error){console.warn("trimap matting skipped",error);statusEl.textContent="高精度モデルを使えないため標準で処理します…";return null}
+    }:null;
     const textFn=async image=>{if(new URLSearchParams(location.search).has("noText"))return null;statusEl.textContent="文字領域を検出中…";try{return await withTimeout(detectTextRegions(image),30000,"文字領域の検出")}catch(error){console.warn("text detection skipped",error);return null}};
     // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
     currentSubjectOverlay=null;
-    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn),420000,"人物分離の推論");
+    const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn,trimapFn),420000,"人物分離の推論");
     currentSubjectOverlay=separated.overlay;
     personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
     await createLayeredSceneFromMask();

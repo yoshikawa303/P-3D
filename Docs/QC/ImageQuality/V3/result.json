@@ -1,0 +1,52 @@
+{
+  "trial": "V3",
+  "size": 512,
+  "band": 0.02,
+  "cases": {
+    "magazine": {
+      "ms": 17048
+    },
+    "heroine": {
+      "ms": 2709,
+      "iou": 0.8943,
+      "baseIou": 0.8854,
+      "alphaMAE": 0.0623
+    },
+    "heroine_overlay": {
+      "ms": 3038,
+      "iou": 0.8953,
+      "baseIou": 0.8826,
+      "alphaMAE": 0.0636
+    },
+    "city_camisole_overlay": {
+      "ms": 2276,
+      "iou": 0.8745,
+      "baseIou": 0.871,
+      "alphaMAE": 0.0298
+    },
+    "navy_pixie_overlay": {
+      "ms": 2659,
+      "iou": 0.9157,
+      "baseIou": 0.9033,
+      "alphaMAE": 0.0187
+    },
+    "swap_city_on_mint": {
+      "ms": 2678,
+      "iou": 0.9639,
+      "baseIou": 0.958,
+      "alphaMAE": 0.0112
+    },
+    "small60_heroine_on_city": {
+      "ms": 2275,
+      "iou": 0.9598,
+      "baseIou": 0.9349,
+      "alphaMAE": 0.0105
+    },
+    "small45_mint_on_heroine": {
+      "ms": 2160,
+      "iou": 0.8942,
+      "baseIou": 0.8846,
+      "alphaMAE": 0.0048
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "trial": "V2",
+  "size": 512,
+  "band": 0.02,
+  "cases": {
+    "magazine": {
+      "ms": 2834
+    },
+    "heroine_overlay": {
+      "ms": 2314,
+      "iou": 0.7955,
+      "baseIou": 0.8826,
+      "alphaMAE": 0.1191
+    },
+    "city_camisole_overlay": {
+      "ms": 2007,
+      "iou": 0.8101,
+      "baseIou": 0.871,
+      "alphaMAE": 0.0432
+    },
+    "navy_pixie_overlay": {
+      "ms": 3073,
+      "iou": 0.8744,
+      "baseIou": 0.9033,
+      "alphaMAE": 0.0264
+    }
+  }
+}
