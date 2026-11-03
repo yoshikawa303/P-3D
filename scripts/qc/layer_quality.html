@@ -201,7 +201,7 @@ for(const cs of CASES){
     }
     const t0=performance.now();
     let mask,overlay=null;
-    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment,(q.get("matte")==="high"?lib.highMatte:q.get("matte")?lib.modnetMatte:null),q.get("text")?lib.detectTextRegions:null);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
+    if(lib.personMaskWithOverlay){const pm=await lib.personMaskWithOverlay(img,segment,(q.get("matte")==="high"?Object.assign((i)=>lib.highMatte(i),{withText:!!q.get("withtext")}):q.get("matte")?lib.modnetMatte:null),q.get("text")?lib.detectTextRegions:null);mask=pm.maskCanvas;overlay=pm.overlay;pm.result.categoryMask.close()}
     else mask=maskFromResult(await segment(img));
     const layers=buildLayers(img,mask,overlay);
     const ms=Math.round(performance.now()-t0);
