@@ -71,7 +71,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .layerToolbar>*,.iconRow>*,.footRow>*{flex:1 1 0;min-width:0}
 .footRow #resetDefaults{flex:2 1 0}
 .layerList{max-height:180px}
-.layerList{overflow:auto;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(0,0,0,.28);padding:3px;display:grid;gap:2px;user-select:none;-webkit-user-select:none}
+.layerList{align-content:start;overflow:auto;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(0,0,0,.28);padding:3px;display:grid;gap:2px;user-select:none;-webkit-user-select:none}
 .layerRow{display:flex;align-items:center;gap:5px;min-height:34px;padding:2px 6px;border-radius:7px;border:1px solid transparent;font-size:13px;cursor:pointer}
 .layerRow.selected{background:rgba(121,231,255,.18);border-color:rgba(121,231,255,.55)}
 .layerRow.group{background:rgba(255,255,255,.07);font-weight:700}
@@ -130,8 +130,6 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .fold[open]{padding-bottom:6px;display:grid;gap:5px}
 .fold[open]>summary{margin:0 -2px}
 #rigDebug:not(:checked)~#rigDebugLayers,#rigDebug:not(:checked)~#rigDebugStatus{display:none}
-.helpDialog{position:absolute;z-index:4;top:calc(max(10px,env(safe-area-inset-top)) + 50px);right:calc(10px + var(--dock-r));width:min(300px,calc(100% - 20px - var(--dock-r)));padding:10px 12px;border-radius:12px;background:rgba(20,20,24,.94);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(14px);font-size:12px;line-height:1.5}
-.helpDialog[hidden]{display:none}
 #gl.canPan{cursor:grab}#gl.canPan.panning{cursor:grabbing}
 .floatWin{position:absolute;z-index:5;box-sizing:border-box;border-radius:12px;background:rgba(20,20,24,.95);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);color:#fff;font-size:12px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
 .floatWin[hidden]{display:none}
@@ -168,14 +166,46 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .feFields input{width:100%;box-sizing:border-box;min-width:0;padding:3px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.4);color:#fff;font:inherit}
 #feMsg{color:#ffd37d;font-size:11px;min-height:14px}
 #feHint{color:#9fb4c0;font-size:10px;line-height:1.35}
-.helpDialog p{margin:6px 0 0}
-.helpDialog .appInfo{margin:0}
 [data-tip]{position:relative}
 [data-tip]::after{content:attr(data-tip);position:absolute;z-index:9;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);padding:3px 7px;border-radius:6px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.25);font-size:11px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s}
 #top [data-tip]::after{bottom:auto;top:calc(100% + 6px);left:auto;right:0;transform:none}
 [data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1}
 @media (hover:none){[data-tip]:active::after{opacity:1}}
 @media (prefers-reduced-motion:reduce){#panel{transition:none}#panel.is-hidden{transition:none}}
+/* マスク欄: 各コントロールの行間を確保する（行が重なって見える不具合の修正） */
+#maskFold[open]{gap:9px}
+#maskFold .row{min-height:34px;row-gap:4px}
+#maskFold .iconRow{min-height:34px}
+#maskFold select[size]{min-height:96px}
+/* 無効（OFF）状態の設定欄はグレーアウトする */
+select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
+.row:has(:disabled)>label,label.check:has(input:disabled){opacity:.5}
+.motionFields.off>.row{opacity:.5}
+.row[hidden],.srOnly{display:none}
+/* 左上メニュー（バーガー） */
+#mainMenu{position:absolute;z-index:6;top:calc(max(10px,env(safe-area-inset-top)) + 50px);right:calc(10px + var(--dock-r));min-width:210px;padding:6px;border-radius:12px;background:rgba(20,20,24,.96);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.45);display:grid;gap:2px}
+#mainMenu[hidden]{display:none}
+#mainMenu .menuItem{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:6px 10px;border-radius:8px;background:transparent;color:#fff;font-size:var(--fs-main);font-weight:700;text-align:left;justify-content:flex-start}
+#mainMenu .menuItem:hover,#mainMenu .menuItem:focus-visible{background:rgba(121,231,255,.16)}
+#mainMenu .menuItem svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#mainMenu .menuItem[aria-checked=true]::after{content:"✓";margin-left:auto;color:#79e7ff}
+#mainMenu hr{margin:4px 6px;border:0;border-top:1px solid rgba(255,255,255,.16)}
+#mainMenu .menuVersion{padding:4px 10px 6px;font-size:11px;line-height:1.45;color:#aeb4c2;user-select:text}
+/* レイヤー／ボーン一覧: 縦幅の変更、行内編集 */
+.layerList{resize:vertical;min-height:80px;max-height:70vh;height:180px}
+.layerRow .layerShape{flex:none;width:auto;max-width:76px;min-height:26px;height:26px;padding:0 2px;border-radius:7px;font-size:11px}
+.layerRow .layerNameInput{flex:1;min-width:0;min-height:26px;height:26px;padding:0 6px;border-radius:6px;font-size:13px}
+.layerKind{flex:none;font-size:10px;color:#9fb4c0;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07)}
+.layerIcon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.layerIcon{display:inline-flex;align-items:center;justify-content:center}
+.layerList{overflow-x:hidden!important}
+.layerRow{min-width:0;gap:3px;padding-right:3px}
+.layerRow .layerIcon{width:26px;min-height:26px;height:26px}
+.layerRow .layerShape{max-width:52px;min-width:44px;padding:0 1px;font-size:10px;background-image:none;-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center}
+.layerRow .layerName{min-width:36px}
+.listGrip{height:12px;margin:-2px 0 0;border-radius:6px;cursor:ns-resize;touch-action:none;background:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)) center/36px 3px no-repeat,rgba(255,255,255,.05)}
+.listGrip:hover{background-color:rgba(121,231,255,.18)}
+.layerList{resize:none!important}
 </style>
 </head>
 <body>
@@ -196,8 +226,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
       <button id="moveCharacter" class="iconBtn" type="button" aria-pressed="false" aria-label="キャラ移動をONにする" hidden data-tip="キャラ移動"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
       <button id="demoNext" class="iconBtn" type="button" aria-label="愛でる（次のデモ）" data-tip="愛でる（次のデモ）"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20.5S3.5 15.6 3.5 9.3A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.3c0 6.3-8.5 11.2-8.5 11.2z"/></svg></button>
       <button id="layoutToggle" class="iconBtn" type="button" aria-label="パネル配置" data-tip="パネル配置: 右" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="16" rx="2"/><path id="layoutIconPath" d="M15 4v16"/></svg></button>
-      <button id="helpToggle" class="iconBtn" type="button" aria-expanded="false" aria-controls="helpDialog" aria-label="ヘルプ" data-tip="ヘルプ"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.5-1.2 1-1.2 1.9"/><path d="M12 17h.01"/></svg></button>
-      <button id="panelToggle" class="iconBtn" type="button" aria-controls="panel" aria-expanded="false" aria-label="設定を表示" data-tip="設定"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <button id="panelToggle" class="iconBtn" type="button" aria-haspopup="menu" aria-controls="mainMenu" aria-expanded="false" aria-label="メニューを開く" data-tip="メニュー"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </div>
 
@@ -251,10 +280,11 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
     <div id="feMsg" aria-live="polite"></div>
     <div id="feHint">←/→: コマ送り（Shift: 3コマ）／↑/↓: 瞬き・口・表情の切替／Home・End: 先頭・末尾／Esc: 閉じる。枠の内側ドラッグで移動、四辺の■で範囲、上の●で角度。空きをドラッグで画面移動、ホイールで拡大縮小。</div>
   </div>
-  <div id="helpDialog" class="helpDialog" role="dialog" aria-label="ヘルプ" hidden>
-    <div class="appInfo" id="appInfo"><b>Poster Pseudo 3D</b> <span id="appVersion"></span><div id="appEnv" class="envNote"></div></div>
-    <p>画像選択またはデモ選択 → ドラッグ・カメラ・端末傾きで視点を動かします。</p>
-    <p>項目名の <span class="helpDot demo" aria-hidden="true">?</span> で説明を表示。画像は端末外へ送信しません。</p>
+  <div id="mainMenu" role="menu" aria-label="メニュー" hidden>
+    <button id="menuNewProject" class="menuItem" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><span>新規プロジェクト作成</span></button>
+    <button id="menuSettings" class="menuItem" type="button" role="menuitemcheckbox" aria-checked="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>設定</span></button>
+    <hr role="separator">
+    <div class="menuVersion" id="appInfo"><b>Poster Pseudo 3D</b> <span id="appVersion"></span></div>
   </div>
 
   <div id="panel" class="is-hidden" aria-hidden="true" data-layout="sheet">
@@ -378,7 +408,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="maskGrow" class="winBtn" type="button">拡張</button><button id="maskShrink" class="winBtn" type="button">縮小</button><button id="maskClear" class="winBtn" type="button">全消去</button><button id="maskUndo" class="winBtn" type="button">元に戻す</button>
       </div>
     </details>
-    <details class="fold"><summary>部位編集</summary><div class="hint">人物の左／右はキャラクター本人基準です（正面では画面上の左右と反転）。iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。 上が手前・下が奥のレイヤー順です。◉＝ワイヤー表示、動＝アニメーション。行頭の ⠿ を別の行へドラッグすると、その行の子になります（字下げ表示）。「親を外す」帯へ落とすと親なしに戻ります。 範囲の中心は円内、幅と高さは円周の4ハンドル、角度は上側の丸い回転ハンドルをドラッグして編集します。Shiftで15°刻みに固定できます。 親子関係ON時は親の実モーションを子へ加算します。例: 胴体→胸部。ボーン・ワイヤー・タグは合成後の動作へ追随します。</div>
+    <details class="fold"><summary>部位編集</summary><div class="hint">人物の左／右はキャラクター本人基準です（正面では画面上の左右と反転）。iPhone／iPadでは編集対象を選んで設定を閉じても、部位範囲とボーンを画像上で直接編集できます。 上が手前・下が奥のレイヤー順です。目のアイコン＝ワイヤー表示切替、鎖のアイコン＝ボーンと範囲の同期、動＝アニメーション。名前はダブルタップで編集、形状は行内のプルダウンで変更します。行頭の ⠿ を別の行へドラッグすると、その行の子になります（字下げ表示）。リスト端へドラッグすると自動でスクロールします。「親を外す」帯へ落とすと親なしに戻ります。リスト下端のつまみで高さを変えられます。 範囲の中心は円内、幅と高さは円周の4ハンドル、角度は上側の丸い回転ハンドルをドラッグして編集します。Shiftで15°刻みに固定できます。 親子関係ON時は親の実モーションを子へ加算します。例: 胴体→胸部。ボーン・ワイヤー・タグは合成後の動作へ追随します。</div>
     <div class="rigEditor">
       <select id="rigPartList" size="6" aria-label="編集部位リスト" hidden></select>
       <div class="layerToolbar">
@@ -388,17 +418,17 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
         <button id="layerGroup" class="ibtn secondary" type="button" data-tip="グループ化" aria-label="グループ化"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg></button>
         <button id="layerUngroup" class="ibtn secondary" type="button" data-tip="グループ解除" aria-label="グループ解除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9.5 13.5h5"/></svg></button>
       </div>
-      <button id="openProjectEditor" class="ibtn" type="button" data-tip="プロジェクト・レイヤ編集" aria-label="プロジェクト・レイヤ編集"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg><span>空画像から部品で作成（プロジェクト）</span></button>
       <button id="openFaceEditor" class="ibtn" type="button" data-tip="顔パーツ拡大編集" aria-label="顔パーツ拡大編集"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/><path d="M8.5 10.5c1-1 4-1 5 0"/></svg><span>顔パーツ拡大編集（目・口）</span></button>
       <div id="rigLayerList" class="layerList" role="tree" aria-label="部位レイヤー（上が手前、下が奥）"></div>
+      <div id="rigLayerGrip" class="listGrip" role="separator" aria-orientation="horizontal" aria-label="リストの高さを変更" data-tip="ドラッグで高さを変更"></div>
       <div class="iconRow">
         <button id="addRigPart" class="ibtn " type="button" data-tip="部位追加" aria-label="部位追加"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg></button>
         <button id="duplicateRigPart" class="ibtn secondary" type="button" data-tip="複製" aria-label="複製"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
         <button id="resetRigPart" class="ibtn secondary" type="button" data-tip="部位を復元" aria-label="部位を復元"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4h4"/></svg></button>
         <button id="deleteRigPart" class="ibtn secondary" type="button" data-tip="部位削除" aria-label="部位削除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
       </div>
-      <div class="row"><label for="rigPartName">部位名</label><input id="rigPartName" type="text" maxlength="24" value=""></div>
-      <div class="row"><label for="partShape">形状</label><select id="partShape">
+      <div class="row" hidden><label for="rigPartName">部位名</label><input id="rigPartName" type="text" maxlength="24" value=""></div>
+      <div class="row" hidden><label for="partShape">形状</label><select id="partShape">
         <option value="ellipse">楕円</option>
         <option value="rect">角丸矩形</option>
         <option value="almond" data-feature>目（アーモンド）</option>
@@ -433,25 +463,28 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
     </details>
     <details class="fold"><summary>ボーン編集</summary>
     <div class="boneEditor">
-      <select id="bonePointList" size="6" aria-label="ボーンポイント一覧"></select>
+      <select id="bonePointList" size="6" aria-label="ボーンポイント一覧" hidden></select>
+      <div id="boneTreeList" class="layerList boneList" role="tree" aria-label="ボーン（親子関係のツリー）"></div>
+      <div id="boneTreeGrip" class="listGrip" role="separator" aria-orientation="horizontal" aria-label="リストの高さを変更" data-tip="ドラッグで高さを変更"></div>
       <div class="iconRow">
         <button id="addBoneRoot" class="ibtn " type="button" data-tip="起点追加" aria-label="起点追加"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></button>
         <button id="addBoneChild" class="ibtn " type="button" data-tip="子を追加" aria-label="子を追加"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="17" r="2"/><path d="M6 8v6a3 3 0 0 0 3 3h7"/></svg></button>
         <button id="splitBoneSegment" class="ibtn secondary" type="button" data-tip="分割" aria-label="分割" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20 20 4"/><circle cx="12" cy="12" r="2.4"/></svg></button>
         <button id="deleteBonePoint" class="ibtn secondary" type="button" data-tip="削除" aria-label="削除"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
       </div>
-      <div class="row"><label for="bonePointName">名前</label><input id="bonePointName" type="text" maxlength="24" value=""></div>
-      <div class="row"><label for="bonePointType">種類</label><select id="bonePointType">
+      <div class="row" hidden><label for="bonePointName">名前</label><input id="bonePointName" type="text" maxlength="24" value=""></div>
+      <div class="row" hidden><label for="bonePointType">種類</label><select id="bonePointType">
         <option value="root">起点</option>
         <option value="joint">関節</option>
         <option value="branch">分岐</option>
         <option value="end">終点</option>
       </select></div>
-      <div class="row"><label for="bonePointParent">親</label><select id="bonePointParent"></select></div>
-      <div class="row"><label for="bonePointPart">追随先</label><select id="bonePointPart"></select></div>
+      <div class="row" hidden><label for="bonePointParent">親</label><select id="bonePointParent"></select></div>
+      <div class="row"><label for="bonePointPart">連動部位</label><select id="bonePointPart"></select></div>
       <div class="row"><label for="boneFollowAmount">追随率</label><input id="boneFollowAmount" type="range" min="0" max="1.5" step="0.01" value="1"></div>
-      <div id="boneRigStatus" aria-live="polite">ボーン構造: 未解析</div><div class="hint">ポイントは直接ドラッグできます。ボーン線も選択でき、「分割」でポイントを追加できます。</div>
+      <div id="boneRigStatus" aria-live="polite">ボーン構造: 未解析</div>
     </div>
+    <div class="hint">ポイントは直接ドラッグできます。ボーン線も選択でき、「分割」でポイントを追加できます。一覧は親子関係のツリー表示です。⠿ を別の行へドラッグするとその行の子になります。名前はダブルタップ、種別は行内のプルダウンで編集できます。「連動部位」は、このボーンの動きに追従する部位です。ボーン自身の動き（視差など）が主で、選んだ部位はボーンの動きとの差×追随率だけボーンの動きに寄ります（「なし」なら部位は自身の動きのまま）。部位側の鎖アイコンをONにすると、ボーンを編集したとき部位の範囲も移動します。</div>
     </details>
     <details class="fold"><summary>リグ保存</summary>
       <div class="iconRow">
@@ -1514,6 +1547,7 @@ let rigSessionId=0;
 let activeRigProfile=null,inferredRigProfile=null,activeRigParts=[],inferredRigParts=[],activeBonePoints=[],inferredBonePoints=[],activeStandee=false;
 let activeMotionRange=[0.018,0.012];
 const rigSprings={};
+const boneSprings={};
 let recognitionBounds=null,recognitionGuideCanvas=null,subjectMaskCanvas=null;
 let guideHandles={imageRect:null,center:null,light:null,parts:{},sizes:{},rotations:{},rotationFlip:{},bones:{},boneSegments:[],rayLength:0,dpr:1},guideDragTarget=null,selectedBoneSegmentId=null;
 let live2dVisualState={blink:0,mouth:0,gaze:0,breath:0,active:false};
@@ -1558,7 +1592,7 @@ try{savedSettingsTab=localStorage.getItem(SETTINGS_TAB_KEY)||"image"}catch(error
 switchSettingsTab(savedSettingsTab,{persist:false});
 
 function resetRigSprings(){
-  for(const spring of Object.values(rigSprings)){
+  for(const spring of [...Object.values(rigSprings),...Object.values(boneSprings)]){
     spring.x=0;spring.y=0;spring.vx=0;spring.vy=0;spring.effectiveX=0;spring.effectiveY=0;
   }
 }
@@ -1717,11 +1751,17 @@ bindPanelGrip($("#gripH"),(start,event)=>{panelLayout.height=Math.round(Math.max
 });
 
 // ---- ヘルプ（アプリ名・版・説明）と項目別ヘルプ（?アイコンで開閉）、アイコンのフローティング名 ----
-const helpDialog=$("#helpDialog"),helpToggle=$("#helpToggle");
-function setHelpVisible(visible){helpDialog.hidden=!visible;helpToggle.setAttribute("aria-expanded",String(visible))}
-helpToggle.addEventListener("click",()=>setHelpVisible(helpDialog.hidden));
+const mainMenu=$("#mainMenu");
+function setMenuVisible(visible){
+  mainMenu.hidden=!visible;
+  panelToggle.setAttribute("aria-expanded",String(visible));
+  panelToggle.setAttribute("aria-label",visible?"メニューを閉じる":"メニューを開く");
+}
+panelToggle.addEventListener("click",()=>setMenuVisible(mainMenu.hidden));
+$("#menuSettings").addEventListener("click",()=>{setPanelVisible(!panelVisible);setMenuVisible(false)});
+$("#menuNewProject").addEventListener("click",()=>{setMenuVisible(false);pjOpen()});
 document.addEventListener("pointerdown",event=>{
-  if(!helpDialog.hidden&&!helpDialog.contains(event.target)&&!helpToggle.contains(event.target))setHelpVisible(false);
+  if(!mainMenu.hidden&&!mainMenu.contains(event.target)&&!panelToggle.contains(event.target))setMenuVisible(false);
 });
 function helpTargetFor(hint){
   let element=hint.previousElementSibling;
@@ -1763,8 +1803,7 @@ function setPanelVisible(visible,{persist=true}={}){
   panel.classList.toggle("is-hidden",!visible);
   applyPanelLayout();
   panel.setAttribute("aria-hidden",String(!visible));
-  panelToggle.setAttribute("aria-expanded",String(visible));
-  panelToggle.setAttribute("aria-label",visible ? "設定を隠す" : "設定を表示");
+  $("#menuSettings").setAttribute("aria-checked",String(visible));
   if(!visible)guideContext.clearRect(0,0,guideCanvas.width,guideCanvas.height);
   if(persist){
     try{localStorage.setItem(PANEL_VISIBILITY_KEY,String(visible))}catch(error){}
@@ -1778,10 +1817,9 @@ function savedPanelVisibility(){
   }catch(error){return dockQuery.matches}
 }
 
-panelToggle.addEventListener("click",()=>setPanelVisible(!panelVisible));
 document.addEventListener("keydown",event=>{
   if(event.key==="Escape"){
-    if(!helpDialog.hidden)setHelpVisible(false);
+    if(!mainMenu.hidden)setMenuVisible(false);
     else if(panelVisible)setPanelVisible(false);
   }
 });
@@ -1842,10 +1880,7 @@ function describeRunEnvironment(){
 function initAppInfo(){
   $("#appVersion").textContent="v"+APP_VERSION+" ("+APP_BUILD+")";
   const env=describeRunEnvironment();
-  $("#appEnv").textContent=env.text;
-  $("#appInfo").classList.toggle("envWarn",!env.ok);
   if(!env.ok){
-    setHelpVisible(true);
     errEl.textContent=env.text;
     statusEl.textContent="HTTP配信で開いてください";
   }
@@ -2097,7 +2132,7 @@ function humanPoseBones(profile){
   const hipsSeen=["hipLeft","hipRight"].every(name=>(pose[name][2]??1)>=.5&&pose[name][1]<.97);
   const shoulderVector=[pose.shoulderLeft[0]-pose.shoulderRight[0],pose.shoulderLeft[1]-pose.shoulderRight[1]];
   const shoulderNorm=Math.max(1e-4,Math.hypot(shoulderVector[0],shoulderVector[1])),down=[-shoulderVector[1]/shoulderNorm,shoulderVector[0]/shoulderNorm];
-  const pelvis=hipsSeen?poseMidpoint(pose.hipLeft,pose.hipRight):[neck[0]+down[0]*shoulderSpan*1.35,neck[1]+down[1]*shoulderSpan*1.35];
+  const pelvis=hipsSeen?poseMidpoint(pose.hipLeft,pose.hipRight):[neck[0]+down[0]*shoulderSpan*1.35,Math.min(.98,neck[1]+down[1]*shoulderSpan*1.35)];
   const hipHalf=hipsSeen?null:[shoulderVector[0]/shoulderNorm*shoulderSpan*.2,shoulderVector[1]/shoulderNorm*shoulderSpan*.2];
   const hipLeft=hipsSeen?pose.hipLeft.slice(0,2):[pelvis[0]+hipHalf[0],pelvis[1]+hipHalf[1]],hipRight=hipsSeen?pose.hipRight.slice(0,2):[pelvis[0]-hipHalf[0],pelvis[1]-hipHalf[1]];
   const along=t=>[neck[0]+(pelvis[0]-neck[0])*t,neck[1]+(pelvis[1]-neck[1])*t];
@@ -2509,9 +2544,83 @@ function buildHumanBoneRig(parts,profile){
   return specs.map(([id,tag,label,type,x,y,parentId,partId,followAmount])=>({id,tag,label,type,x,y,parentId,partId,followAmount,original:[x,y]}));
 }
 
+// ---- ボーンと部位範囲の同期 ----
+// 部位ごとの「同期」ON時、対応するボーン（関節）の位置から部位の中心・角度・長さを求め直す（ボーン→部位の一方向）。
+// 本家Live2D（Cubism）は骨格と描画メッシュが別構造で、ワープ／回転デフォーマと描画オブジェクトは自動では連動しない。
+// そのためこの機能は部位ごとに切り替えられ、初期値は自動認識した腕・脚・手・腰・胸だけON、他はOFFにする。
+const BONE_PART_LINKS={
+  "arm-left":{kind:"limb",bones:["bone-shoulder-left","bone-elbow-left"]},
+  "arm-right":{kind:"limb",bones:["bone-shoulder-right","bone-elbow-right"]},
+  "forearm-left":{kind:"limb",bones:["bone-elbow-left","bone-wrist-left"]},
+  "forearm-right":{kind:"limb",bones:["bone-elbow-right","bone-wrist-right"]},
+  "leg-left":{kind:"limb",bones:["bone-hip-left","bone-knee-left"]},
+  "leg-right":{kind:"limb",bones:["bone-hip-right","bone-knee-right"]},
+  "shin-left":{kind:"limb",bones:["bone-knee-left","bone-ankle-left"]},
+  "shin-right":{kind:"limb",bones:["bone-knee-right","bone-ankle-right"]},
+  "hand-left":{kind:"hand",bones:["bone-elbow-left","bone-wrist-left"]},
+  "hand-right":{kind:"hand",bones:["bone-elbow-right","bone-wrist-right"]},
+  "waist":{kind:"waist",bones:["bone-waist","bone-spine","bone-root"]},
+  "chest-left":{kind:"chest",sign:1,bones:["bone-spine","bone-shoulder-left","bone-shoulder-right"]},
+  "chest-right":{kind:"chest",sign:-1,bones:["bone-spine","bone-shoulder-left","bone-shoulder-right"]}
+};
+function boneSyncAvailable(part,bones=activeBonePoints){
+  const link=BONE_PART_LINKS[part?.id];
+  return Boolean(link&&link.bones.every(id=>bones.some(bone=>bone.id===id)));
+}
+// 部位の長軸（局所y）を方向 (dx,dy) に合わせる角度。orientedRigRegion の angle と同じ規約。
+function boneAxisAngle(dx,dy){return Math.atan2(-dx,dy)}
+function boneSyncedRegion(part,bones=activeBonePoints){
+  if(!boneSyncAvailable(part,bones))return null;
+  const link=BONE_PART_LINKS[part.id],at=id=>bones.find(bone=>bone.id===id),[a,b,c]=link.bones.map(at);
+  const [rx,ry]=[part.region[2],part.region[3]];
+  if(link.kind==="limb"||link.kind==="hand"){
+    const dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy);
+    if(length<.012)return null;
+    if(link.kind==="limb"){
+      return {region:[(a.x+b.x)/2,(a.y+b.y)/2,rx,Math.max(.04,Math.min(.48,length/2+.03))],angle:boneAxisAngle(dx,dy)};
+    }
+    // 手: 前腕の延長方向、手首から手の長さの半分だけ先へ置く。
+    return {region:[b.x+dx/length*ry*.5,b.y+dy/length*ry*.5,rx,ry],angle:boneAxisAngle(dx,dy)};
+  }
+  if(link.kind==="waist"){
+    const dx=c.x-b.x,dy=c.y-b.y;
+    return {region:[a.x,a.y,rx,ry],angle:Math.hypot(dx,dy)>.012?boneAxisAngle(dx,dy):part.angle||0};
+  }
+  // 胸: 背骨の高さで、肩の並び方向へ肩幅の約30%ずつ左右へ振り分ける。
+  const sx=b.x-c.x,sy=b.y-c.y,span=Math.hypot(sx,sy);
+  if(span<.02)return null;
+  const ux=sx/span,uy=sy/span;
+  return {region:[a.x+ux*link.sign*span*HUMAN_PARTS_PARAMS.chestDx,a.y+uy*link.sign*span*HUMAN_PARTS_PARAMS.chestDx,rx,ry],angle:Math.atan2(uy,ux)};
+}
+function syncPartToBones(part,bones=activeBonePoints){
+  const synced=boneSyncedRegion(part,bones);
+  if(!synced)return false;
+  part.region=synced.region.map((value,index)=>index<2?Math.max(.02,Math.min(.98,value)):value);
+  part.angle=synced.angle;
+  return true;
+}
+function syncLinkedPartsToBones(bones=activeBonePoints){
+  let changed=false;
+  for(const part of activeRigParts)if(part.boneSync&&syncPartToBones(part,bones))changed=true;
+  if(changed)syncProfileFromParts();
+  return changed;
+}
+// 自動認識の直後: 同期対象の部位を既定でONにし、ボーン上へ配置し直す（元に戻す位置も更新）。
+function applyInitialBoneSync(parts,bones){
+  for(const part of parts){
+    if(!boneSyncAvailable(part,bones)){part.boneSync=false;continue}
+    part.boneSync=true;
+    if(syncPartToBones(part,bones)){part.originalRegion=[...part.region];part.originalAngle=part.angle}
+  }
+}
+
 function buildBoneRigFromParts(parts,profile){
   if(!parts.length||!profile)return [];
-  if(profile.rigType==="human")return buildHumanBoneRig(parts,profile);
+  if(profile.rigType==="human"){
+    const bones=buildHumanBoneRig(parts,profile);
+    applyInitialBoneSync(parts,bones);
+    return bones;
+  }
   const byRole=role=>parts.find(part=>part.role===role);
   const body=byRole("body"),head=byRole("head"),material=byRole("material"),prop=byRole("prop");
   const specs=[
@@ -2593,13 +2702,51 @@ function setLayerFlag(parts,key,value){
   renderLayerList();syncRigEditor();pushEditHistory();
 }
 
+const UI_ICONS={
+  eyeOn:'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4"/><path d="M6.6 6.7C3.7 8.5 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+  link:'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>'
+};
+const RIG_SHAPE_LABELS={ellipse:"楕円",rect:"角丸矩形",almond:"目",brow:"眉",lips:"口"};
+
+// 行内の名前編集（ダブルクリック／ダブルタップ）。確定は Enter・フォーカス外れ、取消は Esc。
+function beginInlineRename(nameElement,current,commit){
+  const input=document.createElement("input");
+  input.type="text";input.className="layerNameInput";input.maxLength=24;input.value=current;
+  let finished=false;
+  const finish=save=>{
+    if(finished)return;finished=true;
+    const value=input.value.trim();
+    if(save&&value&&value!==current)commit(value);
+    input.replaceWith(nameElement);
+  };
+  for(const type of ["pointerdown","click","dblclick"])input.addEventListener(type,event=>event.stopPropagation());
+  input.addEventListener("keydown",event=>{
+    event.stopPropagation();
+    if(event.key==="Enter"){event.preventDefault();finish(true)}
+    else if(event.key==="Escape"){event.preventDefault();finish(false)}
+  });
+  input.addEventListener("blur",()=>finish(true));
+  nameElement.replaceWith(input);
+  input.focus();input.select();
+}
+// ダブルタップ検出（iOS Safari では dblclick が不安定なため時間で判定）。
+function attachDoubleTap(element,handler){
+  let last=0;
+  element.addEventListener("click",event=>{
+    const now=performance.now();
+    if(now-last<380){last=0;event.stopPropagation();handler(event)}else last=now;
+  });
+}
+
 function renderLayerList(){
   const container=$("#rigLayerList");
   if(!container)return;
   const make=(tag,className,text)=>{const element=document.createElement(tag);if(className)element.className=className;if(text!==undefined)element.textContent=text;return element};
-  const iconButton=(label,title,on,handler)=>{
-    const button=make("button","layerIcon"+(on?" on":""),label);
-    button.type="button";button.title=title;button.setAttribute("aria-pressed",String(on));
+  const iconButton=(label,title,on,handler,html=false)=>{
+    const button=make("button","layerIcon"+(on?" on":""));
+    if(html)button.innerHTML=label;else button.textContent=label;
+    button.type="button";button.title=title;button.setAttribute("aria-label",title);button.setAttribute("aria-pressed",String(on));
     button.addEventListener("pointerdown",event=>event.stopPropagation());
     button.addEventListener("click",event=>{event.stopPropagation();handler()});
     return button;
@@ -2610,23 +2757,80 @@ function renderLayerList(){
       const collapsed=collapsedLayerGroups.has(model.name);
       row.append(make("span","layerGrip",collapsed?"▸":"▾"),make("span","layerName",`📁 ${model.name}（${model.members.length}）`));
       const allVisible=model.members.every(part=>part.visible!==false),allMotion=model.members.every(part=>part.motionEnabled);
-      row.append(iconButton("◉","グループ全体のワイヤー表示",allVisible,()=>setLayerFlag(model.members,"visible",!allVisible)),iconButton("動","グループ全体のアニメーション",allMotion,()=>setLayerFlag(model.members,"motionEnabled",!allMotion)));
+      row.append(iconButton(allVisible?UI_ICONS.eyeOn:UI_ICONS.eyeOff,"グループ全体のワイヤー表示切替",allVisible,()=>setLayerFlag(model.members,"visible",!allVisible),true),iconButton("動","グループ全体のアニメーション",allMotion,()=>setLayerFlag(model.members,"motionEnabled",!allMotion)));
       row.addEventListener("click",()=>{if(collapsedLayerGroups.has(model.name))collapsedLayerGroups.delete(model.name);else collapsedLayerGroups.add(model.name);renderLayerList()});
       return row;
     }
     const part=model.part,row=make("div","layerRow"+(part.visible===false?" hiddenLayer":"")+(part.id===selectedRigPart()?" selected":""));
-    row.dataset.id=part.id;row.style.paddingLeft=`${6+model.depth*18}px`;row.setAttribute("role","treeitem");row.setAttribute("aria-level",String(model.depth+1));
+    row.dataset.id=part.id;row.style.paddingLeft=`${4+model.depth*12}px`;row.setAttribute("role","treeitem");row.setAttribute("aria-level",String(model.depth+1));
     const grip=make("span","layerGrip","⠿");grip.title="ドラッグして、落とした行の子にする";
     const swatch=make("span","layerSwatch");swatch.style.background=part.color;
-    const parent=part.parentId?rigPartById(part.parentId):null;
-    row.append(grip,swatch,make("span","layerName",`${model.depth?"└ ":""}${part.tag} ${part.label}`));
-    if(parent)row.append(make("span","layerParentTag",`親:${parent.label}`));
-    row.append(iconButton("◉","ワイヤー表示の切替",part.visible!==false,()=>setLayerFlag([part],"visible",part.visible===false)),iconButton("動","アニメーション ON/OFF",part.motionEnabled,()=>{setLayerFlag([part],"motionEnabled",!part.motionEnabled);$("#partMotionEnabled").checked=part.motionEnabled}));
+    // 親子関係は字下げのツリー表示で分かるため、親の名前の表示は設けない。名前はダブルタップで直接編集。
+    const name=make("span","layerName",`${model.depth?"└ ":""}${part.tag} ${part.label}`);
+    name.title="ダブルタップで名前を編集";
+    attachDoubleTap(name,()=>beginInlineRename(name,part.label,value=>{part.label=value.slice(0,24);syncRigEditor();renderLayerList();pushEditHistory()}));
+    row.append(grip,swatch,name);
+    // 形状のプルダウン（特徴部位だけ 目／眉／口 を選べる）。
+    const shape=make("select","layerShape");shape.title="部位範囲の形状";shape.setAttribute("aria-label",`${part.label}の形状`);
+    const shapes=part.role==="feature"?RIG_SHAPES:["ellipse","rect"];
+    for(const value of shapes)shape.append(new Option(RIG_SHAPE_LABELS[value],value));
+    shape.value=shapes.includes(part.shape)?part.shape:"ellipse";
+    for(const type of ["pointerdown","click"])shape.addEventListener(type,event=>event.stopPropagation());
+    shape.addEventListener("change",()=>{part.shape=normalizeRigShape(shape.value,part.shape);syncRigEditor();pushEditHistory()});
+    const available=boneSyncAvailable(part),syncOn=Boolean(part.boneSync)&&available;
+    const sync=iconButton(UI_ICONS.link,available?(syncOn?"ボーンと範囲を同期中（クリックで解除）":"ボーンの位置へ範囲を同期"):"この部位に対応するボーンがありません",syncOn,()=>{
+      part.boneSync=!part.boneSync;
+      if(part.boneSync&&syncPartToBones(part))syncProfileFromParts();
+      syncRigEditor();renderLayerList();pushEditHistory();
+    },true);
+    sync.disabled=!available;
+    row.append(shape,iconButton(part.visible!==false?UI_ICONS.eyeOn:UI_ICONS.eyeOff,"ワイヤー表示切替",part.visible!==false,()=>setLayerFlag([part],"visible",part.visible===false),true),sync,iconButton("動","アニメーション ON/OFF",part.motionEnabled,()=>{setLayerFlag([part],"motionEnabled",!part.motionEnabled);$("#partMotionEnabled").checked=part.motionEnabled},false));
     row.addEventListener("click",()=>{$("#rigPartList").value=part.id;syncRigEditor()});
     return row;
   });
   const rootDrop=make("div","layerRootDrop","ここへ落とすと親なし（ルート）");rootDrop.dataset.root="1";
+  const scroll=container.scrollTop;
   container.replaceChildren(...rows,rootDrop);
+  container.scrollTop=scroll;
+}
+
+// リストの上下端付近へドラッグしたとき、リストを自動スクロールする（見えていない位置へも項目を落とせるように）。
+function makeEdgeScroller(container,onScroll){
+  let pointerY=null,frame=0;
+  const tick=()=>{
+    frame=0;
+    if(pointerY===null)return;
+    const box=container.getBoundingClientRect(),zone=Math.max(18,Math.min(44,box.height/3));
+    let speed=0;
+    if(pointerY<box.top+zone)speed=-(1-Math.max(0,pointerY-box.top)/zone);
+    else if(pointerY>box.bottom-zone)speed=1-Math.max(0,box.bottom-pointerY)/zone;
+    if(speed){
+      const before=container.scrollTop;
+      container.scrollTop+=Math.round(Math.max(-1,Math.min(1,speed))*16);
+      if(container.scrollTop!==before)onScroll?.();
+    }
+    frame=requestAnimationFrame(tick);
+  };
+  return {
+    move(clientY){pointerY=clientY;if(!frame)frame=requestAnimationFrame(tick)},
+    stop(){pointerY=null;if(frame){cancelAnimationFrame(frame);frame=0}}
+  };
+}
+
+// リストの縦幅を、下端のつまみのドラッグで拡大・縮小する（タッチ対応）。
+function initListResizeGrip(list,grip){
+  let start=null;
+  grip.addEventListener("pointerdown",event=>{
+    start={y:event.clientY,height:list.getBoundingClientRect().height};
+    grip.setPointerCapture(event.pointerId);event.preventDefault();
+  });
+  grip.addEventListener("pointermove",event=>{
+    if(!start)return;
+    const height=Math.max(80,Math.min(innerHeight*.8,start.height+event.clientY-start.y));
+    list.style.height=`${Math.round(height)}px`;list.style.maxHeight="none";
+  });
+  const end=event=>{if(start&&grip.hasPointerCapture?.(event.pointerId))grip.releasePointerCapture(event.pointerId);start=null};
+  grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
 }
 
 function setLayerParent(childId,parentId){
@@ -2652,14 +2856,21 @@ function initLayerPanel(){
     row.classList.add("dragging");container.classList.add("dragActive");
     container.setPointerCapture(event.pointerId);event.preventDefault();
   });
-  container.addEventListener("pointermove",event=>{
-    if(!layerDrag)return;
+  const updateTarget=event=>{
     const target=layerDropTarget(event);
     container.querySelectorAll(".dropTarget").forEach(element=>element.classList.remove("dropTarget"));
     layerDrag.target=target&&target!==layerDrag.row?target:null;
     layerDrag.target?.classList.add("dropTarget");
+  };
+  let lastPointer=null;
+  const scroller=makeEdgeScroller(container,()=>{if(layerDrag&&lastPointer)updateTarget(lastPointer)});
+  container.addEventListener("pointermove",event=>{
+    if(!layerDrag)return;
+    lastPointer={clientX:event.clientX,clientY:event.clientY};
+    updateTarget(event);scroller.move(event.clientY);
   });
   const finish=event=>{
+    scroller.stop();
     if(!layerDrag)return;
     const {id,target}=layerDrag;
     layerDrag=null;container.classList.remove("dragActive");
@@ -2670,7 +2881,8 @@ function initLayerPanel(){
     else setLayerParent(id,target.dataset.id);
   };
   container.addEventListener("pointerup",finish);
-  container.addEventListener("pointercancel",event=>{if(layerDrag){layerDrag=null;container.classList.remove("dragActive");renderLayerList()}});
+  container.addEventListener("pointercancel",event=>{scroller.stop();if(layerDrag){layerDrag=null;container.classList.remove("dragActive");renderLayerList()}});
+  initListResizeGrip(container,$("#rigLayerGrip"));
   const reorder=direction=>{
     const part=rigPartById(selectedRigPart());
     if(!part)return;
@@ -2750,7 +2962,20 @@ function syncRigEditor(){
   parent.value=part.parentId||"";
   $("#partInheritMotion").checked=part.inheritMotion;
   $("#partInheritAmount").value=part.inheritAmount;
-  $("#partInheritAmount").disabled=!available||!part.inheritMotion;
+  syncMotionFieldState(part);
+}
+
+// 「動作」OFF時は種類・強度・重力・ばね・減衰・親・継承をグレーアウト（無効化）する。
+function syncMotionFieldState(part){
+  const on=Boolean(part?.motionEnabled);
+  for(const id of ["partMotionPreset","partMotionStrength","partGravity","partStiffness","partDamping","partParent","partInheritMotion","partInheritAmount"]){
+    $("#"+id).disabled=!part||!on;
+  }
+  if(part&&on){
+    $("#partMotionPreset").disabled=part.role==="feature";
+    $("#partInheritAmount").disabled=!part.inheritMotion;
+  }
+  document.querySelector(".motionFields")?.classList.toggle("off",!on);
 }
 
 function applyRigPartControls(){
@@ -2771,7 +2996,7 @@ function applyRigPartControls(){
   part.inheritAmount=parseFloat($("#partInheritAmount").value);
   const option=$("#rigPartList").selectedOptions[0];
   if(option)option.textContent=`TAG ${part.tag} ${part.label}`;
-  $("#partInheritAmount").disabled=!part.inheritMotion;
+  syncMotionFieldState(part);
   renderLayerList();
   updateRigValidation();
 }
@@ -2845,6 +3070,94 @@ function wouldCreateBoneCycle(pointId,parentId,points=activeBonePoints){
   return false;
 }
 
+const BONE_TYPE_COLORS={root:"#ffb45f",joint:"#ffffff",branch:"#c49cff",end:"#74e8ff"};
+let boneDrag=null;
+function boneRowModel(){
+  const rows=[],seen=new Set(),ids=new Set(activeBonePoints.map(point=>point.id));
+  const walk=(point,depth)=>{
+    if(seen.has(point.id))return;
+    seen.add(point.id);rows.push({point,depth});
+    activeBonePoints.filter(child=>child.parentId===point.id).forEach(child=>walk(child,depth+1));
+  };
+  activeBonePoints.filter(point=>!point.parentId||!ids.has(point.parentId)).forEach(point=>walk(point,0));
+  activeBonePoints.filter(point=>!seen.has(point.id)).forEach(point=>walk(point,0));
+  return rows;
+}
+function setBoneParent(childId,parentId){
+  const child=bonePointById(childId);
+  if(!child||childId===parentId)return;
+  if(parentId&&wouldCreateBoneCycle(childId,parentId))return;
+  child.parentId=parentId||null;
+  if(!child.parentId)child.type="root";
+  else if(child.type==="root")child.type="joint";
+  syncBonePointList(childId);syncLinkedPartsToBones();pushEditHistory();
+}
+function renderBoneList(){
+  const container=$("#boneTreeList");
+  if(!container)return;
+  const make=(tag,className,text)=>{const element=document.createElement(tag);if(className)element.className=className;if(text!==undefined)element.textContent=text;return element};
+  const rows=boneRowModel().map(({point,depth})=>{
+    const row=make("div","layerRow"+(point.id===selectedBonePoint()?" selected":""));
+    row.dataset.id=point.id;row.style.paddingLeft=`${4+depth*12}px`;row.setAttribute("role","treeitem");row.setAttribute("aria-level",String(depth+1));
+    const grip=make("span","layerGrip","⠿");grip.title="ドラッグして、落とした行の子にする";
+    const swatch=make("span","layerSwatch");swatch.style.background=BONE_TYPE_COLORS[point.type]||"#fff";
+    const name=make("span","layerName",`${depth?"└ ":""}${point.tag} ${point.label}`);name.title="ダブルタップで名前を編集";
+    attachDoubleTap(name,()=>beginInlineRename(name,point.label,value=>{point.label=value.slice(0,24);syncBonePointList(point.id);pushEditHistory()}));
+    const kind=make("select","layerShape");kind.title="種別";kind.setAttribute("aria-label",`${point.label}の種別`);
+    for(const [value,label] of Object.entries(BONE_TYPE_LABELS))kind.append(new Option(label,value));
+    kind.value=point.type;
+    for(const type of ["pointerdown","click"])kind.addEventListener(type,event=>event.stopPropagation());
+    kind.addEventListener("change",()=>{
+      point.type=point.parentId&&kind.value==="root"?"joint":kind.value;
+      syncBonePointList(point.id);pushEditHistory();
+    });
+    row.append(grip,swatch,name,kind);
+    row.addEventListener("click",()=>{selectedBoneSegmentId=null;$("#bonePointList").value=point.id;syncBoneEditor()});
+    return row;
+  });
+  const rootDrop=make("div","layerRootDrop","ここへ落とすと親なし（起点）");rootDrop.dataset.root="1";
+  const scroll=container.scrollTop;
+  container.replaceChildren(...rows,rootDrop);
+  container.scrollTop=scroll;
+}
+function initBoneListPanel(){
+  const container=$("#boneTreeList");
+  const hit=event=>document.elementFromPoint(event.clientX,event.clientY)?.closest?.(".layerRow[data-id],.layerRootDrop")||null;
+  const updateTarget=event=>{
+    container.querySelectorAll(".dropTarget").forEach(element=>element.classList.remove("dropTarget"));
+    const target=hit(event);
+    boneDrag.target=target&&target!==boneDrag.row?target:null;
+    boneDrag.target?.classList.add("dropTarget");
+  };
+  let lastPointer=null;
+  const scroller=makeEdgeScroller(container,()=>{if(boneDrag&&lastPointer)updateTarget(lastPointer)});
+  container.addEventListener("pointerdown",event=>{
+    const grip=event.target.closest(".layerGrip"),row=grip?.closest(".layerRow[data-id]");
+    if(!row)return;
+    boneDrag={id:row.dataset.id,row,target:null};
+    row.classList.add("dragging");container.classList.add("dragActive");
+    container.setPointerCapture(event.pointerId);event.preventDefault();
+  });
+  container.addEventListener("pointermove",event=>{
+    if(!boneDrag)return;
+    lastPointer={clientX:event.clientX,clientY:event.clientY};
+    updateTarget(event);scroller.move(event.clientY);
+  });
+  const finish=event=>{
+    scroller.stop();
+    if(!boneDrag)return;
+    const {id,target}=boneDrag;
+    boneDrag=null;container.classList.remove("dragActive");
+    if(container.hasPointerCapture?.(event.pointerId))container.releasePointerCapture(event.pointerId);
+    if(!target){renderBoneList();return}
+    setBoneParent(id,target.dataset.root?null:target.dataset.id);
+    renderBoneList();
+  };
+  container.addEventListener("pointerup",finish);
+  container.addEventListener("pointercancel",()=>{scroller.stop();if(boneDrag){boneDrag=null;container.classList.remove("dragActive");renderBoneList()}});
+  initListResizeGrip(container,$("#boneTreeGrip"));
+}
+
 function syncBonePointList(preferredId=selectedBonePoint()){
   const list=$("#bonePointList");
   list.replaceChildren(...activeBonePoints.map(point=>{
@@ -2855,6 +3168,7 @@ function syncBonePointList(preferredId=selectedBonePoint()){
   }));
   list.value=activeBonePoints.some(point=>point.id===preferredId)?preferredId:(activeBonePoints[0]?.id||"");
   syncBoneEditor();
+  renderBoneList();
   updateRigValidation();
 }
 
@@ -2876,6 +3190,7 @@ function syncBoneEditor(){
   part.replaceChildren(new Option("なし（固定）",""),...activeRigParts.map(candidate=>new Option(`TAG ${candidate.tag} ${candidate.label}`,candidate.id)));
   part.value=point.partId||"";
   $("#boneFollowAmount").value=point.followAmount;
+  document.querySelectorAll("#boneTreeList .layerRow[data-id]").forEach(row=>row.classList.toggle("selected",row.dataset.id===point.id));
 }
 
 function applyBonePointControls(){
@@ -2891,6 +3206,8 @@ function applyBonePointControls(){
   $("#bonePointType").value=point.type;
   const option=$("#bonePointList").selectedOptions[0];
   if(option)option.textContent=`${point.tag} ${BONE_TYPE_LABELS[point.type]} ${point.label}`;
+  renderBoneList();
+  syncLinkedPartsToBones();
   updateRigValidation();
 }
 
@@ -3030,7 +3347,7 @@ function normalizeRigProject(raw){
     const preset=MOTION_PRESETS[source.preset]?source.preset:"soft";
     const region=Array.isArray(source.region)?source.region:[];
     const angle=boundedNumber(source.angle,-Math.PI,Math.PI,0);
-    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],angle,originalAngle:angle,motionEnabled:source.motionEnabled!==false,preset,shape:normalizeRigShape(source.shape),layer:Number.isFinite(source.layer)?source.layer:index+1,visible:source.visible!==false,group:typeof source.group==="string"&&source.group?String(source.group).slice(0,24):null,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65)};
+    return {id:cleanId(source.id,`部位${index+1}`),role,tag:String(source.tag||index+1).slice(0,3),label:cleanLabel(source.label),color:/^#[0-9a-f]{6}$/i.test(source.color||"")?source.color:EXTRA_PART_COLORS[index%EXTRA_PART_COLORS.length],region:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],originalRegion:[boundedNumber(region[0],0,1,.5),boundedNumber(region[1],0,1,.5),boundedNumber(region[2],role==="feature"?.006:.02,.5,.12),boundedNumber(region[3],role==="feature"?.006:.02,.5,.12)],angle,originalAngle:angle,motionEnabled:source.motionEnabled!==false,preset,shape:normalizeRigShape(source.shape),layer:Number.isFinite(source.layer)?source.layer:index+1,visible:source.visible!==false,group:typeof source.group==="string"&&source.group?String(source.group).slice(0,24):null,strength:boundedNumber(source.strength,0,2,MOTION_PRESETS[preset].strength),gravity:boundedNumber(source.gravity,-.003,.003,MOTION_PRESETS[preset].gravity),stiffness:boundedNumber(source.stiffness,4,44,MOTION_PRESETS[preset].stiffness),damping:boundedNumber(source.damping,2,14,MOTION_PRESETS[preset].damping),parentId:source.parentId?cleanId(source.parentId,"親部位"):null,inheritMotion:Boolean(source.inheritMotion),inheritAmount:boundedNumber(source.inheritAmount,0,1.5,.65),boneSync:source.boneSync===true};
   });
   const bones=raw.bonePoints.slice(0,MAX_BONE_POINTS+1).map((source,index)=>({id:cleanId(source.id,`ボーン${index+1}`),tag:String(source.tag||`B${index+1}`).slice(0,4),label:cleanLabel(source.label),type:BONE_TYPE_LABELS[source.type]?source.type:"joint",x:boundedNumber(source.x,0,1,.5),y:boundedNumber(source.y,0,1,.5),parentId:source.parentId?cleanId(source.parentId,"親ボーン"):null,partId:source.partId?cleanId(source.partId,"追随部位"):null,followAmount:boundedNumber(source.followAmount,0,1.5,1),original:[boundedNumber(source.x,0,1,.5),boundedNumber(source.y,0,1,.5)]}));
   const validation=validateRigDefinition(parts,bones);
@@ -3334,6 +3651,50 @@ async function detectFaceFeatures(source,faceHint=null){
   return faceFeaturesFromLandmarks(landmarks.map(point=>({x:(left+point.x*side)/width,y:(top+point.y*side)/height,z:point.z})),width/height);
 }
 
+// 姿勢AIが見えていない（または人体として不自然な長さの）関節を、肩幅を基準にした人体比率の位置へ置き換える。
+// 半身像で膝・足首などが画面外へ外挿されたり、腕・脚が異常に長い／短いまま部位とボーンが大きくずれるのを防ぐ。
+// aspect は正規化座標を同じ縮尺の画素へ戻す幅/高さ比。skip は制作側が校正済みの関節名。置き換えた関節数を返す。
+const POSE_LIMB_RATIO={upperArm:.85,forearm:.75,thigh:1.15,shin:1.1};
+function regularizePoseLandmarks(mapped,aspect=1,skip=new Set()){
+  const px=point=>[point[0]*aspect,point[1]],back=(x,y)=>[Math.max(.01,Math.min(.99,x/aspect)),Math.max(.01,Math.min(.99,y))];
+  const shoulderL=px(mapped.shoulderLeft),shoulderR=px(mapped.shoulderRight);
+  const span=Math.hypot(shoulderL[0]-shoulderR[0],shoulderL[1]-shoulderR[1]);
+  if(!(span>.03))return 0;
+  const sv=[(shoulderL[0]-shoulderR[0])/span,(shoulderL[1]-shoulderR[1])/span],down=[-sv[1],sv[0]];
+  const neck=[(shoulderL[0]+shoulderR[0])/2,(shoulderL[1]+shoulderR[1])/2];
+  const inFrame=point=>point[0]>.015&&point[0]<.985&&point[1]>.015&&point[1]<.985;
+  const seen=name=>(mapped[name][2]??1)>=.35&&inFrame(mapped[name]);
+  let replaced=0;
+  const place=(name,x,y)=>{if(skip.has(name))return;const [nx,ny]=back(x,y);mapped[name][0]=nx;mapped[name][1]=ny;replaced++};
+  const plausible=(name,from,expected)=>{
+    if(!seen(name))return false;
+    const point=px(mapped[name]),length=Math.hypot(point[0]-from[0],point[1]-from[1]);
+    return length>=expected*.35&&length<=expected*1.9;
+  };
+  for(const side of ["Left","Right"]){
+    const sign=side==="Left"?1:-1,shoulder=side==="Left"?shoulderL:shoulderR;
+    // 股関節: 腰が写っていない半身像では首から体幹長ぶん下へ置く（humanPoseBones と同じ式）。
+    const hipName="hip"+side,hipSeen=seen(hipName)&&mapped[hipName][1]<.97;
+    const hipDefault=[neck[0]+down[0]*span*1.35+sv[0]*sign*span*.2,neck[1]+down[1]*span*1.35+sv[1]*sign*span*.2];
+    if(!hipSeen)place(hipName,...hipDefault);
+    const hip=px(mapped[hipName]);
+    const chain=(first,second,origin,firstLength,secondLength,direction)=>{
+      if(!plausible(first,origin,firstLength*span))place(first,origin[0]+direction[0]*firstLength*span,origin[1]+direction[1]*firstLength*span);
+      const middle=px(mapped[first]);
+      const dx=middle[0]-origin[0],dy=middle[1]-origin[1],norm=Math.max(1e-4,Math.hypot(dx,dy));
+      if(!plausible(second,middle,secondLength*span)){
+        const unit=norm>.002?[dx/norm,dy/norm]:direction;
+        place(second,middle[0]+unit[0]*secondLength*span,middle[1]+unit[1]*secondLength*span);
+      }
+    };
+    // 腕は体の外側へ少し開き、脚は真下へ伸ばす。
+    const armDirection=(()=>{const x=down[0]+sv[0]*sign*.25,y=down[1]+sv[1]*sign*.25,n=Math.hypot(x,y);return [x/n,y/n]})();
+    chain("elbow"+side,"wrist"+side,shoulder,POSE_LIMB_RATIO.upperArm,POSE_LIMB_RATIO.forearm,armDirection);
+    chain("knee"+side,"ankle"+side,hip,POSE_LIMB_RATIO.thigh,POSE_LIMB_RATIO.shin,down);
+  }
+  return replaced;
+}
+
 async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
   const detector=await withTimeout(createPoseLandmarker(),45000,"姿勢検出モデルの読込");
   const result=detector.detect(source),landmarks=result.landmarks?.[0];
@@ -3357,6 +3718,12 @@ async function inferHumanPoseProfile(source,demo,prepared,baseProfile){
     const y=placement.top+(value[1]-sourcePlacement.top)/sourcePlacement.height*placement.height;
     return [name,[Math.max(.01,Math.min(.99,x)),Math.max(.01,Math.min(.99,y)),value[2]]];
   }));
+  {
+    const sw=source.naturalWidth||source.videoWidth||source.width||1,sh=source.naturalHeight||source.videoHeight||source.height||1;
+    const aspect=(sourcePlacement.width*sw/Math.max(1e-4,placement.width))/(sourcePlacement.height*sh/Math.max(1e-4,placement.height));
+    const replacedJoints=regularizePoseLandmarks(mapped,Number.isFinite(aspect)&&aspect>0?aspect:sw/sh,new Set(Object.keys(overrides)));
+    if(replacedJoints)console.info(`姿勢AIで見えない・不自然な関節 ${replacedJoints} 点を人体比率の位置へ補正しました。`);
+  }
   let humanParts=null,faceHint={cx:pose.nose[0],cy:pose.nose[1],rx:.07,ry:.07};
   try{
     const analysis=await analyzeHumanPartsFromSource(source,pose);
@@ -5399,6 +5766,7 @@ $("#rigDebug").addEventListener("input",()=>{
 });
 $("#rigPartList").addEventListener("change",syncRigEditor);
 initLayerPanel();
+initBoneListPanel();
 $("#addRigPart").addEventListener("click",addRigPart);
 $("#deleteRigPart").addEventListener("click",deleteSelectedRigPart);
 $("#duplicateRigPart").addEventListener("click",duplicateSelectedRigPart);
@@ -5474,11 +5842,12 @@ function characterSourcePoint(x,y){
   };
 }
 
-function rigPartSourceDisplayState(partId,nowSeconds){
-  const definition=rigPartById(partId);
+// probe を渡すと、部位ではなく任意の位置（ボーン）に同じ視差・ばね計算を当てた値を返す（ボーン自身の動き）。
+function rigPartSourceDisplayState(partId,nowSeconds,probe){
+  const definition=probe?{role:"feature",angle:0,...probe}:rigPartById(partId);
   if(!definition)return {x:.5,y:.5,radiusX:.01,radiusY:.01};
   const part=definition.region;
-  const spring=rigSprings[partId]||newRigSpring();
+  const spring=probe?newRigSpring():(rigSprings[partId]||newRigSpring());
   const strength=parseFloat($("#depth").value);
   const dx=(part[0]-parseFloat($("#cx").value))*imgAspect;
   const dy=part[1]-parseFloat($("#cy").value);
@@ -5519,7 +5888,35 @@ function rigPartSourceDisplayState(partId,nowSeconds){
     radiusX*=1+live2dVisualState.breath*0.0045;
     y+=anchorWeight*live2dVisualState.breath*0.0018;
   }
+  if(!probe){
+    const influence=rigPartBoneInfluence(partId,nowSeconds);
+    x+=influence.x;
+    y+=influence.y;
+  }
   return {x,y,radiusX,radiusY,angle:definition.angle||0};
+}
+
+// ボーン自身の動き（部位には依存しない）。位置は復元用の基準座標ではなく現在の x,y。
+function bonePointMotionState(point,nowSeconds){
+  const state=rigPartSourceDisplayState(null,nowSeconds,{region:[point.x,point.y,.01,.01]});
+  const spring=effectiveBoneMotion(point.id);
+  return {...state,x:state.x+spring.x,y:state.y-spring.y};
+}
+
+// ボーン→部位: 連動部位は、ボーンの動きと自身の動きの差分に連動率を掛けた分だけボーンの動きへ寄る。
+// ボーンが無い、または連動率0の部位は従来どおり自身の動きのみ。
+function rigPartBoneInfluence(partId,nowSeconds){
+  let x=0,y=0;
+  for(const point of activeBonePoints){
+    if(point.partId!==partId||!(point.followAmount>0))continue;
+    const part=rigPartById(partId);
+    if(!part)continue;
+    const bone=bonePointMotionState(point,nowSeconds);
+    const own=rigPartSourceDisplayState(null,nowSeconds,{region:part.region.slice(),role:part.role,angle:part.angle});
+    x+=((bone.x-point.x)-(own.x-part.region[0]))*point.followAmount;
+    y+=((bone.y-point.y)-(own.y-part.region[1]))*point.followAmount;
+  }
+  return {x,y};
 }
 
 function rigPartDisplayState(partId,nowSeconds){
@@ -5533,13 +5930,8 @@ function bonePointSourceDisplayState(pointId,nowSeconds){
   const point=bonePointById(pointId);
   if(!point)return {x:.5,y:.5};
   let x=point.x,y=point.y;
-  const part=rigPartById(point.partId);
-  if(part){
-    const state=rigPartSourceDisplayState(part.id,nowSeconds);
-    x+=(state.x-part.region[0])*point.followAmount;
-    y+=(state.y-part.region[1])*point.followAmount;
-  }
-  return {x,y};
+  const motion=bonePointMotionState(point,nowSeconds);
+  return {x:motion.x,y:motion.y};
 }
 
 function bonePointDisplayState(pointId,nowSeconds){
@@ -5557,6 +5949,29 @@ function pointToSegmentDistance(point,start,end){
   if(lengthSquared<.0001)return Math.hypot(point.x-start.x,point.y-start.y);
   const t=Math.max(0,Math.min(1,((point.x-start.x)*dx+(point.y-start.y)*dy)/lengthSquared));
   return Math.hypot(point.x-(start.x+dx*t),point.y-(start.y+dy*t));
+}
+
+// 部位範囲の描画（メイン画面と顔パーツ編集（拡大）で共通）。mapLocal(ux,uy) は部位の局所座標（半径で正規化、-1〜1）を描画先ピクセルへ変換する。
+// 輪郭・塗り・十字線の見た目を1か所に集約し、表示状態による差が出ないようにする。
+function paintPartWire(ctx,meta,dpr,selected,mapLocal){
+  ctx.setLineDash(selected?[]:[5*dpr,3*dpr]);
+  ctx.lineWidth=Math.max(selected?2.5:1.4,(selected?2.5:1.4)*dpr);
+  ctx.strokeStyle=meta.color;
+  ctx.fillStyle=meta.color+"18";
+  ctx.beginPath();
+  for(let index=0;index<=48;index++){
+    const [unitX,unitY]=partOutlineLocal(meta.shape,index/48*Math.PI*2),[x,y]=mapLocal(unitX,unitY);
+    if(index===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fill();ctx.stroke();
+  const left=mapLocal(-1,0),right=mapLocal(1,0),top=mapLocal(0,-1),bottom=mapLocal(0,1);
+  ctx.beginPath();
+  ctx.moveTo(left[0],left[1]);ctx.lineTo(right[0],right[1]);
+  ctx.moveTo(top[0],top[1]);ctx.lineTo(bottom[0],bottom[1]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  return {left,right,top,bottom};
 }
 
 function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
@@ -5647,28 +6062,10 @@ function drawRigDebug(rect,mapPoint,dpr,nowSeconds){
     guideHandles.parts[partKey]=point;
     const selected=selectedRigPart()===partKey;
     if(meta.visible!==false&&($("#debugShowWireframe").checked||selected)){
-      guideContext.setLineDash(selected ? [] : [5*dpr,3*dpr]);
-      guideContext.lineWidth=Math.max(selected?2.5:1.4,(selected?2.5:1.4)*dpr);
-      guideContext.strokeStyle=meta.color;
-      guideContext.fillStyle=meta.color+"18";
-      guideContext.beginPath();
-      for(let index=0;index<=48;index++){
-        const [unitX,unitY]=partOutlineLocal(meta.shape,index/48*Math.PI*2);
-        const localX=state.radiusX*unitX,localY=state.radiusY*unitY;
-        const imageX=state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY;
-        const imageY=state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY;
-        const outline=mapPoint(imageX,imageY);
-        if(index===0)guideContext.moveTo(outline.x,outline.y);else guideContext.lineTo(outline.x,outline.y);
-      }
-      guideContext.closePath();
-      guideContext.fill();guideContext.stroke();
       const axisPoint=(localX,localY)=>mapPoint(state.x+Math.cos(state.angle)*localX-Math.sin(state.angle)*localY,state.y+Math.sin(state.angle)*localX+Math.cos(state.angle)*localY);
+      paintPartWire(guideContext,meta,dpr,selected,(unitX,unitY)=>{const p=axisPoint(state.radiusX*unitX,state.radiusY*unitY);return [p.x,p.y]});
       const left=axisPoint(-state.radiusX,0),right=axisPoint(state.radiusX,0),top=axisPoint(0,-state.radiusY),bottom=axisPoint(0,state.radiusY);
       guideHandles.axes[partKey]={cx:point.x,cy:point.y,ux:(right.x-left.x)/2,uy:(right.y-left.y)/2,vx:(bottom.x-top.x)/2,vy:(bottom.y-top.y)/2,shape:meta.shape};
-      guideContext.beginPath();
-      guideContext.moveTo(left.x,left.y);guideContext.lineTo(right.x,right.y);
-      guideContext.moveTo(top.x,top.y);guideContext.lineTo(bottom.x,bottom.y);
-      guideContext.stroke();
       if(selected){
         const size=Math.max(5,5*dpr),margin=size+4*dpr;
         // 画面外へ出た編集点は画面内へ寄せ、回転ハンドルは反対側（下側）へ回す。
@@ -5886,6 +6283,7 @@ function updateGuideDrag(event){
     definition.x=Math.max(0,Math.min(1,definition.x+requested.x-displayed.x));
     definition.y=Math.max(0,Math.min(1,definition.y+requested.y-displayed.y));
     $("#bonePointList").value=boneId;
+    syncLinkedPartsToBones();
   }else if(guideDragTarget.startsWith("resize:")){
     // ドラッグした点の対向点を固定し、幅（高さ）と中心を同時に変える。
     const [,partId,edge]=guideDragTarget.split(":"),definition=rigPartById(partId);
@@ -6757,17 +7155,11 @@ function feTick(now){
     const def=fePartDef(id);
     if(!def)continue;
     const selected=id===f.part,color=def.color||"#79e7ff";
-    ctx.beginPath();
-    for(let i=0;i<=48;i++){
-      const [ux,uy]=partOutlineLocal(def.shape,i/48*Math.PI*2),[x,y]=fePx(...Object.values(fePartPoint(def,ux*def.region[2],uy*def.region[3])));
-      if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
-    }
-    ctx.closePath();
-    ctx.lineWidth=(selected?2.2:1.2)*dpr;ctx.strokeStyle=selected?color:"rgba(255,255,255,.45)";ctx.setLineDash(selected?[]:[4*dpr,3*dpr]);ctx.stroke();ctx.setLineDash([]);
-    const [cx,cy]=fePx(def.region[0],def.region[1]),[ax,ay]=fePx(...Object.values(fePartPoint(def,-def.region[2],0))),[bx,by]=fePx(...Object.values(fePartPoint(def,def.region[2],0)));
-    ctx.lineWidth=dpr;ctx.strokeStyle=selected?"rgba(255,255,255,.75)":"rgba(255,255,255,.3)";
-    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.moveTo(cx-4*dpr,cy);ctx.lineTo(cx+4*dpr,cy);ctx.moveTo(cx,cy-4*dpr);ctx.lineTo(cx,cy+4*dpr);ctx.stroke();
-    ctx.fillStyle=selected?color:"rgba(255,255,255,.6)";ctx.font=`${11*dpr}px sans-serif`;ctx.fillText(def.label||id,cx+6*dpr,cy-6*dpr-def.region[3]*imgHeight*v.k);
+    if(def.visible===false&&!selected)continue;
+    // メイン画面と同じ描画関数（色・線種・塗り・十字線）を使う。
+    paintPartWire(ctx,{shape:def.shape,color},dpr,selected,(ux,uy)=>fePx(...Object.values(fePartPoint(def,ux*def.region[2],uy*def.region[3]))));
+    const [cx,cy]=fePx(def.region[0],def.region[1]);
+    ctx.fillStyle=color;ctx.font=`${11*dpr}px sans-serif`;ctx.fillText(def.label||id,cx+6*dpr,cy-6*dpr-def.region[3]*imgHeight*v.k);
     if(selected){
       const handles=feHandlePositions(def);
       ctx.fillStyle="#fff";ctx.strokeStyle=color;ctx.lineWidth=1.5*dpr;
@@ -6901,6 +7293,33 @@ function effectiveRigMotion(partId,visiting=new Set()){
   return {x,y};
 }
 
+// ボーン独自のばね。親ボーンの実モーションを継承量（既定0.7）だけ子へ加算する（部位の親子継承と同じ考え方）。
+const BONE_SPRING_PARAMS={strength:.8,stiffness:18,damping:6.5,gravity:-0.00045,inherit:.7};
+function effectiveBoneMotion(pointId,visiting=new Set()){
+  const spring=boneSprings[pointId],point=bonePointById(pointId);
+  if(!spring||!point)return {x:0,y:0};
+  if(visiting.has(pointId))return {x:spring.x,y:spring.y};
+  visiting.add(pointId);
+  let x=spring.x,y=spring.y;
+  if(point.parentId){
+    const parent=effectiveBoneMotion(point.parentId,visiting);
+    x+=parent.x*BONE_SPRING_PARAMS.inherit;y+=parent.y*BONE_SPRING_PARAMS.inherit;
+  }
+  visiting.delete(pointId);
+  return {x,y};
+}
+
+function updateBoneSprings(seconds,strength,deltaSeconds,limit){
+  const live=new Set();
+  for(const point of activeBonePoints){
+    live.add(point.id);
+    if(!boneSprings[point.id])boneSprings[point.id]=newRigSpring();
+    const target=rigMotionTarget({preset:"bone",strength:BONE_SPRING_PARAMS.strength},seconds+point.x*3.1,strength);
+    stepRigSpring(boneSprings[point.id],target[0],target[1],BONE_SPRING_PARAMS.stiffness,BONE_SPRING_PARAMS.damping,BONE_SPRING_PARAMS.gravity*strength,deltaSeconds,limit);
+  }
+  for(const key of Object.keys(boneSprings))if(!live.has(key))delete boneSprings[key];
+}
+
 function updateRigMotion(now,deltaSeconds){
   const enabled=Boolean(activeRigProfile&&hasLayeredDemo&&$("#autoMotion").checked&&!reduceMotion.matches);
   if(!enabled){
@@ -6917,6 +7336,7 @@ function updateRigMotion(now,deltaSeconds){
     stepRigSpring(rigSprings[part.id],target[0],target[1],part.stiffness,part.damping,part.gravity*strength,deltaSeconds,0.016*Math.min(style.amp,2.2));
   }
   for(const part of activeRigParts)effectiveRigMotion(part.id);
+  updateBoneSprings(seconds,strength,deltaSeconds,0.016*Math.min(style.amp,2.2));
   return true;
 }
 
@@ -7721,7 +8141,6 @@ document.addEventListener("paste",e=>{
   if(!files.length)return;
   e.preventDefault();files.forEach((f,i)=>pjAddBlob(f,"貼付"+(pj.seq+1+i)));
 });
-$("#openProjectEditor").addEventListener("click",pjOpen);
 $("#pjClose").addEventListener("click",pjClose);
 $("#pjNew").addEventListener("click",()=>{
   if(pj.layers.length&&!confirm("現在のプロジェクトを破棄して新規作成しますか？（未保存の内容は失われます）"))return;

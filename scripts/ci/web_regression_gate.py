@@ -706,7 +706,7 @@ def main() -> int:
     require("function rigStateMatches(" in html and "rigSessionId++" in html, "個別読込・自動分離後のリグ履歴復元が画像世代で区別されていません")
     require('const available=Boolean(part&&$("#rigDebug")' not in html and 'const available=Boolean(point&&$("#rigDebug")' not in html, "部位・ボーン編集が解析表示トグルに依存しています")
     require('id="panelToggle"' in html, "設定パネルの切替ボタンがありません")
-    require('aria-controls="panel"' in html, "設定パネル切替のaria-controlsがありません")
+    require('aria-controls="mainMenu"' in html, "メニュー切替のaria-controlsがありません")
     require('aria-expanded="false"' in html, "設定パネル切替の初期aria-expandedが不正です")
     require('id="panel" class="is-hidden" aria-hidden="true"' in html, "設定パネルが初期非表示ではありません")
     require('panel.classList.toggle("is-hidden",!visible)' in html, "設定パネルの表示切替処理がありません")
@@ -906,6 +906,12 @@ def main() -> int:
                 extract_js_function(html, "buildHumanRigParts"),
                 extract_js_function(html, "buildRigPartsFromProfile"),
                 extract_js_function(html, "buildHumanBoneRig"),
+                re.search(r"^const BONE_PART_LINKS=\{.*?^\};", html, re.M | re.S).group(0),
+                extract_js_function(html, "boneSyncAvailable"),
+                extract_js_function(html, "boneAxisAngle"),
+                extract_js_function(html, "boneSyncedRegion"),
+                extract_js_function(html, "syncPartToBones"),
+                extract_js_function(html, "applyInitialBoneSync"),
                 extract_js_function(html, "buildBoneRigFromParts"),
                 'const human={rigType:"human",kind:"upright",head:[.5,.17,.14,.14],body:[.5,.48,.18,.28],material:[.5,.35,.3,.3],prop:[.7,.45,.12,.15],groundY:.9,motionRange:[.018,.012]};',
                 "const humanParts=buildRigPartsFromProfile(human);",
@@ -920,6 +926,12 @@ def main() -> int:
                 "const humanBones=buildBoneRigFromParts(humanParts,human);",
                 'for(const label of ["骨盤","腰","背骨","首","頭頂","肩 左","肘 左","手首 左","肩 右","肘 右","手首 右","股関節 左","膝 左","足首 左","股関節 右","膝 右","足首 右"])if(!humanBones.some(point=>point.label===label))throw new Error(`人体ボーンがありません: ${label}`);',
                 'if(humanBones.length!==17)throw new Error("人物ボーンは腰を含む17ポイントである必要があります");',
+                # 自動認識の直後、腕・脚・手・腰は対応するボーン上へ載り、同期ONになる（頭・目は同期しない）。
+                'const bone=id=>humanBones.find(point=>point.id===id),part=id=>humanParts.find(item=>item.id===id);',
+                'for(const [id,a,b] of [["arm-left","bone-shoulder-left","bone-elbow-left"],["forearm-right","bone-elbow-right","bone-wrist-right"],["leg-left","bone-hip-left","bone-knee-left"],["shin-right","bone-knee-right","bone-ankle-right"]]){const item=part(id),A=bone(a),B=bone(b);if(!item.boneSync)throw new Error("同期の既定がONではありません: "+id);if(Math.hypot(item.region[0]-(A.x+B.x)/2,item.region[1]-(A.y+B.y)/2)>.002)throw new Error("部位がボーン区間の中央にありません: "+id);const ax=-Math.sin(item.angle),ay=Math.cos(item.angle),dx=B.x-A.x,dy=B.y-A.y,n=Math.hypot(dx,dy);if(Math.abs(ax*dx/n+ay*dy/n)<.999)throw new Error("部位の長軸がボーンと平行でありません: "+id);if(item.region[3]<n/2)throw new Error("部位がボーン区間より短いです: "+id)}',
+                'if(part("head").boneSync||part("eye-left").boneSync)throw new Error("頭・目はボーン同期の対象外です");',
+                'if(Math.hypot(part("waist").region[0]-bone("bone-waist").x,part("waist").region[1]-bone("bone-waist").y)>.002)throw new Error("腰の部位が腰ボーン上にありません");',
+                'bone("bone-elbow-left").x+=.05;bone("bone-elbow-left").y+=.04;part("arm-left").boneSync=true;syncPartToBones(part("arm-left"),humanBones);if(Math.hypot(part("arm-left").region[0]-(bone("bone-shoulder-left").x+bone("bone-elbow-left").x)/2,part("arm-left").region[1]-(bone("bone-shoulder-left").y+bone("bone-elbow-left").y)/2)>.002)throw new Error("ボーン移動後に同期した部位が追従しません");',
                 'if(humanBones.length>24)throw new Error("人体ボーンが上限を超えています");',
                 'const generic={kind:"wide",head:[.5,.2,.2,.2],body:[.5,.55,.3,.3],material:[.5,.4,.4,.3],prop:[.7,.5,.15,.15],groundY:.9,motionRange:[.02,.01]};',
                 'if(buildRigPartsFromProfile(generic).length!==4||buildRigPartsFromProfile(generic).find(part=>part.role==="prop")?.preset!=="propRigid"||buildBoneRigFromParts(buildRigPartsFromProfile(generic),generic).length!==5)throw new Error("人物以外の小物剛体リグが不正です");',
@@ -955,6 +967,26 @@ def main() -> int:
         )
         subprocess.run([node, "-e", face_bone_test], check=True)
         print("PASS: face roll applied to eye/brow/mouth angles, half-body pelvis/spine placement")
+        # 姿勢AIが見えない関節を人体比率へ置き換える（半身像で膝・足首が外挿されて部位が大きくずれる不具合）。
+        pose_reg_test = "\n".join(
+            [
+                re.search(r"^const POSE_LIMB_RATIO=.*$", html, re.M).group(0),
+                extract_js_function(html, "regularizePoseLandmarks"),
+                "const m={nose:[.5,.2,1],shoulderLeft:[.62,.42,1],shoulderRight:[.38,.42,1],elbowLeft:[.7,.62,1],elbowRight:[.3,.62,1],wristLeft:[.99,.99,.1],wristRight:[.01,.99,.1],hipLeft:[.58,.99,.1],hipRight:[.42,.99,.1],kneeLeft:[.99,.99,0],kneeRight:[.01,.99,0],ankleLeft:[.99,.99,0],ankleRight:[.01,.99,0]};",
+                "const n=regularizePoseLandmarks(m,1);",
+                'if(n<6)throw new Error("見えていない関節が人体比率へ補正されていません: "+n);',
+                'const span=Math.hypot(.24,0),len=(a,b)=>Math.hypot(m[a][0]-m[b][0],m[a][1]-m[b][1]);',
+                'if(Math.abs(len("shoulderLeft","elbowLeft")-.2)>.1||Math.abs(len("elbowLeft","wristLeft")-.2)>.1)throw new Error("腕の長さが人体比率から外れています");',
+                'for(const key of Object.keys(m))if(m[key][0]<.01||m[key][0]>.99||m[key][1]<.01||m[key][1]>.99)throw new Error("関節が画面外です: "+key);',
+                'if(!(m.wristLeft[1]>=m.elbowLeft[1]))throw new Error("手首が肘より上にあります");',
+                # 校正済み（skip）の関節は置き換えない。見えていて長さが妥当な肘は保持する。
+                "const k={nose:[.5,.2,1],shoulderLeft:[.62,.42,1],shoulderRight:[.38,.42,1],elbowLeft:[.66,.55,1],elbowRight:[.34,.55,1],wristLeft:[.7,.66,1],wristRight:[.3,.66,1],hipLeft:[.58,.75,1],hipRight:[.42,.75,1],kneeLeft:[.58,.9,.9],kneeRight:[.42,.9,.9],ankleLeft:[.58,.98,.9],ankleRight:[.42,.98,.9]};",
+                "const before=JSON.stringify(k);regularizePoseLandmarks(k,1,new Set(['ankleLeft','ankleRight']));",
+                'if(JSON.stringify(k.elbowLeft)!==JSON.stringify([.66,.55,1])||JSON.stringify(k.ankleLeft)!==JSON.stringify([.58,.98,.9]))throw new Error("妥当・校正済みの関節を置き換えています");',
+            ]
+        )
+        subprocess.run([node, "-e", pose_reg_test], check=True)
+        print("PASS: unseen/implausible pose joints regularized to human proportions")
         # 目・眉・口の専用形状: 輪郭点のノルムが1、中心は内側、シェーダの featureNorm が同じ式を持つ。
         shape_test = "\n".join(
             [
@@ -1128,12 +1160,15 @@ def main() -> int:
     require("autoSegmentPerson({closePanelOnSuccess:true})" in html and "autoSegmentOnPickEnabled()" in html, "画像選択後の自動分離が接続されていません")
     require("p3d.autoSegmentOnPick.v1" in html, "自動分離の設定が保存されません")
     print("PASS: auto person segmentation after image pick (opt-out, failure keeps manual path)")
-    for element_id in ("layoutToggle", "helpToggle", "helpDialog", "gripW", "gripH"):
+    for element_id in ("layoutToggle", "mainMenu", "menuSettings", "menuNewProject", "gripW", "gripH"):
         require(f'id="{element_id}"' in html, f"レイアウト／ヘルプUIがありません: {element_id}")
     require("function applyPanelLayout(" in html and "p3d.panelLayout.v1" in html, "パネル配置（左右ドック／フロート／幅高さ）の処理・保存がありません")
     require("canvas.clientWidth" in html and "innerWidth*dpr" not in html, "canvas寸法がドック配置後の実寸ではなくウィンドウ寸法です")
     require("function initHelpDots(" in html and 'class="hint">' in html, "項目別ヘルプ（?アイコン）がありません")
-    require('class="appInfo" id="appInfo"' in html and html.index('id="helpDialog"') < html.index('id="appInfo"') < html.index('id="panel"'), "アプリ名・版数がヘルプ内にありません")
+    require('id="appInfo"' in html and html.index('id="mainMenu"') < html.index('id="appInfo"') < html.index('id="panel"'), "アプリ名・版数がメニュー内にありません")
+    require('id="helpToggle"' not in html and 'id="helpDialog"' not in html and 'id="openProjectEditor"' not in html, "廃止したヘルプ／空画像作成ボタンが残っています")
+    menu = html[html.index('id="mainMenu"'):html.index('id="panel" class="is-hidden"')]
+    require(menu.index("新規プロジェクト作成") < menu.index(">設定<") < menu.index("<hr") < menu.index('id="appInfo"'), "メニューの表示順（新規プロジェクト作成・設定・区切り・版数）が仕様と異なります")
     require('id="help"' not in html, "常時表示のヘルプ説明が残っています")
     require("[data-tip]::after" in html and "title=" not in html[html.index('<div id="stage">'):html.index("<script>")], "アイコンのフローティング名（data-tip）が未整備、または title が残っています")
     for label in ("画像選択", "人物自動分離", "設定初期化"):
@@ -1163,13 +1198,35 @@ def main() -> int:
     require("e.target instanceof Element&&e.target.closest" in html, "キー操作でdocumentが対象のとき例外になります")
     print("PASS: left-drag pan to image edges, mini-view/magnifier toggle, face-part zoom editor with frame stepping and angle")
     require('e.target.value=""' in html[html.index('$("#file").addEventListener("change"'):html.index('$("#file").addEventListener("change"')+400], "画像選択後に入力値を消しておらず、同じファイルを再選択しても表示されません")
-    for element_id in ("pjEditor", "pjCanvas", "openProjectEditor", "pjNew", "pjSave", "pjLoadFile", "pjAddFile", "pjPaste", "pjApply"):
+    for element_id in ("pjEditor", "pjCanvas", "menuNewProject", "pjNew", "pjSave", "pjLoadFile", "pjAddFile", "pjPaste", "pjApply"):
         require(f'id="{element_id}"' in html, f"プロジェクト／レイヤ編集のUIがありません: {element_id}")
     require("#pjEditor[hidden]{display:none}" in html, "プロジェクト編集ウィンドウのhiddenがIDセレクタのdisplayに負けます")
     require('document.addEventListener("paste"' in html and "clipboardData" in html, "⌘/Ctrl+Vでのレイヤ貼付がありません")
     require("function pjConstrain(" in html and "e.shiftKey" in html[html.index('pjCanvas.addEventListener("pointermove"'):html.index('pjCanvas.addEventListener("pointermove"')+500], "Shift押下での垂直／水平固定移動がありません")
     require('format:"P3D-Project"' in html and "function pjLoad(" in html, "プロジェクトの保存／読込がありません")
     print("PASS: file re-select fix, project editor (new/save/load, clipboard paste, image import, shift-axis-lock move)")
+    # 2026-11-05 部位／ボーン編集UIの修正と改善
+    require("function paintPartWire(" in html and html.count("paintPartWire(") >= 3, "部位範囲の描画がメイン画面と顔パーツ編集で共通化されていません")
+    fe_tick = html[html.index("function feTick("):html.index('window.addEventListener("pagehide"')]
+    require("paintPartWire(ctx" in fe_tick and "partOutlineLocal(" not in fe_tick, "顔パーツ編集が独自の範囲描画を持っています（表示差の原因）")
+    require("function syncMotionFieldState(" in html and 'classList.toggle("off",!on)' in html, "動作OFF時のグレーアウトがありません")
+    require("select:disabled,input:disabled" in html and "#maskFold[open]{gap:" in html, "無効状態のグレー表示またはマスク欄の行間がありません")
+    require("function regularizePoseLandmarks(" in html and "regularizePoseLandmarks(mapped" in html, "姿勢の人体比率補正がありません")
+    require("const BONE_PART_LINKS=" in html and "function syncLinkedPartsToBones(" in html and "applyInitialBoneSync(parts,bones)" in html, "ボーンと部位範囲の同期がありません")
+    require("syncLinkedPartsToBones();" in html[html.index('guideDragTarget.startsWith("bone:")'):html.index('guideDragTarget.startsWith("resize:")')], "ボーンのドラッグが同期中の部位へ反映されません")
+    layer_fn = html[html.index("function renderLayerList("):html.index("function setLayerParent(")]
+    require("layerParentTag" not in layer_fn and "親:" not in layer_fn, "レイヤー行に「親:〜」表示が残っています")
+    require("beginInlineRename(" in layer_fn and "attachDoubleTap(" in layer_fn and "layerShape" in layer_fn and "UI_ICONS.eyeOff" in layer_fn and "UI_ICONS.link" in layer_fn, "レイヤー行の直接名前編集・形状プルダウン・目アイコン・同期アイコンがありません")
+    require(html.count("makeEdgeScroller(container") >= 2 and html.count("initListResizeGrip(container") >= 2, "リストのドラッグ自動スクロール／高さ変更がレイヤーとボーンの両方にありません")
+    require('id="boneTreeList"' in html and "function renderBoneList(" in html and "function setBoneParent(" in html, "ボーン一覧のツリー表示・ドラッグ編集がありません")
+    require("ワイヤー表示切替" in html and "ワイヤー表示の切替" not in html, "ワイヤー表示切替の名称が仕様と異なります")
+    # ボーン→部位の向き: ボーンの表示位置は部位の動きに依存せず、部位がボーンの動きへ寄る
+    bone_state = html[html.index("function bonePointSourceDisplayState("):html.index("function bonePointDisplayState(")]
+    require("rigPartSourceDisplayState(" not in bone_state and "bonePointMotionState(" in bone_state, "ボーンの表示位置が部位の動きに依存しています（向きが部位→ボーン）")
+    require("function rigPartBoneInfluence(" in html and "rigPartBoneInfluence(partId,nowSeconds)" in html[html.index("function rigPartSourceDisplayState("):html.index("function bonePointMotionState(")], "部位がボーンの動きへ追従していません")
+    require("function effectiveBoneMotion(" in html and "function updateBoneSprings(" in html and "parent.x*BONE_SPRING_PARAMS.inherit" in html, "ボーン独自のばね／親ボーンからの継承がありません")
+    require("updateBoneSprings(seconds,strength,deltaSeconds" in html and "effectiveBoneMotion(point.id)" in html[html.index("function bonePointMotionState("):html.index("function rigPartBoneInfluence(")], "ボーンのばねが動きの更新・表示へ接続されていません")
+    print("PASS: part/bone editor UI (shared wire painter, motion gray-out, pose regularization, bone-part sync, tree lists)")
     print("PASS: Cross-AI governance documents")
     return 0
 

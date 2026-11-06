@@ -300,3 +300,20 @@ GPUでFaceLandmarker生成
 - IS-Net（`loadHighMatting`／`highMatte`）は削除。
 - `trimapMatte(...,unknownRegions)`／`refinePersonMaskWithMatte(...,unknownRegions)`: `detectTextRegions` の領域と元マスクが重なる画素は、帯の内側でも「不明」として ViTMatte の判定に従う（`personMaskWithOverlay.textUnknown=false` で無効化、計測用）。
 - 標準ティアの文字あり画像: `trimapFn` は常に定義し、`trimapFn.plain=(高精度)` で文字なし画像への適用を切り替える。文字が検出された画像（overlayあり）は標準でも ViTMatte を使う。`trimapFn` は帯の幅（`personMaskWithOverlay.textBand`、3%）と文字領域を `trimapMatte` へ渡す。`#segTier` の change は、分離済み（`subjectMaskCanvas` あり、実行中でない）なら `autoSegmentPerson()` を再実行する。
+
+### 部位／ボーン編集UIの整理（2026-11-05）
+
+- メニュー: 右上のバーガーはメニューリスト（新規プロジェクト作成／設定／区切り／版数）。ヘルプ「？」ボタンとヘルプ窓、「空画像から部品で作成」ボタンは廃止し、版数・実行環境はメニュー末尾（`#appInfo`）へ移した。「設定」はチェック付き項目で設定パネルの表示と連動する。
+- 部位範囲の描画は `paintPartWire` に一本化し、メイン画面（`drawRigDebug`）と顔パーツ編集（拡大・`feTick`）が同じ輪郭・塗り・十字線・線種を使う（以前は顔パーツ編集だけ別描画で見た目が異なった）。
+- 姿勢の人体比率補正（`regularizePoseLandmarks`）: 姿勢AIで見えない（視認度<0.35・画面外）または長さが人体比率（二の腕0.85・前腕0.75・太もも1.15・膝下1.1×肩幅）から大きく外れた肘・手首・股関節・膝・足首を置き換える。半身像で部位・ボーンが画面外へ外挿されてずれる問題への対策。制作側の校正済み関節（`poseOverrides`）は置き換えない。
+- ボーンと部位範囲の同期（`BONE_PART_LINKS`、部位の `boneSync`）: 腕・前腕・脚・膝下は対応する2ボーンの区間（中心＝中点、長軸＝ボーン方向、長さ＝区間＋余白）、手は前腕の延長、腰は腰ボーン、胸は背骨の高さで肩の並び方向へ左右に配置する。自動認識の直後は対応する部位を既定でONにして配置し直し（「部位を復元」の基準も更新）、ボーンのドラッグ・名前や親の変更で同期ON部位を再計算する（ボーン→部位の一方向。リグJSONにも保存）。レイヤー行の鎖アイコンで部位ごとに切り替える。本家Live2D（Cubism）は骨格と描画メッシュ／デフォーマが別構造で自動連動しないため、部位ごとのON/OFFにした。
+- レイヤー一覧: 行に形状プルダウン・ワイヤー表示切替（目アイコン）・同期（鎖）・動を持ち、名前は行内でダブルタップ編集（`beginInlineRename`／`attachDoubleTap`）。「親:〜」表示と一覧外の部位名・形状欄は廃止（値の保持用に非表示のinputを残す）。縦幅は下端のつまみで変更でき（`initListResizeGrip`）、ドラッグ中に上下端へ寄せると自動スクロールする（`makeEdgeScroller`）。
+- ボーン一覧（`#boneTreeList`）: 親子ツリー（字下げ）、⠿ のドラッグで親変更、名前の行内編集、種別表示。選択状態は非表示の `#bonePointList` と同期する。
+- 「動作」OFFの部位は種類・強度・重力・ばね・減衰・親・継承をグレーアウト（`syncMotionFieldState`）。マスク欄の行間を確保した。
+
+
+## ボーン→部位の動きの向き（2026-11-05）
+- ボーンの表示位置は部位に依存せず、`bonePointMotionState` が同じ視差計算（`rigPartSourceDisplayState` の probe 指定）をボーン位置へ当てて求める。
+- 連動部位（`bone.partId`）は、`rigPartBoneInfluence` により「ボーンの動き − 部位自身の動き」×追随率だけボーンの動きへ寄る。連動なし／追随率0の部位は従来どおり。
+- 従来（部位の揺れ→ボーン表示）の逆向き。
+- ボーン独自のばね（`boneSprings`、`updateBoneSprings`）を持ち、親ボーンの実モーションを `BONE_SPRING_PARAMS.inherit`（0.7）だけ子へ加算する（`effectiveBoneMotion`）。
