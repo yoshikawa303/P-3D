@@ -340,3 +340,9 @@
 ここで接続して実行
 ```
 - ユーザーが git init と GitHub 接続・push を明示承認。force push はしない。まず fetch して main との差を確認する。
+
+### 2026-11-06 09:35 JST - Claude Code (Sonnet 5.5) - 種別: 作業結果 - Git接続とmainへのpush
+- 原因: このフォルダがGit管理外で、変更がGitHub mainへ未pushだったため、pages_toggleで古い版が配信されていた。
+- 実施: ユーザー承認のもと git init → origin接続 → fetch → `git reset origin/main`（ファイルは不変）。差分が作業分のみであることを確認し、2コミットを通常pushした（force無し）。73aec2→86884ab。リモートSHAは86884abで一致。
+- 未コミット: ローカルで削除状態の Sample1.png（リモートにはある）、QC画像群（Docs/QC/ImageQuality 配下）、.claude/ は意図的に含めず。
+- 未検証: Pages配信（Private維持で停止中、ユーザーが pages_toggle を実行して確認）、iPhone Safari。
