@@ -11,9 +11,10 @@ html,body{--fs-main:13px;--fs-sub:12px;--fs-hint:11px;margin:0;height:100%;backg
 #gl{position:absolute;left:var(--dock-l);top:0;bottom:0;width:calc(100% - var(--dock-l) - var(--dock-r));height:100%;display:block;z-index:0}
 #guide{position:absolute;left:var(--dock-l);top:0;bottom:0;width:calc(100% - var(--dock-l) - var(--dock-r));height:100%;display:block;z-index:1;pointer-events:none}
 #cam{position:absolute;width:2px;height:2px;opacity:.001;pointer-events:none}
-#top{position:absolute;top:max(10px,env(safe-area-inset-top));left:calc(10px + var(--dock-l));right:calc(10px + var(--dock-r));z-index:3;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none}
+#top{position:absolute;top:max(10px,env(safe-area-inset-top));left:calc(10px + max(var(--dock-l),env(safe-area-inset-left)));right:calc(10px + max(var(--dock-r),env(safe-area-inset-right)));z-index:3;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none}
 .pill{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.62);backdrop-filter:blur(10px);font-size:12px;white-space:nowrap}
 #status{min-width:0;max-width:48vw;overflow:hidden;text-overflow:ellipsis}
+@media (pointer:coarse){#status{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;line-height:1.3;border-radius:14px}}
 #topActions{display:flex;gap:6px;align-items:center;pointer-events:auto}
 #top .iconBtn{width:44px;height:44px;min-height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(36,36,42,.9);color:#fff;backdrop-filter:blur(10px)}
 .iconBtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
@@ -114,7 +115,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .helpDot.demo{margin:0 2px}
 #err{font-size:var(--fs-sub);color:#ffb4b4;max-height:44px;overflow:auto}
 #mapStatus{font-size:var(--fs-sub);color:#d4d4dc;line-height:1.45}
-@media (max-width:480px){#status{max-width:22vw}#top{gap:4px}#topActions{gap:4px}#top .iconBtn{width:36px;height:36px;min-height:36px}.iconBtn svg{width:19px;height:19px}.pill{padding:6px 8px}#fps{display:none}}
+@media (max-width:480px){#status{max-width:34vw}#top{gap:4px}#topActions{gap:2px}#top .iconBtn{width:40px;height:40px;min-height:40px}.iconBtn svg{width:19px;height:19px}.pill{padding:6px 8px}#fps{display:none}}
 .ibtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 6px;min-width:0}
 .ibtn svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ibtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -206,6 +207,9 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 .listGrip{height:12px;margin:-2px 0 0;border-radius:6px;cursor:ns-resize;touch-action:none;background:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)) center/36px 3px no-repeat,rgba(255,255,255,.05)}
 .listGrip:hover{background-color:rgba(121,231,255,.18)}
 .layerList{resize:none!important}
+@media (pointer:coarse){button,.filelabel,.settingsTabs button,.winBtn{min-height:44px}.winBtn{min-width:44px}}
+#panel[data-layout=dock-right]{padding-right:max(8px,env(safe-area-inset-right));padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#panel[data-layout=dock-left]{padding-left:max(8px,env(safe-area-inset-left));padding-bottom:max(8px,env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -595,7 +599,7 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r10";
+const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r11";
 const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle"), demoNext=$("#demoNext");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});
 
@@ -1488,12 +1492,34 @@ void main(){
   gl_FragColor=vec4(c.rgb,1.0);
 }`;
 
-const prog=gl.createProgram();
-gl.attachShader(prog,compile(gl.VERTEX_SHADER,vs));
-gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,fs));
-gl.linkProgram(prog);
-if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+function buildMainProgram(){
+  const program=gl.createProgram();
+  gl.attachShader(program,compile(gl.VERTEX_SHADER,vs));
+  gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(program);
+  if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  return program;
+}
+let prog;
+try{prog=buildMainProgram()}
+catch(error){
+  // 端末のGPUがシェーダを受け付けない場合も、原因を画面に出して無言で停止しない。
+  console.error("shader build failed:",error);
+  errEl.textContent="描画シェーダの初期化に失敗しました（この端末のGPUでは表示できません）。詳細: "+(error&&error.message||error);
+  statusEl.textContent="描画初期化失敗";
+  return;
+}
 gl.useProgram(prog);
+// iOS Safari はバックグラウンド移行やメモリ逼迫でGLコンテキストを破棄する。無言で黒画面にせず案内を出す。
+canvas.addEventListener("webglcontextlost",event=>{
+  event.preventDefault();
+  statusEl.textContent="描画が中断されました";
+  errEl.textContent="描画コンテキストが破棄されました。必要なら先にリグ設定を保存し、画面を再読み込みしてください。";
+});
+canvas.addEventListener("webglcontextrestored",()=>{
+  statusEl.textContent="描画再開には再読み込みが必要です";
+  errEl.textContent="描画コンテキストが破棄されました。必要なら先にリグ設定を保存し、画面を再読み込みしてください。";
+});
 
 const b=gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER,b);
@@ -1565,6 +1591,7 @@ const FACE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/face_landm
 const PERSON_SEGMENTER_MODEL_URL="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
 const POSE_MODEL_URL="https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
+let cameraSession=0,detectFailStreak=0,tiltNeedBaseline=false;
 let cameraNotice="",faceLandmarker=null,cameraOn=false,trackingOn=false,startingFace=false,stream=null,lastDetect=0,lastVideoTime=-1;
 let imageSegmenter=null,startingSegmentation=false;
 let poseLandmarker=null,poseLandmarkerPromise=null,stillFaceLandmarker=null,stillFaceLandmarkerPromise=null;
@@ -1669,6 +1696,8 @@ $("#previewZoomIn").addEventListener("click",()=>zoomPreviewAt(1.25));
 $("#previewZoomOut").addEventListener("click",()=>zoomPreviewAt(0.8));
 // Shift+ドラッグ／中ボタンドラッグでパン、2本指のピンチで拡縮とパン（キャラ移動中は除く）。
 const previewPointers=new Map();let previewPan=null,previewPinch=null;
+// iOSがタッチを up/cancel なしで破棄しても、幽霊ポインターで常時ピンチ扱いにならないようにする。
+document.addEventListener("visibilitychange",()=>{if(document.hidden){previewPointers.clear();previewPinch=null;previewPan=null}});
 canvas.addEventListener("pointerdown",e=>{
   // 拡大中（キャラ移動OFF）はマウス左ボタンのドラッグでも画面全体を移動する。
   const leftPan=e.button===0&&e.pointerType==="mouse"&&previewView.zoom>1.001&&!characterMoveAvailable();
@@ -1822,6 +1851,9 @@ function savedPanelVisibility(){
 document.addEventListener("keydown",event=>{
   if(event.key==="Escape"){
     if(!mainMenu.hidden)setMenuVisible(false);
+    else if($("#lfModal").style.display!=="none"){layerFix.active=false;$("#lfModal").style.display="none"}
+    else if(!$("#faceEditor").hidden)feClose();
+    else if(!$("#pjEditor").hidden)pjClose();
     else if(panelVisible)setPanelVisible(false);
   }
 });
@@ -1846,8 +1878,19 @@ function resize(){
   }
 }
 
+let imageSerial=0,loadUrlSerial=0,pendingAutoSegment=false;
+const imageEpoch=()=>imageSerial+":"+demoLoadSerial;
 function uploadImage(img,label,{preserveCharacterPlacement=false}={}){
   try{
+    const probeW=img.naturalWidth||img.width,probeH=img.naturalHeight||img.height;
+    if(!(probeW>0&&probeH>0))throw new Error("画像のサイズを取得できません（対応形式: PNG/JPEG/WebP等）");
+    const maxTexture=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;
+    if(Math.max(probeW,probeH)>maxTexture){
+      const k=maxTexture/Math.max(probeW,probeH),shrunk=document.createElement("canvas");
+      shrunk.width=Math.max(1,Math.floor(probeW*k));shrunk.height=Math.max(1,Math.floor(probeH*k));
+      shrunk.getContext("2d").drawImage(img,0,0,shrunk.width,shrunk.height);
+      img=shrunk;
+    }
     clearMaps({announce:false,preserveCharacterPlacement});
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D,tex);
@@ -1862,11 +1905,14 @@ function uploadImage(img,label,{preserveCharacterPlacement=false}={}){
     if(Math.abs(previewView.aspect-imgAspect)>1e-3){previewView.aspect=imgAspect;previewView.zoom=1;previewView.panX=0;previewView.panY=0}
     applyPreviewView();
     sourceImage=img;
+    imageSerial++;
     syncLayeringControls();
     statusEl.textContent=label;
     errEl.textContent="";
+    return true;
   }catch(e){
     errEl.textContent="画像転送エラー: "+e.message;
+    return false;
   }
 }
 
@@ -1900,10 +1946,12 @@ function loadImageAsset(url){
 
 function loadURL(url,label,revoke=false,afterUpload=null){
   const img=new Image();
+  const mySerial=++loadUrlSerial,myDemoSerial=demoLoadSerial;
   img.onload=()=>{
-    uploadImage(img,label);
     if(revoke) URL.revokeObjectURL(url);
-    if(afterUpload)afterUpload();
+    // 後から選んだ画像・デモの読込が始まっていたら、遅れて届いた古い画像は捨てる。
+    if(mySerial!==loadUrlSerial||myDemoSerial!==demoLoadSerial)return;
+    if(uploadImage(img,label)&&afterUpload)afterUpload();
   };
   img.onerror=()=>{
     if(revoke)URL.revokeObjectURL(url);
@@ -3901,7 +3949,10 @@ $("#file").addEventListener("change",e=>{
   const url=URL.createObjectURL(f);
   loadURL(url,f.name,true,()=>{
     // 画像選択→人物分離→2層化→パネルを閉じる、までを1操作で行う（失敗時は手動操作と案内がそのまま残る）。
-    if(autoSegmentOnPickEnabled())autoSegmentPerson({closePanelOnSuccess:true});
+    if(!autoSegmentOnPickEnabled())return;
+    // 前の画像の分離が実行中なら、終わった時点で新しい画像を分離し直す。
+    if(startingSegmentation)pendingAutoSegment=true;
+    else autoSegmentPerson({closePanelOnSuccess:true});
   });
 });
 const AUTO_SEGMENT_KEY="p3d.autoSegmentOnPick.v1";
@@ -3927,7 +3978,7 @@ async function activateIndependentLayers(label="個別レイヤー",{preserveCha
     return;
   }
   const background=backgroundLayerSource,foreground=foregroundLayerSource;
-  uploadImage(foreground,label,{preserveCharacterPlacement});
+  if(!uploadImage(foreground,label,{preserveCharacterPlacement}))return;
   backgroundLayerSource=background;
   foregroundLayerSource=foreground;
   uploadMapImage(backgroundTex,gl.TEXTURE3,backgroundLayerSource);
@@ -3940,13 +3991,22 @@ async function activateIndependentLayers(label="個別レイヤー",{preserveCha
   applySceneLook(backgroundLayerSource,foregroundLayerSource);
   activeDemoIndex=-1;
   updateDemoSelection();
-  rigSessionId++;
+  const indSession=++rigSessionId;
+  demoLoadSerial++;
   activeRigProfile=inferRigProfile(foregroundLayerSource);
   activeRigProfile.rigType="generic";
   activeRigProfile.rigSource="separate-files";
   // 縦長・横長に関係なくまず人物姿勢を試し、検出できたときだけ人体リグにする。
-  try{activeRigProfile=await inferHumanPoseProfile(foregroundLayerSource,{},null,activeRigProfile);activeRigProfile.rigType="human"}
-  catch(error){console.warn("Pose Landmarker fallback for separate foreground:",error);activeRigProfile.rigSource="silhouette-fallback"}
+  try{
+    const poseProfile=await inferHumanPoseProfile(foregroundLayerSource,{},null,activeRigProfile);
+    if(indSession!==rigSessionId)return;
+    activeRigProfile=poseProfile;activeRigProfile.rigType="human";
+  }
+  catch(error){
+    console.warn("Pose Landmarker fallback for separate foreground:",error);
+    if(indSession!==rigSessionId)return;
+    activeRigProfile.rigSource="silhouette-fallback";
+  }
   inferredRigProfile=cloneRigProfile(activeRigProfile);
   activeRigParts=buildRigPartsFromProfile(activeRigProfile);
   inferredRigParts=cloneRigParts(activeRigParts);
@@ -5302,20 +5362,23 @@ function buildLayerSet(source,maskSource,overlay=null){
 async function createLayeredSceneFromMask(){
   if(!sourceImage||!subjectMaskCanvas){
     errEl.textContent="先に一枚絵と人物／物体マスクを用意してください。";
-    return;
+    return false;
   }
   const coverage=maskCoverage(subjectMaskCanvas);
   if(coverage<.01||coverage>.92){
     errEl.textContent="人物／キャラの認識範囲が小さすぎるか、背景まで選択されています。任意マスクで補正してください。";
-    return;
+    statusEl.textContent="2層化できません・マスク範囲を確認";
+    return false;
   }
   const button=$("#layerFromMask");
   button.disabled=true;
   setButtonLabel(button,"2層化中…");
   statusEl.textContent="端末内で前景分離・背景補完中…";
   errEl.textContent="";
+  const sceneEpoch=imageEpoch();
   await new Promise(resolve=>requestAnimationFrame(resolve));
   try{
+    if(sceneEpoch!==imageEpoch()){statusEl.textContent="画像が切り替わったため2層化を中止しました";return false}
     const {background,foreground,front}=buildLayerSet(sourceImage,subjectMaskCanvas,currentSubjectOverlay);
     uploadMapImage(backgroundTex,gl.TEXTURE3,background);
     uploadForegroundImage(foregroundTex,gl.TEXTURE4,foreground);
@@ -5328,15 +5391,18 @@ async function createLayeredSceneFromMask(){
     applySceneLook(background,foreground,{sceneMatched:true});
     activeDemoIndex=-1;
     updateDemoSelection();
-    rigSessionId++;
+    const layerSession=++rigSessionId;
     activeRigProfile=inferRigProfile(foreground);
     activeRigProfile.rigType="generic";
     activeRigProfile.rigSource="segmented-silhouette";
     try{
       statusEl.textContent="前景姿勢を解析中…";
-      activeRigProfile=await inferHumanPoseProfile(sourceImage,{},null,activeRigProfile);
+      const poseProfile=await inferHumanPoseProfile(sourceImage,{},null,activeRigProfile);
+      if(layerSession!==rigSessionId||sceneEpoch!==imageEpoch())return false;
+      activeRigProfile=poseProfile;
       activeRigProfile.rigType="human";
     }catch(error){
+      if(layerSession!==rigSessionId||sceneEpoch!==imageEpoch())return false;
       // 人物と認識できない画像（動物・ゆるキャラ等）に人体テンプレートを当てず、実測したシルエット部位を使う。
       console.warn("Pose Landmarker fallback for layered image:",error);
       activeRigProfile.rigSource="silhouette-fallback";
@@ -5364,9 +5430,11 @@ async function createLayeredSceneFromMask(){
     statusEl.textContent="背景補完済み・キャラ／背景2層立体表示";
     errEl.textContent="背景は近傍色から擬似補完しました。大きな動きでは模様の伸びが見える場合があります。";
     pushEditHistory();
+    return true;
   }catch(error){
     errEl.textContent="2層立体化に失敗しました: "+cameraErrorMessage(error);
     statusEl.textContent="2層立体化失敗・元画像は表示中";
+    return false;
   }finally{
     setButtonLabel(button,"2層化");
     syncLayeringControls();
@@ -5431,8 +5499,10 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
   setButtonLabel(button,"分離中…");
   statusEl.textContent="人物分離モデル読込中…";
   errEl.textContent="";
+  const epoch=imageEpoch(),segSource=sourceImage;
   try{
     if(!imageSegmenter)imageSegmenter=await withTimeout(createImageSegmenter(),45000,"人物分離モデルの読込");
+    if(epoch!==imageEpoch())return;
     statusEl.textContent="人物と背景を分離中…";
     // 高精度マッティングは任意。取得・実行に失敗したら従来の分離結果をそのまま使う。
     const matteFn=async image=>{
@@ -5452,9 +5522,12 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     // 人物の手前にかかる文字・図形を先に検出して取り除き、人物を認識し直す。検出した要素は手前レイヤーになる。
     currentSubjectOverlay=null;
     const separated=await withTimeout(personMaskWithOverlay(sourceImage,image=>segmentStillImage(imageSegmenter,image),matteFn,textFn,trimapFn),420000,"人物分離の推論");
+    // 分離中に別の画像・デモへ切り替わった場合、古い結果を新しい画像へ適用しない（終了後に pendingAutoSegment で再実行）。
+    if(epoch!==imageEpoch()||segSource!==sourceImage){currentSubjectOverlay=null;return}
     currentSubjectOverlay=separated.overlay;
     personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
-    await createLayeredSceneFromMask();
+    const layered=await createLayeredSceneFromMask();
+    if(!layered||epoch!==imageEpoch())return;
     statusEl.textContent="人物分離・背景補完済み／2層立体表示";
     if($("#combineEffects").checked)$("#enableDepthLayers").checked=true;
     else $("#effectMode").value="4";
@@ -5469,6 +5542,7 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     button.disabled=false;
     setButtonLabel(button,"人物分離");
     syncLayeringControls();
+    if(pendingAutoSegment){pendingAutoSegment=false;if(sourceImage&&autoSegmentOnPickEnabled())autoSegmentPerson({closePanelOnSuccess:true})}
   }
 }
 // 人物分離モデルの切替（標準=小容量 / 高精度=大容量）。選択は端末内にだけ保存する。
@@ -5541,7 +5615,8 @@ async function layerFixApply(){
   updateRecognitionGuide(canvas);
   currentSubjectOverlay=frontArea>0?{mask:Uint8Array.from(front),width:w,height:h,area:frontArea}:null;
   $("#lfInfo").textContent="適用中…";
-  await createLayeredSceneFromMask();
+  const applied=await createLayeredSceneFromMask();
+  if(!applied){$("#lfInfo").textContent="適用できませんでした。画面のメッセージを確認してください。";return}
   $("#lfInfo").textContent="適用しました。続けて修正できます。赤＝手前の文字層、青＝人物の範囲。";
   }catch(error){
     console.warn("layerFixApply:",error);$("#lfInfo").textContent="適用に失敗しました: "+(error&&error.message||error);
@@ -6340,8 +6415,11 @@ function updateGuideDrag(event){
   }
 }
 
+let guideDragPointerId=null;
 function beginGuideDrag(event){
   if(maskPointerDown(event))return;
+  if(guideDragTarget&&event.pointerId!==guideDragPointerId){event.preventDefault();event.stopPropagation();return}
+  if(event.pointerType==="mouse"&&event.button!==0)return;
   const target=guideDragTargetAt(event);
   if(!target)return;
   if(target.startsWith("bone-segment:")){
@@ -6351,7 +6429,7 @@ function beginGuideDrag(event){
     event.preventDefault();event.stopPropagation();
     return;
   }
-  guideDragTarget=target;
+  guideDragTarget=target;guideDragPointerId=event.pointerId;
   guideResize=null;guideRotateFlipped=false;
   if(target.startsWith("resize:")){
     const [,partId,edge]=target.split(":"),definition=rigPartById(partId);
@@ -6374,13 +6452,14 @@ function beginGuideDrag(event){
   }
   event.preventDefault();
   event.stopPropagation();
-  stage.setPointerCapture(event.pointerId);
+  try{stage.setPointerCapture(event.pointerId)}
+  catch(error){console.warn("setPointerCapture failed:",error);guideDragTarget=null;guideDragPointerId=null;return}
   updateGuideDrag(event);
 }
 
 function moveGuideDrag(event){
   if(maskPointerMove(event))return;
-  if(!guideDragTarget)return;
+  if(!guideDragTarget||event.pointerId!==guideDragPointerId)return;
   event.preventDefault();
   event.stopPropagation();
   updateGuideDrag(event);
@@ -6388,11 +6467,12 @@ function moveGuideDrag(event){
 
 function finishGuideDrag(event){
   if(maskPointerUp(event))return;
-  if(!guideDragTarget)return;
+  if(!guideDragTarget||event.pointerId!==guideDragPointerId)return;
   event.preventDefault();
   event.stopPropagation();
-  updateGuideDrag(event);
-  guideDragTarget=null;
+  // キャンセル時の座標は不定のため、位置は更新せず現在の状態で確定する。
+  if(event.type!=="pointercancel")updateGuideDrag(event);
+  guideDragTarget=null;guideDragPointerId=null;
   if(stage.hasPointerCapture(event.pointerId))stage.releasePointerCapture(event.pointerId);
   pushEditHistory();
 }
@@ -6461,7 +6541,8 @@ async function enumerateCameras(){
   select.value=devices.some(device=>device.deviceId===(activeId||current))?(activeId||current):"";
 }
 
-async function startCamera(){
+function cameraCancelled(){const e=new Error("カメラ開始が取り消されました。");e.name="CameraCancelled";return e}
+async function startCamera(session=cameraSession){
   if(cameraOn)return;
   if(!window.isSecureContext) throw new Error("カメラにはHTTPS接続が必要です。");
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -6484,14 +6565,23 @@ async function startCamera(){
       nextStream=await navigator.mediaDevices.getUserMedia(cameraConstraints());
     }
   }
+  if(session!==cameraSession){nextStream.getTracks().forEach(track=>track.stop());throw cameraCancelled()}
 
   try{
     video.srcObject=nextStream;
     await video.play();
+    if(session!==cameraSession)throw cameraCancelled();
     stream=nextStream;
+    nextStream.getVideoTracks()[0]?.addEventListener("ended",()=>{
+      if(stream!==nextStream)return;
+      stopCamera({announce:false});
+      statusEl.textContent="カメラ停止・手動ドラッグ操作";
+      errEl.textContent="カメラが停止しました（他のアプリが使用中、または端末が中断した可能性があります）。カメラを再開してください。";
+    });
     cameraOn=true;
     cameraAspect=(video.videoWidth||1280)/Math.max(1,video.videoHeight||720);
     await enumerateCameras();
+    if(session!==cameraSession)throw cameraCancelled();
     // 使用カメラを明示選択した場合は方向の不一致を警告しない。
     cameraNotice=explicitDevice ? "" : cameraFacingNotice(nextStream.getVideoTracks()[0],facing);
     $("#stopCamera").disabled=false;
@@ -6499,7 +6589,7 @@ async function startCamera(){
     statusEl.textContent="カメラ起動済み・顔検出準備中…";
   }catch(error){
     nextStream.getTracks().forEach(track=>track.stop());
-    video.srcObject=null;
+    if(video.srcObject===nextStream)video.srcObject=null;
     throw error;
   }
 }
@@ -6532,6 +6622,7 @@ async function createFaceLandmarker(){
 async function startFace(){
   if(startingFace || trackingOn)return;
   const cameraButton=$("#camera");
+  const session=++cameraSession;
   startingFace=true;
   syncCameraToggle();
   cameraButton.disabled=true;
@@ -6539,9 +6630,11 @@ async function startFace(){
 
   try{
     // iOS Safariのユーザー操作中に、外部AIモジュールより先にカメラを要求する。
-    await startCamera();
+    await startCamera(session);
+    if(session!==cameraSession)return;
     errEl.textContent=cameraNotice;
   }catch(error){
+    if(error?.name==="CameraCancelled"||session!==cameraSession)return;
     cameraOn=false;
     trackingOn=false;
     errEl.textContent="カメラを開始できません。"+cameraErrorMessage(error);
@@ -6558,21 +6651,27 @@ async function startFace(){
     if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
     faceScaleBaseline=0;
     targetZ=0;
-    faceLandmarker=await createFaceLandmarker();
+    const nextLandmarker=await createFaceLandmarker();
+    if(session!==cameraSession){if(typeof nextLandmarker?.close==="function")nextLandmarker.close();return}
+    faceLandmarker=nextLandmarker;
+    detectFailStreak=0;
     trackingOn=true;
     $("#viewInputMode").value="gaze";
     cameraButton.textContent="追跡中";
     statusEl.textContent="顔を探しています…";
   }catch(error){
+    if(session!==cameraSession)return;
     trackingOn=false;
     faceLandmarker=null;
     errEl.textContent="カメラは起動しましたが、顔検出の準備に失敗しました。ドラッグ操作は使用できます。詳細: "+cameraErrorMessage(error)+(cameraNotice?" ／ "+cameraNotice:"");
     statusEl.textContent="カメラ動作中・ドラッグ操作モード";
     cameraButton.textContent="顔追跡を再試行";
   }finally{
-    startingFace=false;
-    cameraButton.disabled=false;
-    syncCameraToggle();
+    if(session===cameraSession){
+      startingFace=false;
+      cameraButton.disabled=false;
+      syncCameraToggle();
+    }
   }
 }
 $("#camera").addEventListener("click",startFace);
@@ -6589,6 +6688,7 @@ $("#cameraToggle").addEventListener("click",()=>{
 });
 
 function stopCamera({announce=true}={}){
+  cameraSession++;
   trackingOn=false;
   cameraOn=false;
   startingFace=false;
@@ -6635,6 +6735,7 @@ function updateCameraBackgroundTexture(){
 function handleDeviceOrientation(event){
   if(!tiltOn||event.beta==null||event.gamma==null)return;
   tiltBeta=event.beta;tiltGamma=event.gamma;
+  if(tiltNeedBaseline){tiltBaselineBeta=tiltBeta;tiltBaselineGamma=tiltGamma;tiltNeedBaseline=false}
   let x=Math.max(-1,Math.min(1,(tiltGamma-tiltBaselineGamma)/28));
   let y=Math.max(-1,Math.min(1,-(tiltBeta-tiltBaselineBeta)/32));
   const angle=screen.orientation?.angle??window.orientation??0;
@@ -6644,7 +6745,7 @@ function handleDeviceOrientation(event){
 
 async function startTiltTracking(){
   if(tiltOn){
-    tiltOn=false;
+    tiltOn=false;tiltTargetX=0;tiltTargetY=0;
     window.removeEventListener("deviceorientation",handleDeviceOrientation);
     $("#startTilt").textContent="傾き開始";
     $("#calibrateTilt").disabled=true;
@@ -6656,7 +6757,7 @@ async function startTiltTracking(){
       const permission=await DeviceOrientationEvent.requestPermission();
       if(permission!=="granted")throw new Error("端末の傾きが許可されていません。");
     }
-    tiltOn=true;tiltBaselineBeta=tiltBeta;tiltBaselineGamma=tiltGamma;
+    tiltOn=true;tiltNeedBaseline=true;
     window.addEventListener("deviceorientation",handleDeviceOrientation);
     $("#viewInputMode").value="tilt";
     $("#startTilt").textContent="傾き停止";
@@ -6697,7 +6798,16 @@ function detect(now){
       targetZ=0;
       statusEl.textContent="顔を探しています…";
     }
-  }catch(e){}
+    detectFailStreak=0;
+  }catch(e){
+    detectFailStreak++;
+    if(detectFailStreak===1)console.warn("detectForVideo failed:",e);
+    if(detectFailStreak>=30){
+      stopCamera({announce:false});
+      statusEl.textContent="カメラ停止・手動ドラッグ操作";
+      errEl.textContent="顔検出が停止しました（"+(e&&e.message||e)+"）。カメラを再開してください。";
+    }
+  }
 }
 
 let dragging=false;
@@ -7181,11 +7291,50 @@ function feTick(now){
   }
 }
 
+// 見た目の状態クラス(.on/.selected)に aria を同期する（支援技術が現在状態を読めるように）。
+{
+  const TOGGLE="[data-fe-part],[data-fe-track],[data-mask-tool],.feCell,#loupeZoom2,#loupeZoom4,#loupeZoom8";
+  const syncAria=el=>{
+    if(el.matches?.(TOGGLE))el.setAttribute("aria-pressed",String(el.classList.contains("on")));
+    if(el.matches?.("[role=treeitem]"))el.setAttribute("aria-selected",String(el.classList.contains("selected")));
+  };
+  const observer=new MutationObserver(list=>{for(const m of list)if(m.type==="attributes")syncAria(m.target);else m.addedNodes.forEach(n=>{if(n.nodeType===1){syncAria(n);n.querySelectorAll?.(TOGGLE+",[role=treeitem]").forEach(syncAria)}})});
+  document.querySelectorAll(TOGGLE+",[role=treeitem]").forEach(syncAria);
+  observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["class"]});
+  // 設定タブ: ←/→/Home/End で移動（roving tabindex に合わせる）。
+  $("#settingsTabs").addEventListener("keydown",event=>{
+    const tabs=[...$("#settingsTabs").querySelectorAll("[role=tab]")];
+    const index=tabs.indexOf(document.activeElement);
+    if(index<0||event.altKey||event.ctrlKey||event.metaKey)return;
+    let next=-1;
+    if(event.key==="ArrowRight")next=(index+1)%tabs.length;
+    else if(event.key==="ArrowLeft")next=(index-1+tabs.length)%tabs.length;
+    else if(event.key==="Home")next=0;
+    else if(event.key==="End")next=tabs.length-1;
+    if(next<0)return;
+    event.preventDefault();tabs[next].focus();tabs[next].click();
+  });
+}
+// up/cancel を受け取れずにドラッグ状態が残ると、以後の指が全て無視される。非表示化・キャプチャ喪失で解除する。
+const releaseStaleDrags=pointerId=>{
+  if(maskState.drag&&(pointerId==null||maskState.drag.id===pointerId)){maskState.drag=null;maskMarkDirty();syncMaskPanel();pushEditHistory()}
+  if(guideDragTarget&&(pointerId==null||guideDragPointerId===pointerId)){guideDragTarget=null;guideDragPointerId=null;pushEditHistory()}
+};
+document.addEventListener("visibilitychange",()=>{if(document.hidden)releaseStaleDrags(null)});
+// タッチの暗黙キャプチャ(canvas)から stage への付け替えでも lostpointercapture が bubble するため、stage 自身が失った場合だけ対象にする。
+stage.addEventListener("lostpointercapture",event=>{if(event.target===stage)releaseStaleDrags(event.pointerId)});
+window.addEventListener("pageshow",event=>{
+  if(!event.persisted)return;
+  if(tiltOn){tiltOn=false;tiltTargetX=0;tiltTargetY=0;$("#startTilt").textContent="傾き開始";$("#calibrateTilt").disabled=true}
+  statusEl.textContent=hasImage?"カメラ停止・手動ドラッグ操作":"画像未選択";
+});
 window.addEventListener("pagehide",()=>{
-  if(stream) stream.getTracks().forEach(track=>track.stop());
-  if(faceLandmarker && typeof faceLandmarker.close==="function") faceLandmarker.close();
+  stopCamera({announce:false});
+  // bfcache 復帰後に閉じたモデルを再利用しないよう、破棄したら参照も外して次回に再読込させる。
   if(imageSegmenter && typeof imageSegmenter.close==="function") imageSegmenter.close();
+  imageSegmenter=null;
   if(poseLandmarker && typeof poseLandmarker.close==="function") poseLandmarker.close();
+  poseLandmarker=null;poseLandmarkerPromise=null;
   window.removeEventListener("deviceorientation",handleDeviceOrientation);
 });
 
@@ -7595,7 +7744,7 @@ function maskEnsureGrid(){
   const [gw,gh]=maskGridSize();
   if(gw!==maskState.gw||gh!==maskState.gh){
     const had=maskState.masks.length;
-    maskState.gw=gw;maskState.gh=gh;maskState.masks=[];maskState.selected=null;maskState.undo=[];maskState.sourcePixels=null;maskMarkDirty();
+    maskState.gw=gw;maskState.gh=gh;maskState.masks=[];maskState.selected=null;maskState.undo=[];maskState.sourcePixels=null;maskState.drag=null;maskMarkDirty();
     if(had&&typeof syncMaskPanel==="function")syncMaskPanel();
   }
   if(!maskState.sourcePixels&&maskState.source){
@@ -7837,6 +7986,8 @@ function maskPointerGrid(event){
 }
 function maskPointerDown(event){
   if(!maskState.edit||!hasImage||event.button!==0||event.target!==canvas)return false;
+  // 2本目の指で進行中のストロークを置き換えない（元のストロークと取り消し履歴を壊さない）。
+  if(maskState.drag&&maskState.drag.id!==event.pointerId){event.preventDefault();event.stopPropagation();return true}
   if(!maskEnsureGrid())return false;
   let mask=maskSelected();
   if(!mask){mask=maskNew(maskState.tool==="lasso"||maskState.tool==="wand"?"accessory":"other");if(!mask){errEl.textContent=`マスクは最大${MASK_MAX}件です。`;return true}syncMaskPanel()}
@@ -8126,7 +8277,10 @@ async function pjLoad(file){
     for(const item of data.layers){
       if(typeof item.png!=="string"||!item.png.startsWith("data:image/"))throw new Error("レイヤ画像が不正です");
       const img=await loadImageAsset(item.png),c=document.createElement("canvas");
-      c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d").drawImage(img,0,0);
+      if(!(img.naturalWidth>0&&img.naturalHeight>0))throw new Error("レイヤ画像のサイズを取得できません");
+      // 細工されたファイルによる巨大キャンバス確保を防ぐため、1辺4096pxを上限に縮小する。
+      const fit=Math.min(1,4096/Math.max(img.naturalWidth,img.naturalHeight));
+      c.width=Math.max(1,Math.round(img.naturalWidth*fit));c.height=Math.max(1,Math.round(img.naturalHeight*fit));c.getContext("2d").drawImage(img,0,0,c.width,c.height);
       layers.push({id:layers.length+1,name:String(item.name||"レイヤ").slice(0,60),canvas:c,x:Math.round(Number(item.x)||0),y:Math.round(Number(item.y)||0),visible:item.visible!==false});
     }
     pj.name=String(data.name||"プロジェクト").slice(0,60);pj.w=w;pj.h=h;pj.layers=layers;pj.seq=layers.length;pj.sel=layers.length-1;

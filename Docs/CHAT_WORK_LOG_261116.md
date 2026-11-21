@@ -19,3 +19,21 @@
 - 検証: web_regression_gate.py PASS 35行・exit 0（新規検査追加）、node --check OK。HTTPサーバ起動不可のためUIは静的レビューのみ。実機iPhone・Pages配信・変異テストは未検証。
 - 未修正の残課題32件は Docs/QC/CodeReview/QC_CodeReview_v2026.10.28-r10.md に一覧。
 - バージョン: APP_BUILD r9 → r10。
+
+### 2026-11-22 01:40 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - [R261122-02] 未修正の高・中の課題の修正
+
+```text
+★高・中を修正
+```
+
+モデル/工数宣言: 全工程 Sonnet 5.5（実装・再レビューとも）。動的切替なし。
+
+### 2026-11-22 02:40 JST - Claude Sonnet 5.5 - 種別: 作業結果 - [R261122-02] 未修正の高・中の課題の修正
+
+作業時間（概算）: 約60分。モデル: Sonnet 5.5（動的切替なし）。
+
+- 修正: カメラ開始/停止の競合、顔検出の空catch・bfcache・カメラ中断、傾き基準値、画像読込・人物分離・2層化の古い結果の適用、サイズ検証、シェーダ失敗/コンテキスト喪失の表示、ガイド/マスクのドラッグ、pjLoad、Escape、aria同期、キーボード、タッチ目標・safe-area・ステータス折返し。
+- 再レビュー: 回4〜6（新規指摘 11→5→4件。回5で自分の修正の回帰1件=lostpointercaptureのtouch即キャンセルを検出して修正。回6は高・中0、低3件）。回7は未実施。
+- 検証: web_regression_gate.py PASS 36行・exit 0、node --check OK。実機iPhone・ブラウザ表示・変異テスト・Pages配信は未検証。
+- 未修正の残課題はQC記録（Docs/QC/CodeReview/QC_CodeReview_v2026.10.28-r11.md）へ一覧。
+- バージョン: APP_BUILD r10 → r11。

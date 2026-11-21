@@ -689,7 +689,7 @@ def main() -> int:
     require(start_match is not None, "startFace関数を取得できません")
     start_body = start_match.group("body")
     require(
-        start_body.index("await startCamera()") < start_body.index("await createFaceLandmarker()"),
+        start_body.index("await startCamera(session)") < start_body.index("await createFaceLandmarker()"),
         "カメラ要求は顔検出モジュール初期化より先に実行してください",
     )
     require("カメラは起動しましたが、顔検出の準備に失敗しました" in start_body, "失敗境界の表示がありません")
@@ -703,7 +703,7 @@ def main() -> int:
     require('$("#rigDebugToggle").addEventListener("click"' in html and "syncRigDebugToggle()" in html, "解析レイヤON/OFFアイコンの処理がありません")
     require('panelToggle.textContent' not in html and '$("#moveCharacter").textContent' not in html, "アイコンボタンのtextContent上書きが残っています")
     require("grid-template-columns:76px minmax(0,1fr) auto" in html and "white-space:nowrap" in html.split(".row output{")[1].split("}")[0], "スライダー値の出力欄が折り返されます")
-    require("function rigStateMatches(" in html and "rigSessionId++" in html, "個別読込・自動分離後のリグ履歴復元が画像世代で区別されていません")
+    require("function rigStateMatches(" in html and "++rigSessionId" in html, "個別読込・自動分離後のリグ履歴復元が画像世代で区別されていません")
     require('const available=Boolean(part&&$("#rigDebug")' not in html and 'const available=Boolean(point&&$("#rigDebug")' not in html, "部位・ボーン編集が解析表示トグルに依存しています")
     require('id="panelToggle"' in html, "設定パネルの切替ボタンがありません")
     require('aria-controls="mainMenu"' in html, "メニュー切替のaria-controlsがありません")
@@ -1241,6 +1241,24 @@ def main() -> int:
     color_out = subprocess.run(["node", "-e", color_js], capture_output=True, text=True, check=True).stdout.strip()
     require("undefined" not in color_out and color_out == "d,a,b,a,a", f"追加部位の色インデックスが負数になります: {color_out}")
     print("PASS: review R261122-01 regressions (shader pow, render loop, demo race, ankle null, project drag, apply re-entry, color index)")
+    # R261122-02: 高・中の残課題の回帰検査
+    start_cam = html[html.index("async function startCamera("):html.index("async function createFaceLandmarker(")]
+    require("session!==cameraSession" in start_cam and "cameraCancelled()" in start_cam, "カメラ開始中に停止された場合の取り消し処理がありません（停止後にカメラが起動し続けます）")
+    require("function stopCamera(" in html and "cameraSession++" in html[html.index("function stopCamera("):html.index("function stopCamera(") + 120], "stopCamera が進行中の開始を無効化していません")
+    detect_fn = html[html.index("function detect(now){"):html.index("let dragging=false;")]
+    require("catch(e){}" not in detect_fn and "detectFailStreak" in detect_fn, "顔検出の例外を握りつぶしています")
+    require('addEventListener("pageshow"' in html and 'addEventListener("ended"' in html, "bfcache復帰／カメラ中断時の状態復旧がありません")
+    require("tiltNeedBaseline" in html, "傾きの基準値が最初のセンサー値で取られていません")
+    require("const epoch=imageEpoch()" in html and "pendingAutoSegment" in html, "人物分離が古い画像の結果を新しい画像へ適用します")
+    require("const layered=await createLayeredSceneFromMask();" in html and "if(!layered" in html, "2層化に失敗しても成功表示になります")
+    require("try{prog=buildMainProgram()}" in html and "webglcontextlost" in html, "シェーダ失敗／コンテキスト喪失時に原因を表示しません")
+    require("guideDragPointerId" in html and 'event.type!=="pointercancel"' in html, "ガイドのドラッグが別の指やキャンセルで壊れます")
+    require("MAX_TEXTURE_SIZE" in html and "const mySerial=++loadUrlSerial" in html, "画像読込の順序競合／サイズ検証がありません")
+    require("aria-pressed" in html[html.index("const TOGGLE="):html.index("const TOGGLE=") + 700], "状態クラスと aria-pressed の同期がありません")
+    require(start_cam.count("session!==cameraSession") >= 3, "enumerateCameras 後にもセッション確認が必要です（停止後のUI上書き）")
+    require("sceneEpoch!==imageEpoch()" in html and "releaseStaleDrags" in html and "imageSegmenter=null;" in html, "2層化の画像世代確認／ドラッグ状態の解除／bfcache後のモデル再読込がありません")
+    require('else if(!$("#faceEditor").hidden)feClose();' in html and "max(var(--dock-l),env(safe-area-inset-left))" in html, "Escapeで前面の編集窓を閉じる処理／dockのsafe-area二重加算の回避がありません")
+    print("PASS: review R261122-02 regressions (camera session token, detect errors, stale segmentation, shader/context errors, drag pointer ids, aria sync)")
     print("PASS: Cross-AI governance documents")
     return 0
 
