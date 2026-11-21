@@ -1112,7 +1112,7 @@ def main() -> int:
     require("displacement.y-=(headPoint.y-u_faceBands.x)*eyeBand*u_live2dMotion.x" in rig_uv, "瞬きの符号が逆で、目が縦に伸びて二重にずれます")
     # デモ・取込の部位初期値: 実測シルエット解析、人物以外へ人体テンプレートを当てない、レイヤー前後関係。
     require("grid-template-rows:auto minmax(0,1fr) auto" in html, "設定パネルの行数が子要素数と合わず、タブ列が欠けます（タブ＋本文＋フッタ＝3行。グリップは絶対配置）")
-    require("float eyeSides=" in rig_uv and "exp(-pow(headPoint.x*3.2,2.0))" in rig_uv, "瞬き・口の変形が頭の幅全体に掛かり、顔が定期的に歪みます")
+    require("float eyeSides=" in rig_uv and "exp(-sq1(headPoint.x*3.2))" in rig_uv, "瞬き・口の変形が頭の幅全体に掛かり、顔が定期的に歪みます")
     require("float faceGuard=" in rig_uv and "min(1.0-headInfluence,faceGuard)" in rig_uv, "髪の動きが顔の中心（瞳・まつ毛）へ及び、目が二重にずれます")
     require("function analyzeSilhouetteParts(" in html and "analyzeSilhouetteParts(source)" in html, "シルエット実測による部位認識がありません")
     require('activeRigProfile.rigType="human";\n    activeRigProfile.rigSource="segmented-silhouette";' not in html, "取込画像へ姿勢検出前から人体リグを固定しています")
@@ -1227,6 +1227,20 @@ def main() -> int:
     require("function effectiveBoneMotion(" in html and "function updateBoneSprings(" in html and "parent.x*BONE_SPRING_PARAMS.inherit" in html, "ボーン独自のばね／親ボーンからの継承がありません")
     require("updateBoneSprings(seconds,strength,deltaSeconds" in html and "effectiveBoneMotion(point.id)" in html[html.index("function bonePointMotionState("):html.index("function rigPartBoneInfluence(")], "ボーンのばねが動きの更新・表示へ接続されていません")
     print("PASS: part/bone editor UI (shared wire painter, motion gray-out, pose regularization, bone-part sync, tree lists)")
+    # レビュー(R261122-01)で確認した不具合の回帰検査
+    require("pow(" not in html[html.index("float eyeSides="):html.index("float mouthBand=")] and "float sq1(" in html, "シェーダで負の底の pow() が使われています（GLSL未定義動作）")
+    render_fn = html[html.index("function render(now){"):html.index("function render(now){") + 400]
+    require("requestAnimationFrame(render);" in render_fn and "try{renderFrame(now)" in render_fn, "render の例外で描画ループが止まります（rAF 再登録が先頭にありません）")
+    demo_fn = html[html.index("const poseProfile=await inferHumanPoseProfile("):html.index("const poseProfile=await inferHumanPoseProfile(") + 420]
+    require(demo_fn.index("loadSerial!==demoLoadSerial") < demo_fn.index("activeRigProfile=poseProfile"), "古いデモ読込の姿勢結果が新しい読込を上書きします")
+    require("pose[name]&&Math.hypot(" in html, "アクセサリ自動選択が欠けた足首ランドマークで例外になります")
+    require("hit>=0?pjSelLayer():null" in html, "プロジェクト編集で空白タップが選択中レイヤーのドラッグを始めます")
+    require("layerFixApplying" in html and html.count("setTimeout(()=>URL.revokeObjectURL(url),30000)") == 2, "適用の二重実行または保存URLの早期解放が残っています")
+    color_fn = html[html.index("const extraPartColor="):html.index("const extraPartColor=") + 160].split("\n")[0]
+    color_js = "const EXTRA_PART_COLORS=['a','b','c','d'];" + color_fn + ";console.log([0,1,2,5,9].map(extraPartColor).join(','))"
+    color_out = subprocess.run(["node", "-e", color_js], capture_output=True, text=True, check=True).stdout.strip()
+    require("undefined" not in color_out and color_out == "d,a,b,a,a", f"追加部位の色インデックスが負数になります: {color_out}")
+    print("PASS: review R261122-01 regressions (shader pow, render loop, demo race, ankle null, project drag, apply re-entry, color index)")
     print("PASS: Cross-AI governance documents")
     return 0
 
