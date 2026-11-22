@@ -4,3 +4,6 @@ node_modules/
 *.zip
 local-images/
 
+
+# AIDESK の管理データ（公開リポジトリのため追跡しない）
+ai/
