@@ -81,7 +81,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .layerRow.hiddenLayer .layerName{opacity:.4;text-decoration:line-through}
 .layerGrip{width:22px;text-align:center;color:#9fb4c0;touch-action:none;cursor:grab;flex:none}
 .layerSwatch{width:10px;height:10px;border-radius:3px;flex:none}
-.layerIcon{width:30px;min-height:28px;height:28px;padding:0;border-radius:7px;background:#303038;color:#778;font-size:12px;flex:none}
+.layerIcon{width:30px;min-height:28px;height:28px;padding:0;border-radius:7px;background:#303038;color:#9aa0b4;font-size:12px;flex:none}
 .layerIcon.on{background:#1f5c6e;color:#fff}
 .layerName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .layerParentTag{font-size:10px;color:#9fb4c0;flex:none}
@@ -105,7 +105,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .demoCard{position:relative;min-width:0;aspect-ratio:3/4;min-height:0;overflow:hidden;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:9px;background:#25252b;color:#fff}
 .demoCard img{display:block;width:100%;height:100%;object-fit:cover}
 .demoCard.standee img{object-fit:contain;background:linear-gradient(160deg,#111a31,#25152b 72%,#0e1728)}
-.demoCard span{position:absolute;left:2px;right:2px;bottom:2px;padding:2px;border-radius:6px;background:rgba(0,0,0,.66);color:#fff;font-size:9px;font-weight:800;line-height:1.1;text-align:center;backdrop-filter:blur(8px)}
+.demoCard span{position:absolute;left:2px;right:2px;bottom:2px;padding:2px;border-radius:6px;background:rgba(0,0,0,.66);color:#fff;font-size:10px;font-weight:800;line-height:1.1;text-align:center;backdrop-filter:blur(8px)}
 .demoCard[aria-pressed="true"]{border-color:#79e7ff;box-shadow:0 0 0 2px rgba(121,231,255,.36)}
 .hint{font-size:var(--fs-hint);color:#b8b8c2;line-height:1.4}
 .hint.collapsed{display:none}
@@ -115,7 +115,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .helpDot.demo{margin:0 2px}
 #err{font-size:var(--fs-sub);color:#ffb4b4;max-height:44px;overflow:auto}
 #mapStatus{font-size:var(--fs-sub);color:#d4d4dc;line-height:1.45}
-@media (max-width:480px){#status{max-width:34vw}#top{gap:4px}#topActions{gap:2px}#top .iconBtn{width:40px;height:40px;min-height:40px}.iconBtn svg{width:19px;height:19px}.pill{padding:6px 8px}#fps{display:none}}
+@media (max-width:480px){#status{max-width:30vw}#top{gap:4px}#topActions{gap:2px;flex:1 1 auto;flex-wrap:wrap;justify-content:flex-end}#top .iconBtn{width:44px;height:44px;min-height:44px}.iconBtn svg{width:19px;height:19px}.pill{padding:6px 8px}#fps{display:none}}
 .ibtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 6px;min-width:0}
 .ibtn svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ibtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -138,15 +138,16 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .floatHead .grow{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .winBtn{min-width:28px;height:26px;padding:0 7px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .winBtn[aria-pressed="true"],.winBtn.on{background:#d9f8ff;color:#102128;border-color:#79e7ff}
-#viewAssist{top:62px;right:calc(10px + var(--dock-r));padding-bottom:6px}
+#viewAssist{top:calc(max(10px,env(safe-area-inset-top)) + 52px);right:calc(10px + var(--dock-r));padding-bottom:6px}
 #viewAssistCanvas{display:block;margin:0 6px;border-radius:6px;background:#000;touch-action:none;cursor:crosshair}
 #viewAssist[data-mode=mini] #viewAssistCanvas{cursor:pointer}
 #viewAssist .loupeOnly{display:none}#viewAssist[data-mode=loupe] .loupeOnly{display:inline-block}
 #pjEditor[hidden]{display:none}
-#pjEditor{top:62px;left:calc(10px + var(--dock-l));width:520px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
+#pjEditor{top:calc(max(10px,env(safe-area-inset-top)) + 52px);left:calc(10px + var(--dock-l));width:520px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
 #pjEditor>*:not(.floatHead){margin:0 8px}
 #pjView{position:relative;flex:none;height:300px;min-height:140px;resize:vertical;overflow:hidden;border-radius:8px;background:#000}
 #pjCanvas{display:block;width:100%;height:100%;touch-action:none;cursor:move;outline:none}
+#pjCanvas:focus-visible{outline:2px solid #79e7ff;outline-offset:-2px}
 #pjLayers{max-height:130px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 #pjLayers .pjItem{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:6px;background:rgba(255,255,255,.07);cursor:pointer}
 #pjLayers .pjItem.sel{background:#d9f8ff;color:#102128}
@@ -154,7 +155,7 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 #pjEditor input[type=number]{width:64px}
 #pjEditor input[type=file]{display:none}
 #faceEditor[hidden]{display:none}
-#faceEditor{top:62px;left:calc(10px + var(--dock-l));width:480px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
+#faceEditor{top:calc(max(10px,env(safe-area-inset-top)) + 52px);left:calc(10px + var(--dock-l));width:480px;max-width:calc(100% - 20px - var(--dock-l));display:flex;flex-direction:column;gap:6px;padding-bottom:8px}
 #faceEditor>*:not(.floatHead){margin:0 8px}
 .feRow{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .feView{position:relative;flex:none;height:250px;min-height:140px;resize:vertical;overflow:hidden;border-radius:8px;background:#000}
@@ -163,10 +164,10 @@ input[type=text]{width:100%;min-width:0;box-sizing:border-box;min-height:30px;bo
 .feCells{display:flex;gap:2px}.feCell{flex:1 1 0;min-width:0;height:24px;padding:0;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#cfe;font-size:10px;cursor:pointer}
 .feCell.on{background:#79e7ff;color:#102128;font-weight:800}
 .feFields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
-.feFields label{display:grid;gap:1px;font-size:10px;color:#9fb4c0}
+.feFields label{display:grid;gap:1px;font-size:11px;color:#9fb4c0}
 .feFields input{width:100%;box-sizing:border-box;min-width:0;padding:3px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.4);color:#fff;font:inherit}
 #feMsg{color:#ffd37d;font-size:11px;min-height:14px}
-#feHint{color:#9fb4c0;font-size:10px;line-height:1.35}
+#feHint{color:#9fb4c0;font-size:11px;line-height:1.35}
 [data-tip]{position:relative}
 [data-tip]::after{content:attr(data-tip);position:absolute;z-index:9;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);padding:3px 7px;border-radius:6px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.25);font-size:11px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s}
 #top [data-tip]::after{bottom:auto;top:calc(100% + 6px);left:auto;right:0;transform:none}
@@ -196,7 +197,7 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 .layerList{resize:vertical;min-height:80px;max-height:70vh;height:180px}
 .layerRow .layerShape{flex:none;width:auto;max-width:76px;min-height:26px;height:26px;padding:0 2px;border-radius:7px;font-size:11px}
 .layerRow .layerNameInput{flex:1;min-width:0;min-height:26px;height:26px;padding:0 6px;border-radius:6px;font-size:13px}
-.layerKind{flex:none;font-size:10px;color:#9fb4c0;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07)}
+.layerKind{flex:none;font-size:11px;color:#9fb4c0;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07)}
 .layerIcon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .layerIcon{display:inline-flex;align-items:center;justify-content:center}
 .layerList{overflow-x:hidden!important}
@@ -207,7 +208,8 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 .listGrip{height:12px;margin:-2px 0 0;border-radius:6px;cursor:ns-resize;touch-action:none;background:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)) center/36px 3px no-repeat,rgba(255,255,255,.05)}
 .listGrip:hover{background-color:rgba(121,231,255,.18)}
 .layerList{resize:none!important}
-@media (pointer:coarse){button,.filelabel,.settingsTabs button,.winBtn{min-height:44px}.winBtn{min-width:44px}}
+@media (max-width:480px){#viewAssist,#pjEditor,#faceEditor{top:calc(max(10px,env(safe-area-inset-top)) + 106px)}.floatWin{max-height:calc(100dvh - 126px - env(safe-area-inset-bottom))}}
+@media (pointer:coarse){button,.filelabel,.settingsTabs button,.winBtn{min-height:44px}.winBtn{min-width:44px}#mainMenu .menuItem{min-height:44px}.helpDot{position:relative}.helpDot::before{content:"";position:absolute;inset:-8px}.layerRow .layerIcon,.layerRow .layerShape{min-height:36px;height:36px}.layerRow .layerIcon{width:36px}}
 #panel[data-layout=dock-right]{padding-right:max(8px,env(safe-area-inset-right));padding-bottom:max(8px,env(safe-area-inset-bottom))}
 #panel[data-layout=dock-left]{padding-left:max(8px,env(safe-area-inset-left));padding-bottom:max(8px,env(safe-area-inset-bottom))}
 </style>
@@ -599,7 +601,7 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r11";
+const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r12";
 const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle"), demoNext=$("#demoNext");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});
 
@@ -1811,7 +1813,10 @@ function initHelpDots(){
     hint.classList.add("collapsed");
     const dot=document.createElement("button");
     dot.type="button";dot.className="helpDot";dot.textContent="?";
-    dot.setAttribute("aria-label","説明");dot.setAttribute("aria-expanded","false");
+    const probe=target?target.cloneNode(true):null;
+    if(probe)probe.querySelectorAll(".helpDot").forEach(d=>d.remove());
+    const helpLabel=(probe&&probe.textContent||"").trim().replace(/\s+/g," ").slice(0,24);
+    dot.setAttribute("aria-label",helpLabel?helpLabel+"の説明":"説明");dot.setAttribute("aria-expanded","false");
     dot.addEventListener("click",event=>{
       event.preventDefault();event.stopPropagation();
       dot.setAttribute("aria-expanded",String(hint.classList.toggle("open")));
@@ -1851,7 +1856,7 @@ function savedPanelVisibility(){
 document.addEventListener("keydown",event=>{
   if(event.key==="Escape"){
     if(!mainMenu.hidden)setMenuVisible(false);
-    else if($("#lfModal").style.display!=="none"){layerFix.active=false;$("#lfModal").style.display="none"}
+    else if($("#lfModal").style.display!=="none")closeLayerFixModal();
     else if(!$("#faceEditor").hidden)feClose();
     else if(!$("#pjEditor").hidden)pjClose();
     else if(panelVisible)setPanelVisible(false);
@@ -2353,11 +2358,15 @@ function analyzeHumanParts(rgba,pose,params=HUMAN_PARTS_PARAMS){
     salient[i]=saliency[i]>Math.max(params.accContrast,0)?1:0;
   }
   const total=Math.max(1,alpha.reduce((s,v)=>s+v,0)),{labels,count}=labels4(salient),blobs=[];
+  // 成分ごとに全画素を走査すると O(成分数×画素数) になるため、面積と合計は1回の走査で集計する（加算順は従来と同じ）。
+  const compArea=new Float64Array(count+1),compSum=new Float64Array(count+1);
+  for(let i=0;i<N;i++){const label=labels[i];if(label>0){compArea[label]++;compSum[label]+=saliency[i]}}
   for(let l=1;l<=count;l++){
-    const component=new Uint8Array(N);let area=0,sum=0;
-    for(let i=0;i<N;i++)if(labels[i]===l){component[i]=1;area++;sum+=saliency[i]}
+    const area=compArea[l],sum=compSum[l];
     const fraction=area/total;
     if(fraction<params.accMin||fraction>params.accMax)continue;
+    const component=new Uint8Array(N);
+    for(let i=0;i<N;i++)if(labels[i]===l)component[i]=1;
     const shape=bboxShape(component,0,100),fill=area/Math.max(1,shape[2]*W*2*shape[3]*H*2);
     if(fill>=params.accFill)blobs.push({score:sum/area*Math.sqrt(fraction),kind:bestKind(component,shape)==="ellipse"?"ellipse":"rect",shape});
   }
@@ -2365,6 +2374,7 @@ function analyzeHumanParts(rgba,pose,params=HUMAN_PARTS_PARAMS){
   // 足元: 足首周辺の不透明画素の外接範囲（靴・サンダル）。
   const feet=[];
   if(params.footOn)for(const name of ["ankleLeft","ankleRight"]){
+    if(!pose[name])continue;
     const [ax,ay]=pose[name],footWindow=new Uint8Array(N);let count=0;
     for(let i=0;i<N;i++){const x=i%W,y=(i-x)/W;if(alpha[i]&&Math.abs(x/W-ax)<params.footWx&&y/H>ay-params.footUp&&y/H<ay+params.footHy){footWindow[i]=1;count++}}
     if(count<12)continue;
@@ -2928,7 +2938,7 @@ function initLayerPanel(){
     if(container.hasPointerCapture?.(event.pointerId))container.releasePointerCapture(event.pointerId);
     if(!target){renderLayerList();return}
     if(target.dataset.root)setLayerParent(id,null);
-    else if(target.dataset.group){const part=rigPartById(id);if(part){part.group=target.dataset.group;syncRigPartList(id);pushEditHistory()}}
+    else if(target.dataset.group){const part=rigPartById(id);if(part&&part.group!==target.dataset.group){part.group=target.dataset.group;syncRigPartList(id);pushEditHistory()}}
     else setLayerParent(id,target.dataset.id);
   };
   container.addEventListener("pointerup",finish);
@@ -3636,7 +3646,15 @@ async function createPoseLandmarker(){
       return mod.PoseLandmarker.createFromOptions(vision,{...options,baseOptions:{modelAssetPath:POSE_MODEL_URL,delegate:"CPU"}});
     }
   })();
-  try{poseLandmarker=await poseLandmarkerPromise;return poseLandmarker}catch(error){poseLandmarkerPromise=null;throw error}
+  // 読込が固まったまま呼び出し側がタイムアウトした場合、以後の呼び出しも同じ保留 promise を待たないよう一定時間後に破棄する。
+  const myPromise=poseLandmarkerPromise;
+  const stuckTimer=setTimeout(()=>{if(!poseLandmarker&&poseLandmarkerPromise===myPromise)poseLandmarkerPromise=null},60000);
+  try{
+    const instance=await myPromise;
+    // 破棄後に再読込が走って先に完了していた場合は、重複インスタンスを閉じて先着を使う。
+    if(poseLandmarker&&poseLandmarker!==instance){if(typeof instance?.close==="function")instance.close();return poseLandmarker}
+    poseLandmarker=instance;return instance;
+  }catch(error){if(poseLandmarkerPromise===myPromise)poseLandmarkerPromise=null;throw error}finally{clearTimeout(stuckTimer)}
 }
 
 // 静止画の顔ランドマークから目・口の位置と大きさを実測する（顔の楕円からの推定は髪の多い写真で目がずれるため）。
@@ -3652,7 +3670,13 @@ async function createStillFaceLandmarker(){
       return mod.FaceLandmarker.createFromOptions(vision,{...options,baseOptions:{modelAssetPath:FACE_MODEL_URL,delegate:"CPU"}});
     }
   })();
-  try{stillFaceLandmarker=await stillFaceLandmarkerPromise;return stillFaceLandmarker}catch(error){stillFaceLandmarkerPromise=null;throw error}
+  const myPromise=stillFaceLandmarkerPromise;
+  const stuckTimer=setTimeout(()=>{if(!stillFaceLandmarker&&stillFaceLandmarkerPromise===myPromise)stillFaceLandmarkerPromise=null},60000);
+  try{
+    const instance=await myPromise;
+    if(stillFaceLandmarker&&stillFaceLandmarker!==instance){if(typeof instance?.close==="function")instance.close();return stillFaceLandmarker}
+    stillFaceLandmarker=instance;return instance;
+  }catch(error){if(stillFaceLandmarkerPromise===myPromise)stillFaceLandmarkerPromise=null;throw error}finally{clearTimeout(stuckTimer)}
 }
 
 // 戻り値は source 座標(0-1)の [中心x, 中心y, 半径x, 半径y]。eyeL/eyeR は画像上の左右ではなく「人物の左右」（人物の左目=画像の右側）。
@@ -4027,6 +4051,7 @@ async function loadIndependentLayer(file,kind){
   if(!file)return;
   try{
     const image=await imageFromFile(file);
+    if(!((image.naturalWidth||image.width)>0&&(image.naturalHeight||image.height)>0))throw new Error("サイズ0の画像");
     if(kind==="background")backgroundLayerSource=image;else foregroundLayerSource=image;
     if(backgroundLayerSource&&foregroundLayerSource)await activateIndependentLayers(`個別レイヤー: ${file.name}`,{preserveCharacterPlacement:kind==="background"});
     else statusEl.textContent=kind==="background"?"背景を読込済み・キャラを選択してください":"キャラを読込済み・背景を選択してください";
@@ -4206,7 +4231,11 @@ function loadMapFile(file,kind){
   if(!file)return;
   const url=URL.createObjectURL(file);
   const img=new Image();
+  const mapEpoch=imageEpoch();
   img.onload=()=>{
+    URL.revokeObjectURL(url);
+    // 読込中に別の画像・デモへ切り替わっていたら、遅れて届いた深度／マスクは捨てる。
+    if(mapEpoch!==imageEpoch())return;
     if(kind==="depth"){
       uploadMapImage(depthTex,gl.TEXTURE1,img);
       hasDepthMap=true;
@@ -4223,7 +4252,6 @@ function loadMapFile(file,kind){
     syncContourCropAvailability();
     syncLayeringControls();
     errEl.textContent="";
-    URL.revokeObjectURL(url);
   };
   img.onerror=()=>{
     errEl.textContent=`${kind==="depth" ? "Depth Map" : "人物／物体マスク"}を読み込めませんでした。`;
@@ -5581,7 +5609,7 @@ function layerFixStart(){
   for(let index=0;index<person.length;index++)person[index]=resized[index*4]>127?1:0;
   if(currentSubjectOverlay&&currentSubjectOverlay.width===width&&currentSubjectOverlay.height===height)front.set(currentSubjectOverlay.mask);
   Object.assign(layerFix,{active:true,w:width,h:height,person,front,pixels:data,undo:[]});
-  const canvas=$("#lfCanvas");canvas.width=width;canvas.height=height;$("#lfModal").style.display="flex";
+  const canvas=$("#lfCanvas");canvas.width=width;canvas.height=height;lfPreviousFocus=document.activeElement;$("#lfModal").style.display="flex";$("#lfClose").focus({preventScroll:true});
   {const fit=Math.min((innerWidth-20)/width,(innerHeight-110)/height);canvas.style.width=Math.round(width*fit)+"px";canvas.style.height=Math.round(height*fit)+"px"}
   $("#lfApply").disabled=false;$("#lfUndo").disabled=true;
   layerFixRender();
@@ -5624,7 +5652,21 @@ async function layerFixApply(){
 }
 $("#lfStart").addEventListener("click",layerFixStart);
 $("#lfApply").addEventListener("click",layerFixApply);
-$("#lfClose").addEventListener("click",()=>{layerFix.active=false;$("#lfModal").style.display="none"});
+let lfPreviousFocus=null;
+function closeLayerFixModal(){
+  layerFix.active=false;layerFix.drawing=false;$("#lfModal").style.display="none";
+  if(lfPreviousFocus&&lfPreviousFocus.isConnected)lfPreviousFocus.focus({preventScroll:true});
+  lfPreviousFocus=null;
+}
+$("#lfClose").addEventListener("click",closeLayerFixModal);
+$("#lfModal").addEventListener("keydown",event=>{
+  if(event.key!=="Tab")return;
+  const items=[...$("#lfModal").querySelectorAll("button:not(:disabled),input,select,[tabindex]:not([tabindex=\"-1\"])")].filter(el=>el.offsetParent!==null);
+  if(!items.length)return;
+  const first=items[0],last=items[items.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+});
 $("#lfUndo").addEventListener("click",()=>{const snap=layerFix.undo.pop();if(snap){layerFix.person.set(snap.person);layerFix.front.set(snap.front);layerFixRender()}$("#lfUndo").disabled=!layerFix.undo.length});
 $("#lfCanvas").addEventListener("pointerdown",event=>{
   if(!layerFix.active)return;
@@ -6860,16 +6902,20 @@ function setCharacterDragMode(enabled){
   $("#moveCharacter").setAttribute("aria-pressed",String(characterDragMode));
   $("#moveCharacter").setAttribute("aria-label",characterDragMode?"キャラ移動をOFFにする":"キャラ移動をONにする");
   canvas.style.cursor=characterDragMode?"move":"";
-  if(characterDragMode){dragging=false;statusEl.textContent="キャラ移動: ドラッグで移動・ピンチ／ホイールで拡大縮小"}
+  characterDragPointers.clear();characterDragStart=null;
+  if(characterDragMode){dragging=false;viewDragPointerId=null;statusEl.textContent="キャラ移動: ドラッグで移動・ピンチ／ホイールで拡大縮小"}
 }
 $("#moveCharacter").addEventListener("click",()=>setCharacterDragMode(!characterDragMode));
+let viewDragPointerId=null;
 canvas.addEventListener("pointerdown",e=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
   if(characterMoveAvailable()){
     characterDragPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     restartCharacterDrag();
     try{canvas.setPointerCapture(e.pointerId)}catch(error){console.warn("Pointer capture unavailable:",error)}
     return;
   }
+  if(!dragging||viewDragPointerId==null)viewDragPointerId=e.pointerId;
   dragging=true;movePointer(e);canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener("pointermove",e=>{
@@ -6888,7 +6934,8 @@ function endCanvasPointer(e){
     if(!characterDragPointers.size)pushEditHistory();
     return;
   }
-  dragging=false;
+  // 複数の指のうち、視点操作を始めた指が離れたときだけ終了する。
+  if(viewDragPointerId==null||e.pointerId===viewDragPointerId){dragging=false;viewDragPointerId=null}
 }
 canvas.addEventListener("pointerup",endCanvasPointer);
 canvas.addEventListener("pointercancel",endCanvasPointer);
@@ -7148,7 +7195,7 @@ for(const id of ["feX","feY","feRX","feRY","feAngle"])$("#"+id).addEventListener
 for(const id of ["feX","feY","feRX","feRY","feAngle"])$("#"+id).addEventListener("change",()=>{feAfterEdit(true)});
 // キー操作: ←/→ コマ送り、↑/↓ トラック切替（入力欄の編集中は除く）。
 document.addEventListener("keydown",e=>{
-  if(!faceEditor.open||(e.target instanceof Element&&e.target.closest("input,select,textarea"))||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(!faceEditor.open||(e.target instanceof Element&&e.target.closest("input,select,textarea,#pjEditor,#lfModal"))||e.metaKey||e.ctrlKey||e.altKey)return;
   const f=faceEditor,tracks=Object.keys(FE_TRACKS);
   let handled=true;
   if(e.key==="ArrowRight")feSetFrame(f.frames[f.track]+(e.shiftKey?3:1));
@@ -7317,8 +7364,17 @@ function feTick(now){
 }
 // up/cancel を受け取れずにドラッグ状態が残ると、以後の指が全て無視される。非表示化・キャプチャ喪失で解除する。
 const releaseStaleDrags=pointerId=>{
-  if(maskState.drag&&(pointerId==null||maskState.drag.id===pointerId)){maskState.drag=null;maskMarkDirty();syncMaskPanel();pushEditHistory()}
-  if(guideDragTarget&&(pointerId==null||guideDragPointerId===pointerId)){guideDragTarget=null;guideDragPointerId=null;pushEditHistory()}
+  if(maskState.drag&&(pointerId==null||maskState.drag.id===pointerId)){
+    // 投げ縄は確定前なら形状が変わっていないので、開始時に積んだ取り消し項目も取り除く。
+    if(maskState.drag.tool==="lasso"){const at=maskState.undo.indexOf(maskState.drag.undoEntry);if(at>=0)maskState.undo.splice(at,1)}
+    maskState.drag=null;maskMarkDirty();syncMaskPanel();pushEditHistory();
+  }
+  if(guideDragTarget&&(pointerId==null||guideDragPointerId===pointerId)){
+    const heldPointer=guideDragPointerId;
+    guideDragTarget=null;guideDragPointerId=null;
+    if(heldPointer!=null&&stage.hasPointerCapture(heldPointer))stage.releasePointerCapture(heldPointer);
+    pushEditHistory();
+  }
 };
 document.addEventListener("visibilitychange",()=>{if(document.hidden)releaseStaleDrags(null)});
 // タッチの暗黙キャプチャ(canvas)から stage への付け替えでも lostpointercapture が bubble するため、stage 自身が失った場合だけ対象にする。
@@ -7569,7 +7625,8 @@ function renderFrame(now){
   gl.uniform4f(U.u_sceneLook,harmonizeAmount,cameraBackgroundActive?0:sceneLook.directional,sceneLook.backlit,shadowAmount);
   gl.uniform4f(U.u_footSpan,...sceneLook.foot);
   gl.uniform2f(U.u_shadowDir,sceneLook.shadowDir[0],sceneLook.shadowDir[1]);
-  gl.uniform1f(U.u_autoRigEnabled,autoRigActive||facePose ? 1 : 0);
+  const facePoseActive=Boolean(facePose&&activeRigProfile);
+  gl.uniform1f(U.u_autoRigEnabled,autoRigActive||facePoseActive ? 1 : 0);
   const core=Object.fromEntries(Object.keys(RIG_PARTS).map(role=>[role,activeRigParts.find(part=>part.role===role)]));
   const coreMotion=role=>core[role]&&rigSprings[core[role].id]?rigSprings[core[role].id]:newRigSpring();
   // テストフックの未指定項目は既定値へ戻す（undefined をuniformへ渡すとNaNで描画が消える）。
@@ -7657,7 +7714,7 @@ function renderFrame(now){
   gl.uniform4f(U.u_featureMotion3,...ownMotion(neckPart),0,0);
   gl.uniform4f(U.u_featureGain,featureGain(eyeL),featureGain(eyeR),featureGain(mouthPart),featureGain(clothPart));
   gl.uniform2f(U.u_legacyFace,eyeL||eyeR?0:1,mouthPart?0:1);
-  gl.uniform4f(U.u_featureExpr,facePose?facePose.smile:expressionNow.smile,gazeMotion*0.5+viewX*0.5,windAmount,0);
+  gl.uniform4f(U.u_featureExpr,facePoseActive?facePose.smile:expressionNow.smile,gazeMotion*0.5+viewX*0.5,windAmount,0);
   // 顔パーツ編集ウィンドウの手動ポーズは、自動の瞬き・口・表情より優先する。
   const poseActive=Boolean(facePose&&activeRigProfile);
   const shownBlink=poseActive?facePose.blink:autoRigActive&&Number.isFinite(testMotionOverride?.blink)?testMotionOverride.blink:blinkPulse;
@@ -7931,7 +7988,10 @@ function maskActiveMasks(){
 function maskUploadTextures(){
   if(!maskState.supported||!maskEnsureGrid())return;
   const {gw,gh}=maskState,active=maskActiveMasks(),flip=gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
-  if(maskState.atlasDirty){
+  // ペン・消しゴムのドラッグ中は全グリッドの再計算を約12回/秒に間引く（指を離した時点で必ず最新化する）。
+  const atlasNow=performance.now();
+  if(maskState.atlasDirty&&(!maskState.drag||atlasNow-(maskState.atlasBuiltAt||0)>80)){
+    maskState.atlasBuiltAt=atlasNow;
     const atlas=new Uint8Array(gw*gh*4);
     active.forEach((mask,channel)=>{
       // 3x3平均で縁をなめらかにする（シェーダ側の線形補間と合わせて縁のギザつきを抑える）。
@@ -7995,12 +8055,13 @@ function maskPointerDown(event){
   if(!point)return false;
   event.preventDefault();event.stopPropagation();
   maskPushUndo(mask);
+  const undoEntry=maskState.undo[maskState.undo.length-1];
   const tool=maskState.tool;
   if(tool==="wand"){
     maskCombine(mask.data,maskWandRegion(point[0],point[1],maskState.tolerance),maskState.lassoMode);
     maskMarkDirty();syncMaskPanel();return true;
   }
-  maskState.drag={id:event.pointerId,tool,points:[point],last:point,mask};
+  maskState.drag={id:event.pointerId,tool,points:[point],last:point,mask,undoEntry};
   if(tool==="pen"||tool==="eraser"){maskStamp(mask.data,point[0],point[1],maskState.brushShape,maskState.brushSize,tool==="pen"?1:0);maskState.atlasDirty=maskState.overlayDirty=true;mask.stats=null}
   try{stage.setPointerCapture(event.pointerId)}catch(error){}
   return true;

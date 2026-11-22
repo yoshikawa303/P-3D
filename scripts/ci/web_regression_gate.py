@@ -1258,6 +1258,15 @@ def main() -> int:
     require(start_cam.count("session!==cameraSession") >= 3, "enumerateCameras 後にもセッション確認が必要です（停止後のUI上書き）")
     require("sceneEpoch!==imageEpoch()" in html and "releaseStaleDrags" in html and "imageSegmenter=null;" in html, "2層化の画像世代確認／ドラッグ状態の解除／bfcache後のモデル再読込がありません")
     require('else if(!$("#faceEditor").hidden)feClose();' in html and "max(var(--dock-l),env(safe-area-inset-left))" in html, "Escapeで前面の編集窓を閉じる処理／dockのsafe-area二重加算の回避がありません")
+    # R261123-01: 残りの中・低の課題の回帰検査
+    require("const mapEpoch=imageEpoch()" in html and "stuckTimer" in html, "遅れて届く深度/マスクの破棄、またはモデル読込タイムアウト後の再試行がありません")
+    require("compArea[label]++" in html and "if(!pose[name])continue;" in html, "アクセサリ検出が成分ごとの全画素走査／足首ランドマーク欠落の保護を失っています")
+    require("atlasNow-(maskState.atlasBuiltAt||0)>80" in html, "マスク編集中のグリッド再計算が間引かれていません")
+    require("viewDragPointerId" in html and "characterDragPointers.clear()" in html, "視点・キャラ移動のドラッグが別の指やモード切替で壊れます")
+    require("const facePoseActive=Boolean(facePose&&activeRigProfile)" in html and "u_featureExpr,facePoseActive" in html, "リグが無い間も顔の手動ポーズが uniform に残ります")
+    require("closeLayerFixModal" in html and "lfPreviousFocus" in html and ":focus-visible{outline:2px solid #79e7ff" in html, "レイヤー修正のフォーカス管理／pjCanvas のフォーカス表示がありません")
+    require(html.index("@media (max-width:480px){#viewAssist,#pjEditor,#faceEditor") > html.index("#faceEditor{top:calc("), "狭幅用の浮動ウィンドウ位置の上書きが基本ルールより前にあり効きません")
+    require("top:62px" not in html, "浮動ウィンドウの top が safe-area を考慮していません")
     print("PASS: review R261122-02 regressions (camera session token, detect errors, stale segmentation, shader/context errors, drag pointer ids, aria sync)")
     print("PASS: Cross-AI governance documents")
     return 0
