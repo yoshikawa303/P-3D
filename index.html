@@ -601,7 +601,7 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r12";
+const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r13";
 const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle"), demoNext=$("#demoNext");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});
 
@@ -5553,7 +5553,8 @@ async function autoSegmentPerson({closePanelOnSuccess=false}={}){
     // 分離中に別の画像・デモへ切り替わった場合、古い結果を新しい画像へ適用しない（終了後に pendingAutoSegment で再実行）。
     if(epoch!==imageEpoch()||segSource!==sourceImage){currentSubjectOverlay=null;return}
     currentSubjectOverlay=separated.overlay;
-    personMapsFromResult(separated.result,separated.overlay?separated.maskCanvas:null);
+    // 文字の有無に関わらず、拡大再分離・合意マスク・トリム後の精密化マスクを人物領域として使う（Depthは部位カテゴリのまま）。
+    personMapsFromResult(separated.result,separated.maskCanvas);
     const layered=await createLayeredSceneFromMask();
     if(!layered||epoch!==imageEpoch())return;
     statusEl.textContent="人物分離・背景補完済み／2層立体表示";

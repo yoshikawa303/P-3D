@@ -20,3 +20,22 @@
 - 据置（要確認）: B5 精密化マスクの破棄、B10 縦半径の単位、UI9 用語統一（名称変更）、A1 コンテキスト自動復帰。
 - 検証: web_regression_gate.py PASS 36行・exit 0、node --check OK。実機iPhone・ブラウザ表示・変異テスト・Pages配信は未検証。
 - 記録: Docs/QC/CodeReview/QC_CodeReview_v2026.10.28-r12.md。バージョン: APP_BUILD r11 → r12。
+
+### 2026-11-25 00:13 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - [R261125-01] B5（文字なし画像で精密化マスクを破棄する挙動）の方針決定
+
+```text
+B5の方針を決める
+```
+
+モデル/工数宣言: 調査・方針検討は Sonnet 5.5。変更は行わず、根拠を集めて推奨を提示する。
+
+### 2026-11-25 00:50 JST - Claude Sonnet 5.5 - 種別: 依頼内容 - [R261125-02] B5 修正（文字なし画像でも精密化マスクを使う）
+
+```text
+修正する
+```
+
+### 2026-11-25 00:50 JST - Claude Sonnet 5.5 - 種別: 作業結果 - [R261125-02] B5 修正
+
+- 変更: `autoSegmentPerson` が文字なし画像でも精密化マスク（拡大再分離＋合意マスク＋トリム）を `personMapsFromResult` へ渡すよう修正（1行）。APP_BUILD r12 → r13。
+- 検証: web_regression_gate.py PASS 36行・exit 0（検査を追加）。実画像での輪郭確認・実機は未検証（この環境ではモデルを実行できない）。戻す場合は該当1行を `separated.overlay?separated.maskCanvas:null` に戻す。

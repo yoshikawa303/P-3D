@@ -1267,6 +1267,8 @@ def main() -> int:
     require("closeLayerFixModal" in html and "lfPreviousFocus" in html and ":focus-visible{outline:2px solid #79e7ff" in html, "レイヤー修正のフォーカス管理／pjCanvas のフォーカス表示がありません")
     require(html.index("@media (max-width:480px){#viewAssist,#pjEditor,#faceEditor") > html.index("#faceEditor{top:calc("), "狭幅用の浮動ウィンドウ位置の上書きが基本ルールより前にあり効きません")
     require("top:62px" not in html, "浮動ウィンドウの top が safe-area を考慮していません")
+    # R261125-02: 文字のない画像でも精密化マスク（拡大再分離＋合意マスク）を人物領域に使う
+    require("personMapsFromResult(separated.result,separated.maskCanvas);" in html and "separated.overlay?separated.maskCanvas:null" not in html, "文字のない画像で精密化した人物マスクが捨てられています")
     print("PASS: review R261122-02 regressions (camera session token, detect errors, stale segmentation, shader/context errors, drag pointer ids, aria sync)")
     print("PASS: Cross-AI governance documents")
     return 0
