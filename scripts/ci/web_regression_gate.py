@@ -1269,6 +1269,8 @@ def main() -> int:
     require("top:62px" not in html, "浮動ウィンドウの top が safe-area を考慮していません")
     # R261125-02: 文字のない画像でも精密化マスク（拡大再分離＋合意マスク）を人物領域に使う
     require("personMapsFromResult(separated.result,separated.maskCanvas);" in html and "separated.overlay?separated.maskCanvas:null" not in html, "文字のない画像で精密化した人物マスクが捨てられています")
+    # R261125-04 (B10): 目・眉の縦半径の下限が縦横比を考慮する（縦長写真で縦に膨らまない）
+    require("width*.42*aspect" in html and "width*.16*aspect" in html and "mouthWidth*.18*aspect" in html, "目・眉・口の縦半径の下限が縦横比を掛けていません")
     print("PASS: review R261122-02 regressions (camera session token, detect errors, stale segmentation, shader/context errors, drag pointer ids, aria sync)")
     print("PASS: Cross-AI governance documents")
     return 0

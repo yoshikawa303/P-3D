@@ -601,7 +601,7 @@ select:disabled,input:disabled,.winBtn:disabled{opacity:.42;cursor:not-allowed}
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r13";
+const APP_VERSION="2026.10.28", APP_BUILD="live2d-parts r14";
 const stage=$("#stage"), canvas=$("#gl"), guideCanvas=$("#guide"), guideContext=guideCanvas.getContext("2d"), video=$("#cam"), statusEl=$("#status"), fpsEl=$("#fps"), errEl=$("#err"), panel=$("#panel"), panelToggle=$("#panelToggle"), demoNext=$("#demoNext");
 const gl=canvas.getContext("webgl",{alpha:false,antialias:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});
 
@@ -3679,6 +3679,7 @@ async function createStillFaceLandmarker(){
   }catch(error){if(stillFaceLandmarkerPromise===myPromise)stillFaceLandmarkerPromise=null;throw error}finally{clearTimeout(stuckTimer)}
 }
 
+// 縦半径の下限は横幅（x-UV）から求めるため aspect(W/H) を掛けて y-UV へ直す（縦長写真で縦に膨らむ不具合の修正）。
 // 戻り値は source 座標(0-1)の [中心x, 中心y, 半径x, 半径y]。eyeL/eyeR は画像上の左右ではなく「人物の左右」（人物の左目=画像の右側）。
 function faceFeaturesFromLandmarks(landmarks,aspect=1){
   const at=index=>landmarks[index];
@@ -3686,12 +3687,12 @@ function faceFeaturesFromLandmarks(landmarks,aspect=1){
   const eye=(outer,inner,upper,lower)=>{
     const [cx,cy]=mid(at(outer),at(inner)),width=Math.hypot((at(outer).x-at(inner).x)*aspect,at(outer).y-at(inner).y)/aspect;
     const lid=Math.abs(at(upper).y-at(lower).y);
-    return [cx,(cy+(at(upper).y+at(lower).y)*.5)*.5,Math.max(.006,width*.78),Math.max(.005,lid*1.7,width*.42)];
+    return [cx,(cy+(at(upper).y+at(lower).y)*.5)*.5,Math.max(.006,width*.78),Math.max(.005,lid*1.7,width*.42*aspect)];
   };
   const mouthWidth=Math.hypot((at(61).x-at(291).x)*aspect,at(61).y-at(291).y)/aspect;
   const [mx,my]=mid(at(61),at(291));
   // 眉は外端・内端の中点と上端で位置を決め、幅の約6割を半径にする。
-  const brow=(outer,inner,top)=>{const [cx,cy]=mid(at(outer),at(inner)),width=Math.hypot((at(outer).x-at(inner).x)*aspect,at(outer).y-at(inner).y)/aspect;return [cx,(cy+at(top).y)*.5,Math.max(.007,width*.6),Math.max(.004,width*.16)]};
+  const brow=(outer,inner,top)=>{const [cx,cy]=mid(at(outer),at(inner)),width=Math.hypot((at(outer).x-at(inner).x)*aspect,at(outer).y-at(inner).y)/aspect;return [cx,(cy+at(top).y)*.5,Math.max(.007,width*.6),Math.max(.004,width*.16*aspect)]};
   // 角度は部位定義と同じ正規化座標（UV）での線の向き。目・眉・口は自分の両端を結ぶ線、顔全体は目の並びと顎〜額の軸の平均。
   const lineAngle=(a,b)=>Math.atan2(at(b).y-at(a).y,at(b).x-at(a).x);
   const eyeRoll=lineAngle(33,263),axisRoll=Math.atan2(at(152).y-at(10).y,at(152).x-at(10).x)-Math.PI*.5;
@@ -3702,7 +3703,7 @@ function faceFeaturesFromLandmarks(landmarks,aspect=1){
     browR:brow(70,107,105),
     eyeL:eye(263,362,386,374),
     eyeR:eye(33,133,159,145),
-    mouth:[(mx+at(13).x)*.5,(my+at(13).y+at(14).y)/3,Math.max(.008,mouthWidth*.62),Math.max(.006,Math.abs(at(14).y-at(13).y)*2.2,mouthWidth*.18)],
+    mouth:[(mx+at(13).x)*.5,(my+at(13).y+at(14).y)/3,Math.max(.008,mouthWidth*.62),Math.max(.006,Math.abs(at(14).y-at(13).y)*2.2,mouthWidth*.18*aspect)],
     face:[(at(10).x+at(152).x)*.5,(at(10).y+at(152).y)*.5,side*.55,height*.56],
     roll,
     angles:{eyeL:lineAngle(362,263),eyeR:lineAngle(33,133),browL:lineAngle(336,300),browR:lineAngle(70,107),mouth:lineAngle(61,291)}
